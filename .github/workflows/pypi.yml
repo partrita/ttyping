@@ -27,6 +27,11 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Lint and Format check
+        run: |
+          uv run ruff check src/
+          uv run ruff format --check src/
+
       - name: Build
         run: uv build
 

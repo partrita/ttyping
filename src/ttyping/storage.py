@@ -20,10 +20,12 @@ def _ensure_storage() -> None:
 def save_result(result: dict[str, Any]) -> None:
     """Append a result to the local storage."""
     _ensure_storage()
-    results = load_results()
+    results: list[dict[str, Any]] = load_results()
     result["date"] = datetime.now(timezone.utc).isoformat()
     results.append(result)
-    RESULTS_FILE.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
+    RESULTS_FILE.write_text(
+        json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
 
 def load_results() -> list[dict[str, Any]]:

@@ -68,3 +68,7 @@ class TypingApp(App):
         from ttyping.screens import ResultScreen
 
         self.push_screen(ResultScreen(result))
+
+    def exit_app(self) -> None:
+        """Exit the application."""
+        self.exit()

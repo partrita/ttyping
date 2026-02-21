@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections import Counter
 import time
-from datetime import datetime, timezone
-from typing import Any
+from collections import Counter
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, cast
 
 from rich.text import Text
 from textual import events
@@ -16,6 +16,9 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Input, Static
 
 from ttyping.storage import load_results, save_result
+
+if TYPE_CHECKING:
+    from ttyping.app import TypingApp
 
 # ── Colours (monkeytype-inspired) ─────────────────────────────────────────
 
@@ -39,7 +42,8 @@ class TypingScreen(Screen):
         Binding("escape", "quit_app", "Quit", priority=True),
     ]
 
-    DEFAULT_CSS = """
+    DEFAULT_CSS = (
+        """
     TypingScreen {
         align: center middle;
     }
@@ -56,7 +60,9 @@ class TypingScreen(Screen):
         height: 2;
         content-align: center middle;
         text-align: center;
-        color: """ + COL_ACCENT + """;
+        color: """
+        + COL_ACCENT
+        + """;
         margin-bottom: 1;
     }
 
@@ -71,14 +77,22 @@ class TypingScreen(Screen):
     #input-area {
         width: 100%;
         margin-top: 1;
-        border: round """ + COL_DIM + """;
-        background: """ + COL_SUB_BG + """;
-        color: """ + COL_TEXT + """;
+        border: round """
+        + COL_DIM
+        + """;
+        background: """
+        + COL_SUB_BG
+        + """;
+        color: """
+        + COL_TEXT
+        + """;
         padding: 0 1;
     }
 
     #input-area:focus {
-        border: round """ + COL_ACCENT + """;
+        border: round """
+        + COL_ACCENT
+        + """;
     }
 
     #hints {
@@ -86,12 +100,17 @@ class TypingScreen(Screen):
         height: 1;
         content-align: center middle;
         text-align: center;
-        color: """ + COL_DIM + """;
+        color: """
+        + COL_DIM
+        + """;
         margin-top: 1;
     }
     """
+    )
 
-    def __init__(self, words: list[str], lang: str = "en", duration: int | None = None) -> None:
+    def __init__(
+        self, words: list[str], lang: str = "en", duration: int | None = None
+    ) -> None:
         super().__init__()
         self.words = words
         self.lang = lang
@@ -199,9 +218,7 @@ class TypingScreen(Screen):
         elapsed = time.time() - self.start_time if self.start_time else 0.01
         minutes = elapsed / 60
         wpm = (self.total_correct_chars / 5) / minutes if minutes > 0 else 0
-        accuracy = (
-            (self.total_correct_chars / max(self.total_keystrokes, 1)) * 100
-        )
+        accuracy = (self.total_correct_chars / max(self.total_keystrokes, 1)) * 100
         correct_words = sum(1 for w in self.word_correct if w is True)
 
         # Get top errors
@@ -220,7 +237,7 @@ class TypingScreen(Screen):
         }
 
         save_result(result)
-        self.app.show_result(result)  # type: ignore[attr-defined]
+        cast("TypingApp", self.app).show_result(result)
 
     # ── rendering ──────────────────────────────────────────────────────
 
@@ -257,7 +274,7 @@ class TypingScreen(Screen):
                         text.append(ch, style=COL_DIM)
                 # Extra chars beyond word length
                 if len(typed) > len(word):
-                    text.append(typed[len(word):], style=f"bold {COL_ERROR}")
+                    text.append(typed[len(word) :], style=f"bold {COL_ERROR}")
             else:
                 # Future word
                 text.append(word, style=COL_DIM)
@@ -272,9 +289,7 @@ class TypingScreen(Screen):
         elapsed = time.time() - self.start_time
         minutes = elapsed / 60
         wpm = (self.total_correct_chars / 5) / minutes if minutes > 0 else 0
-        accuracy = (
-            (self.total_correct_chars / max(self.total_keystrokes, 1)) * 100
-        )
+        accuracy = (self.total_correct_chars / max(self.total_keystrokes, 1)) * 100
 
         t = Text()
         t.append(f"{wpm:.0f}", style=f"bold {COL_ACCENT}")
@@ -303,7 +318,7 @@ class TypingScreen(Screen):
     # ── actions ────────────────────────────────────────────────────────
 
     def action_restart(self) -> None:
-        self.app.restart()  # type: ignore[attr-defined]
+        cast("TypingApp", self.app).restart()
 
     def action_quit_app(self) -> None:
         self.app.exit()
@@ -321,7 +336,8 @@ class ResultScreen(Screen):
         Binding("escape", "quit_app", "Quit"),
     ]
 
-    DEFAULT_CSS = """
+    DEFAULT_CSS = (
+        """
     ResultScreen {
         align: center middle;
     }
@@ -342,14 +358,18 @@ class ResultScreen(Screen):
     .result-detail {
         width: 100%;
         text-align: center;
-        color: """ + COL_DIM + """;
+        color: """
+        + COL_DIM
+        + """;
     }
 
     #top-errors-title {
         width: 100%;
         text-align: center;
         margin-top: 1;
-        color: """ + COL_DIM + """;
+        color: """
+        + COL_DIM
+        + """;
     }
 
     #top-errors-graph {
@@ -361,10 +381,13 @@ class ResultScreen(Screen):
     #result-hints {
         width: 100%;
         text-align: center;
-        color: """ + COL_DIM + """;
+        color: """
+        + COL_DIM
+        + """;
         margin-top: 2;
     }
     """
+    )
 
     def __init__(self, result: dict[str, Any]) -> None:
         super().__init__()
@@ -392,10 +415,16 @@ class ResultScreen(Screen):
 
                 if r.get("top_word_errors"):
                     yield Static("top missed words", id="top-errors-title")
-                    yield Static(self._render_bar_graph(r["top_word_errors"]), id="top-errors-graph")
+                    yield Static(
+                        self._render_bar_graph(r["top_word_errors"]),
+                        id="top-errors-graph",
+                    )
                 elif r.get("top_char_errors"):
                     yield Static("top missed characters", id="top-errors-title")
-                    yield Static(self._render_bar_graph(r["top_char_errors"]), id="top-errors-graph")
+                    yield Static(
+                        self._render_bar_graph(r["top_char_errors"]),
+                        id="top-errors-graph",
+                    )
 
                 yield Static(
                     "tab retry · h history · esc quit",
@@ -407,15 +436,15 @@ class ResultScreen(Screen):
 
         if not data:
             return Text()
-        
+
         max_val = max(count for _, count in data)
         max_bar_width = 30
-        
+
         # Determine necessary label cell width
         max_label_cell_len = 0
         for label, _ in data:
             max_label_cell_len = max(max_label_cell_len, cell_len(label))
-        
+
         # Cap label width and add padding
         label_cell_width = min(max_label_cell_len, 15)
 
@@ -423,7 +452,7 @@ class ResultScreen(Screen):
         for i, (label, count) in enumerate(data):
             if i > 0:
                 t.append("\n")
-            
+
             # Truncate and pad label based on cell width
             curr_cell_len = cell_len(label)
             if curr_cell_len > label_cell_width:
@@ -441,11 +470,11 @@ class ResultScreen(Screen):
             else:
                 display_label = label
                 padding = " " * (label_cell_width - curr_cell_len)
-            
+
             bar_len = int((count / max_val) * max_bar_width) if max_val > 0 else 0
             if count > 0 and bar_len == 0:
                 bar_len = 1
-                
+
             bar = "█" * bar_len
             t.append(padding + display_label + " ", style=COL_DIM)
             t.append(bar, style=COL_ERROR)
@@ -472,7 +501,8 @@ class HistoryScreen(Screen):
         Binding("escape", "go_back", "Back"),
     ]
 
-    DEFAULT_CSS = """
+    DEFAULT_CSS = (
+        """
     HistoryScreen {
         align: center middle;
     }
@@ -487,7 +517,9 @@ class HistoryScreen(Screen):
     #history-title {
         width: 100%;
         text-align: center;
-        color: """ + COL_ACCENT + """;
+        color: """
+        + COL_ACCENT
+        + """;
         text-style: bold;
         margin-bottom: 1;
     }
@@ -496,23 +528,30 @@ class HistoryScreen(Screen):
         width: 100%;
         height: auto;
         max-height: 20;
-        background: """ + COL_SUB_BG + """;
+        background: """
+        + COL_SUB_BG
+        + """;
     }
 
     #history-empty {
         width: 100%;
         text-align: center;
-        color: """ + COL_DIM + """;
+        color: """
+        + COL_DIM
+        + """;
         padding: 2;
     }
 
     #history-hints {
         width: 100%;
         text-align: center;
-        color: """ + COL_DIM + """;
+        color: """
+        + COL_DIM
+        + """;
         margin-top: 1;
     }
     """
+    )
 
     def compose(self) -> ComposeResult:
         results = load_results()
