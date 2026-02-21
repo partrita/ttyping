@@ -1,0 +1,69 @@
+"""Word lists and file reader for ttyping."""
+
+from __future__ import annotations
+
+import random
+from pathlib import Path
+
+ENGLISH: list[str] = [
+    "the", "be", "to", "of", "and", "a", "in", "that", "have", "i",
+    "it", "for", "not", "on", "with", "he", "as", "you", "do", "at",
+    "this", "but", "his", "by", "from", "they", "we", "say", "her", "she",
+    "or", "an", "will", "my", "one", "all", "would", "there", "their", "what",
+    "so", "up", "out", "if", "about", "who", "get", "which", "go", "me",
+    "when", "make", "can", "like", "time", "no", "just", "him", "know", "take",
+    "people", "into", "year", "your", "good", "some", "could", "them", "see", "other",
+    "than", "then", "now", "look", "only", "come", "its", "over", "think", "also",
+    "back", "after", "use", "two", "how", "our", "work", "first", "well", "way",
+    "even", "new", "want", "because", "any", "these", "give", "day", "most", "us",
+    "great", "between", "need", "large", "often", "hand", "high", "place", "small", "found",
+    "live", "where", "before", "must", "home", "big", "long", "much", "right", "still",
+    "world", "start", "house", "every", "under", "keep", "never", "last", "let", "each",
+    "begin", "while", "next", "should", "same", "name", "help", "talk", "turn", "move",
+    "point", "city", "play", "away", "end", "part", "lead", "stand", "own", "page",
+    "learn", "change", "group", "always", "music", "those", "both", "mark", "book", "letter",
+    "until", "life", "children", "write", "close", "open", "run", "read", "line", "set",
+    "air", "animal", "answer", "around", "ask", "best", "better", "black", "body", "boy",
+    "bring", "build", "call", "came", "car", "care", "carry", "child", "city", "cold",
+    "country", "cut", "dear", "door", "draw", "earth", "eat", "face", "fall", "family",
+    "far", "father", "few", "fish", "food", "form", "four", "girl", "got", "green",
+    "grow", "hard", "head", "hear", "hot", "idea", "important", "inside", "keep", "kind",
+    "king", "land", "late", "left", "light", "list", "love", "man", "many", "might",
+    "money", "morning", "mother", "mountain", "near", "night", "nothing", "number", "off", "old",
+    "once", "order", "paper", "picture", "plant", "problem", "put", "quite", "river", "room",
+    "school", "sea", "second", "side", "soon", "story", "stop", "sun", "sure", "table",
+    "tell", "though", "today", "together", "took", "tree", "try", "voice", "walk", "watch",
+    "water", "white", "word", "young", "system", "program", "question", "during", "without", "again",
+]
+
+KOREAN: list[str] = [
+    "사람", "시간", "우리", "세계", "나라", "사회", "학교", "생각", "문제", "오늘",
+    "내일", "어제", "회사", "가족", "친구", "사랑", "행복", "음식", "하늘", "바다",
+    "여행", "공부", "노력", "경험", "기억", "마음", "이유", "방법", "계획", "결과",
+    "의미", "가능", "필요", "중요", "다양", "특별", "자유", "평화", "희망", "미래",
+    "역사", "문화", "예술", "음악", "영화", "도시", "자연", "환경", "건강", "교육",
+    "기술", "과학", "경제", "정치", "법률", "뉴스", "정보", "인터넷", "컴퓨터", "전화",
+    "이름", "나이", "직업", "취미", "여름", "겨울", "봄", "가을", "아침", "저녁",
+    "동물", "식물", "꽃", "나무", "강", "산", "비", "눈", "바람", "구름",
+    "집", "방", "문", "길", "차", "버스", "지하철", "비행기", "기차", "배",
+    "물", "밥", "고기", "과일", "커피", "빵", "국", "김치", "라면", "치킨",
+    "약속", "준비", "시작", "끝", "변화", "성장", "발전", "성공", "실패", "도전",
+    "감사", "미안", "부탁", "인사", "대화", "연락", "소식", "선물", "축하", "응원",
+]
+
+
+def get_words(lang: str = "en", count: int = 25) -> list[str]:
+    """Return a random selection of words for the given language."""
+    source = ENGLISH if lang == "en" else KOREAN
+    return [random.choice(source) for _ in range(count)]
+
+
+def words_from_file(path: str, count: int = 25) -> list[str]:
+    """Read words from a file and return up to `count` words."""
+    text = Path(path).read_text(encoding="utf-8")
+    words = text.split()
+    if not words:
+        raise ValueError(f"No words found in {path}")
+    if len(words) > count:
+        words = words[:count]
+    return words

@@ -1,0 +1,31 @@
+[project]
+name = "ttyping"
+version = "0.1.0"
+description = "A minimal terminal typing test — English & Korean, monkeytype-inspired"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["typing", "tui", "terminal", "monkeytype", "textual"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Games/Entertainment",
+]
+dependencies = [
+    "textual>=0.40",
+]
+
+[project.scripts]
+ttyping = "ttyping.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
