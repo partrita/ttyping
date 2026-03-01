@@ -422,10 +422,14 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
 
 def words_from_file(path: str, count: int = 25) -> list[str]:
     """Read words from a file and return up to `count` words."""
-    text = Path(path).read_text(encoding="utf-8")
-    words = text.split()
+    words: list[str] = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            for word in line.split():
+                words.append(word)
+                if len(words) >= count:
+                    return words
+
     if not words:
         raise ValueError(f"No words found in {path}")
-    if len(words) > count:
-        words = words[:count]
     return words
