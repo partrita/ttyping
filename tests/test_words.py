@@ -1,30 +1,57 @@
+from pathlib import Path
+
 import pytest
+
 from ttyping.words import get_words, words_from_file
 
-def test_get_words_en():
+
+def test_get_words_en() -> None:
     words = get_words("en", 10)
     assert len(words) == 10
     # Check if words are from the English list (at least one check)
     from ttyping.words import ENGLISH
+
     assert all(w in ENGLISH for w in words)
 
-def test_get_words_ko():
+
+def test_get_words_ko() -> None:
     words = get_words("ko", 5)
     assert len(words) == 5
     from ttyping.words import KOREAN
+
     assert all(w in KOREAN for w in words)
 
-def test_words_from_file(tmp_path):
+
+def test_words_from_file(tmp_path: Path) -> None:
     d = tmp_path / "test.txt"
     d.write_text("hello world typing test", encoding="utf-8")
-    
+
     words = words_from_file(str(d), count=2)
     assert len(words) == 2
     assert words == ["hello", "world"]
 
-def test_words_from_file_empty(tmp_path):
+
+def test_words_from_file_empty(tmp_path: Path) -> None:
     d = tmp_path / "empty.txt"
     d.write_text("", encoding="utf-8")
-    
+
     with pytest.raises(ValueError, match="No words found"):
+        words_from_file(str(d))
+
+
+def test_words_from_file_not_a_file(tmp_path: Path) -> None:
+    d = tmp_path / "subdir"
+    d.mkdir()
+
+    with pytest.raises(ValueError, match="is not a regular file"):
+        words_from_file(str(d))
+
+
+def test_words_from_file_too_large(tmp_path: Path) -> None:
+    d = tmp_path / "large.txt"
+    # Create a file slightly larger than 1MB
+    with open(d, "wb") as f:
+        f.write(b"a" * 1_000_001)
+
+    with pytest.raises(ValueError, match="is too large"):
         words_from_file(str(d))
