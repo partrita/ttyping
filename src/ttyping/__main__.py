@@ -26,7 +26,7 @@ def main() -> None:
         "--words",
         type=int,
         default=25,
-        help="number of words to type (default: 25)",
+        help="number of words to type (default: 25, max: 1000)",
     )
     parser.add_argument(
         "--time",
@@ -43,6 +43,10 @@ def main() -> None:
     )
 
     args = parser.parse_args()
+
+    # Security: Limit number of words to avoid excessive memory allocation
+    if args.words > 1000:
+        args.words = 1000
 
     from ttyping.app import TypingApp
 

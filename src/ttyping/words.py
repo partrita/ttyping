@@ -422,7 +422,15 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
 
 def words_from_file(path: str, count: int = 25) -> list[str]:
     """Read words from a file and return up to `count` words."""
-    text = Path(path).read_text(encoding="utf-8")
+    p = Path(path)
+    if not p.is_file():
+        raise ValueError(f"'{path}' is not a regular file")
+
+    # Security: Limit file size to 1MB to prevent memory exhaustion (DoS)
+    if p.stat().st_size > 1_000_000:
+        raise ValueError(f"File '{path}' is too large (max 1MB)")
+
+    text = p.read_text(encoding="utf-8")
     words = text.split()
     if not words:
         raise ValueError(f"No words found in {path}")
