@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 # ── Colours (monkeytype-inspired) ─────────────────────────────────────────
 
 COL_BG = "#323437"
-COL_DIM = "#646669"
+COL_DIM = "#909294"
 COL_TEXT = "#d1d0c5"
 COL_CORRECT = "#d1d0c5"
 COL_ERROR = "#ca4754"
