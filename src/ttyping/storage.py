@@ -12,9 +12,20 @@ RESULTS_FILE = STORAGE_DIR / "results.json"
 
 
 def _ensure_storage() -> None:
-    STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    # Security: Ensure storage directory and file have restricted permissions
+    # 0o700 for directory (rwx------)
+    # 0o600 for file (rw-------)
+    if not STORAGE_DIR.exists():
+        STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+        STORAGE_DIR.chmod(0o700)
+    elif (STORAGE_DIR.stat().st_mode & 0o777) != 0o700:
+        STORAGE_DIR.chmod(0o700)
+
     if not RESULTS_FILE.exists():
+        RESULTS_FILE.touch(mode=0o600)
         RESULTS_FILE.write_text("[]", encoding="utf-8")
+    elif (RESULTS_FILE.stat().st_mode & 0o777) != 0o600:
+        RESULTS_FILE.chmod(0o600)
 
 
 def save_result(result: dict[str, Any]) -> None:
