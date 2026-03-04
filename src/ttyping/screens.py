@@ -13,7 +13,8 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Center, Vertical
 from textual.screen import Screen
-from textual.widgets import DataTable, Input, Static
+from textual.widgets import DataTable, Input, OptionList, Static
+from textual.widgets.option_list import Option
 
 from ttyping.storage import load_results, save_result
 
@@ -233,11 +234,16 @@ class TypingScreen(Screen):
 
         elapsed = time.time() - self.start_time if self.start_time else 0.01
         minutes = elapsed / 60
-        if minutes <= 0: minutes = 0.001
+        if minutes <= 0:
+            minutes = 0.001
 
         gross_wpm = (self.total_keystrokes / 5) / minutes
         net_wpm = max(0, gross_wpm - (self.uncorrected_errors / minutes))
-        accuracy = max(0, (self.total_keystrokes - self.total_errors) / max(self.total_keystrokes, 1)) * 100
+        accuracy = (
+            max(0, (self.total_keystrokes - self.total_errors)
+            / max(self.total_keystrokes, 1))
+            * 100
+        )
         correct_words = self.current_word_idx - self.uncorrected_errors
 
         # Get top errors
@@ -326,7 +332,8 @@ class TypingScreen(Screen):
         for l_idx in range(start_line, end_line):
             line = lines[l_idx]
             for i, word_text in enumerate(line):
-                if i > 0: display_text.append(" ")
+                if i > 0:
+                    display_text.append(" ")
                 display_text.append(word_text)
             display_text.append("\n")
 
@@ -339,11 +346,16 @@ class TypingScreen(Screen):
 
         elapsed = time.time() - self.start_time
         minutes = elapsed / 60
-        if minutes <= 0: minutes = 0.001
+        if minutes <= 0:
+            minutes = 0.001
 
         gross_wpm = (self.total_keystrokes / 5) / minutes
         net_wpm = max(0, gross_wpm - (self.uncorrected_errors / minutes))
-        accuracy = max(0, (self.total_keystrokes - self.total_errors) / max(self.total_keystrokes, 1)) * 100
+        accuracy = (
+            max(0, (self.total_keystrokes - self.total_errors)
+            / max(self.total_keystrokes, 1))
+            * 100
+        )
 
         t = Text()
         t.append(f"{net_wpm:.0f}", style=f"bold {COL_ACCENT}")
@@ -647,8 +659,8 @@ class HistoryScreen(Screen):
 
 # ── MenuScreen ─────────────────────────────────────────────────────────────
 
-from textual.widgets import OptionList
-from textual.widgets.option_list import Option
+
+
 
 class MenuScreen(Screen):
     """Initial menu to select test parameters."""

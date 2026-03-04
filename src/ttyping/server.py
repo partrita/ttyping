@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+
 import asyncssh
-from typing import Any
 
 from ttyping.app import TypingApp
+
 
 class TtypingSSHServer(asyncssh.SSHServer):
     def session_requested(self) -> TtypingSSHSession:
@@ -25,7 +26,9 @@ class TtypingSSHSession(asyncssh.SSHServerSession):
     def exec_requested(self, command: str) -> bool:
         return False
 
-    def terminal_size_changed(self, width: int, height: int, pixwidth: int, pixheight: int) -> None:
+    def terminal_size_changed(
+        self, width: int, height: int, pixwidth: int, pixheight: int
+    ) -> None:
         # Textual handles terminal size changes if the app is run correctly
         pass
 
@@ -46,16 +49,17 @@ async def start_server(host: str = "0.0.0.0", port: int = 8022) -> None:
 
     # Using textual's built-in SSH support if available, or a simple wrapper.
     # For now, let's just provide the entry point.
-    from textual.app import App
 
-    # In practice, Textual's SSH serving is often done via a separate command or specialized integration.
+    # In practice, Textual's SSH serving is often done via a separate
+    # command or specialized integration.
     # We will use the standard Textual SSH serve pattern if possible.
 
-    app = create_app()
+    create_app()
     # Note: This is a placeholder for the actual SSH serving logic which
     # usually involves textual-serve or similar.
     # Since we added asyncssh, we might be expected to implement it.
 
     # Simplest way to "serve" a textual app over SSH with asyncssh:
-    # (This is non-trivial to implement from scratch here, but we'll provide the structure)
+    # (This is non-trivial to implement from scratch here, but we'll
+    # provide the structure)
     print("SSH Server implementation is ready. Run with 'ttyping serve'")

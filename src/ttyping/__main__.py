@@ -48,14 +48,15 @@ def main() -> None:
     if args.words > 1000:
         args.words = 1000
 
-    from ttyping.app import TypingApp
-
     # If no specific test args provided, show menu
     import sys
+
+    from ttyping.app import TypingApp
     is_default = (len(sys.argv) == 1)
 
     if args.command == "serve":
         import asyncio
+
         from ttyping.server import start_server
         try:
             asyncio.run(start_server())

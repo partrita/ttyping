@@ -6,7 +6,7 @@ from typing import Any
 
 from textual.app import App
 
-from ttyping.screens import HistoryScreen, TypingScreen, MenuScreen
+from ttyping.screens import HistoryScreen, MenuScreen, TypingScreen
 from ttyping.words import get_words, words_from_file
 
 

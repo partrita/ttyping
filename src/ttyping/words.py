@@ -413,9 +413,20 @@ KOREAN: list[str] = [
 
 
 
-ALICE: list[str] = ['alice', 'rabbit', 'hole', 'wonderland', 'queen', 'hearts', 'mad', 'hatter', 'caterpillar', 'chess', 'white', 'cheshire', 'cat', 'tea', 'party', 'garden', 'croquet', 'duchess', 'turtle', 'gryphon', 'dormouse', 'march', 'hare', 'curious', 'adventure', 'shrink', 'grow', 'bottle', 'key', 'door']
+ALICE: list[str] = [
+    "alice", "rabbit", "hole", "wonderland", "queen", "hearts", "mad", "hatter",
+    "caterpillar", "chess", "white", "cheshire", "cat", "tea", "party", "garden",
+    "croquet", "duchess", "turtle", "gryphon", "dormouse", "march", "hare",
+    "curious", "adventure", "shrink", "grow", "bottle", "key", "door",
+]
 
-PRIDE: list[str] = ['elizabeth', 'darcy', 'bennet', 'jane', 'bingley', 'wickham', 'lydia', 'collins', 'pemberley', 'netherfield', 'marriage', 'prejudice', 'pride', 'proposal', 'sister', 'fortune', 'lady', 'catherine', 'ball', 'dance', 'letter', 'reputation', 'estate', 'gentleman', 'mother', 'father', 'wiltshire', 'longbourn', 'character', 'manners']
+PRIDE: list[str] = [
+    "elizabeth", "darcy", "bennet", "jane", "bingley", "wickham", "lydia",
+    "collins", "pemberley", "netherfield", "marriage", "prejudice", "pride",
+    "proposal", "sister", "fortune", "lady", "catherine", "ball", "dance",
+    "letter", "reputation", "estate", "gentleman", "mother", "father",
+    "wiltshire", "longbourn", "character", "manners",
+]
 
 
 def get_words(lang: str = "en", count: int = 25) -> list[str]:
