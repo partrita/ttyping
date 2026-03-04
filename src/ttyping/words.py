@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from pathlib import Path
 
 ENGLISH: list[str] = [
     "the",
@@ -411,11 +412,21 @@ KOREAN: list[str] = [
 ]
 
 
+
+ALICE: list[str] = ['alice', 'rabbit', 'hole', 'wonderland', 'queen', 'hearts', 'mad', 'hatter', 'caterpillar', 'chess', 'white', 'cheshire', 'cat', 'tea', 'party', 'garden', 'croquet', 'duchess', 'turtle', 'gryphon', 'dormouse', 'march', 'hare', 'curious', 'adventure', 'shrink', 'grow', 'bottle', 'key', 'door']
+
+PRIDE: list[str] = ['elizabeth', 'darcy', 'bennet', 'jane', 'bingley', 'wickham', 'lydia', 'collins', 'pemberley', 'netherfield', 'marriage', 'prejudice', 'pride', 'proposal', 'sister', 'fortune', 'lady', 'catherine', 'ball', 'dance', 'letter', 'reputation', 'estate', 'gentleman', 'mother', 'father', 'wiltshire', 'longbourn', 'character', 'manners']
+
+
 def get_words(lang: str = "en", count: int = 25) -> list[str]:
-    """Return a random selection of words for the given language."""
-    source = ENGLISH if lang == "en" else KOREAN
-    # Use random.choices for better performance on large counts if needed,
-    # though random.choice in a loop is fine for small counts.
+    """Return a random selection of words for the given language or book."""
+    sources = {
+        "en": ENGLISH,
+        "ko": KOREAN,
+        "alice": ALICE,
+        "pride": PRIDE
+    }
+    source = sources.get(lang, ENGLISH)
     return random.choices(source, k=count)
 
 
@@ -423,6 +434,12 @@ def words_from_file(path: str, count: int = 25) -> list[str]:
     """Read words from a file and return up to `count` words."""
     if count <= 0:
         return []
+
+    p = Path(path)
+    if not p.is_file():
+        raise ValueError(f"{path} is not a regular file")
+    if p.stat().st_size > 1_000_000:
+        raise ValueError(f"{path} is too large")
 
     words: list[str] = []
     # Optimization: Read file line by line and exit early once we have enough words.

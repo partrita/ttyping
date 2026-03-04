@@ -12,7 +12,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--lang",
-        choices=["en", "ko"],
+        choices=["en", "ko", "alice", "pride"],
         default="en",
         help="language for random words (default: en)",
     )
@@ -38,7 +38,7 @@ def main() -> None:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["history"],
+        choices=["history", "serve"],
         help="subcommand (history: view past results)",
     )
 
@@ -50,12 +50,26 @@ def main() -> None:
 
     from ttyping.app import TypingApp
 
+    # If no specific test args provided, show menu
+    import sys
+    is_default = (len(sys.argv) == 1)
+
+    if args.command == "serve":
+        import asyncio
+        from ttyping.server import start_server
+        try:
+            asyncio.run(start_server())
+        except KeyboardInterrupt:
+            pass
+        return
+
     app = TypingApp(
         lang=args.lang,
         file_path=args.file,
         word_count=args.words,
         duration=args.time,
         show_history=args.command == "history",
+        show_menu=is_default
     )
     app.run()
 
