@@ -34,9 +34,7 @@ def _ensure_storage() -> None:
         if not RESULTS_FILE.exists():
             try:
                 # Atomic creation with O_EXCL to prevent race conditions
-                fd = os.open(
-                    RESULTS_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
-                )
+                fd = os.open(RESULTS_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
                     f.write("[]")
             except FileExistsError:
