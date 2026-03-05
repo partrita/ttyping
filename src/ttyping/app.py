@@ -6,7 +6,7 @@ from typing import Any
 
 from textual.app import App
 
-from ttyping.screens import HistoryScreen, TypingScreen
+from ttyping.screens import HistoryScreen, MenuScreen, TypingScreen
 from ttyping.words import get_words, words_from_file
 
 
@@ -28,6 +28,7 @@ class TypingApp(App):
         word_count: int = 25,
         duration: int | None = None,
         show_history: bool = False,
+        show_menu: bool = False,
     ) -> None:
         super().__init__()
         self._lang = lang
@@ -35,10 +36,13 @@ class TypingApp(App):
         self._word_count = word_count
         self._duration = duration
         self._show_history = show_history
+        self._show_menu = show_menu
 
     def on_mount(self) -> None:
         if self._show_history:
             self.push_screen(HistoryScreen())
+        elif self._show_menu:
+            self.push_screen(MenuScreen())
         else:
             self._start_typing()
 
@@ -68,6 +72,14 @@ class TypingApp(App):
         from ttyping.screens import ResultScreen
 
         self.push_screen(ResultScreen(result))
+
+
+    def start_custom_test(self, lang: str, words: int, duration: int | None) -> None:
+        """Start a test with custom parameters."""
+        self._lang = lang
+        self._word_count = words
+        self._duration = duration
+        self._start_typing()
 
     def exit_app(self) -> None:
         """Exit the application."""

@@ -13,7 +13,8 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Center, Vertical
 from textual.screen import Screen
-from textual.widgets import DataTable, Input, Static
+from textual.widgets import DataTable, Input, OptionList, Static
+from textual.widgets.option_list import Option
 
 from ttyping.storage import load_results, save_result
 
@@ -119,8 +120,9 @@ class TypingScreen(Screen):
         self.current_input = ""
         self.word_correct: list[bool | None] = [None] * len(words)
         self.start_time: float | None = None
-        self.total_correct_chars = 0
         self.total_keystrokes = 0
+        self.total_errors = 0
+        self.uncorrected_errors = 0
         self._timer_handle: Any = None
         self._finished = False
         self.errors = Counter()  # Tracks characters missed
@@ -146,19 +148,32 @@ class TypingScreen(Screen):
 
         value = event.value
 
+        # Track raw keystrokes and errors
+        if len(value) > len(self.current_input):
+            added = value[len(self.current_input):]
+            self.total_keystrokes += len(added)
+
+            target_word = self.words[self.current_word_idx]
+            for i, char in enumerate(added):
+                idx = len(self.current_input) + i
+                if idx < len(target_word):
+                    if char != target_word[idx]:
+                        self.total_errors += 1
+                elif char != " ":
+                    self.total_errors += 1
+
         # Space → complete current word
         if value.endswith(" "):
             self._complete_word(value[:-1])
             event.input.value = ""
             return
 
-        # Track character errors as they happen
+        # Legacy character error tracking for top errors display
         if value and self.current_word_idx < len(self.words):
             target_word = self.words[self.current_word_idx]
             last_typed_idx = len(value) - 1
             if last_typed_idx < len(target_word):
                 if value[last_typed_idx] != target_word[last_typed_idx]:
-                    # User typed the wrong character
                     self.errors[target_word[last_typed_idx]] += 1
 
         self.current_input = value
@@ -175,10 +190,14 @@ class TypingScreen(Screen):
         if self._finished:
             return
         # Enter also completes the current word (handy for last word)
-        if event.key == "enter":
+        if event.key == "ctrl+w":
+            event.prevent_default()
+            self.query_one("#input-area", Input).value = ""
+        elif event.key == "enter":
             event.prevent_default()
             inp = self.query_one("#input-area", Input)
             if inp.value:
+                self.total_keystrokes += 1
                 self._complete_word(inp.value)
                 inp.value = ""
 
@@ -189,10 +208,8 @@ class TypingScreen(Screen):
         is_correct = typed == target
 
         self.word_correct[self.current_word_idx] = is_correct
-        self.total_keystrokes += len(typed) + 1  # +1 for space/enter
-        if is_correct:
-            self.total_correct_chars += len(target) + 1
-        else:
+        if not is_correct:
+            self.uncorrected_errors += 1
             self.word_errors[target] += 1
 
         self.current_word_idx += 1
@@ -217,16 +234,25 @@ class TypingScreen(Screen):
 
         elapsed = time.time() - self.start_time if self.start_time else 0.01
         minutes = elapsed / 60
-        wpm = (self.total_correct_chars / 5) / minutes if minutes > 0 else 0
-        accuracy = (self.total_correct_chars / max(self.total_keystrokes, 1)) * 100
-        correct_words = sum(1 for w in self.word_correct if w is True)
+        if minutes <= 0:
+            minutes = 0.001
+
+        gross_wpm = (self.total_keystrokes / 5) / minutes
+        net_wpm = max(0, gross_wpm - (self.uncorrected_errors / minutes))
+        accuracy = (
+            max(0, (self.total_keystrokes - self.total_errors)
+            / max(self.total_keystrokes, 1))
+            * 100
+        )
+        correct_words = self.current_word_idx - self.uncorrected_errors
 
         # Get top errors
         top_char_errors = self.errors.most_common(5)
         top_word_errors = self.word_errors.most_common(5)
 
         result: dict[str, Any] = {
-            "wpm": round(wpm, 1),
+            "wpm": round(net_wpm, 1),
+            "gross_wpm": round(gross_wpm, 1),
             "accuracy": round(accuracy, 1),
             "time": round(elapsed, 1),
             "lang": self.lang,
@@ -242,44 +268,76 @@ class TypingScreen(Screen):
     # ── rendering ──────────────────────────────────────────────────────
 
     def _render_display(self) -> None:
-        text = Text()
-        # Only show a window of words around current index to keep it clean,
-        # especially for long timed tests.
-        start = max(0, self.current_word_idx - 10)
-        end = min(len(self.words), self.current_word_idx + 20)
+        # Use a simple line-wrapping approach to show 3 lines:
+        # 1. previous line
+        # 2. current line (containing active word)
+        # 3. next line
+        container_width = 72 # matches #typing-container width minus padding
 
-        for i in range(start, end):
-            word = self.words[i]
-            if i > start:
-                text.append(" ")
-
+        all_words_text = []
+        for i, word in enumerate(self.words):
+            t = Text()
             if i < self.current_word_idx:
-                # Past word
                 if self.word_correct[i]:
-                    text.append(word, style=f"dim {COL_CORRECT}")
+                    t.append(word, style=f"dim {COL_CORRECT}")
                 else:
-                    text.append(word, style=f"{COL_ERROR} strike")
+                    t.append(word, style=f"{COL_ERROR} strike")
             elif i == self.current_word_idx:
-                # Current word — per-character colouring
                 typed = self.current_input
                 for j, ch in enumerate(word):
                     if j < len(typed):
                         if typed[j] == ch:
-                            text.append(ch, style=f"bold {COL_CORRECT}")
+                            t.append(ch, style=f"bold {COL_CORRECT}")
                         else:
-                            text.append(ch, style=f"bold {COL_ERROR}")
+                            t.append(ch, style=f"bold {COL_ERROR}")
                     elif j == len(typed):
-                        text.append(ch, style=f"underline {COL_TEXT}")
+                        t.append(ch, style=f"underline {COL_TEXT}")
                     else:
-                        text.append(ch, style=COL_DIM)
-                # Extra chars beyond word length
+                        t.append(ch, style=COL_TEXT) # Focused word is more visible
                 if len(typed) > len(word):
-                    text.append(typed[len(word) :], style=f"bold {COL_ERROR}")
+                    t.append(typed[len(word):], style=f"bold {COL_ERROR}")
             else:
-                # Future word
-                text.append(word, style=COL_DIM)
+                t.append(word, style=COL_DIM)
+            all_words_text.append(t)
 
-        self.query_one("#text-display", Static).update(text)
+        # Wrap words into lines
+        lines = []
+        current_line = []
+        current_line_len = 0
+        active_word_line_idx = 0
+
+        for i, word_text in enumerate(all_words_text):
+            word_len = len(self.words[i])
+            if current_line_len + word_len + 1 > container_width:
+                lines.append(current_line)
+                current_line = []
+                current_line_len = 0
+
+            if i == self.current_word_idx:
+                active_word_line_idx = len(lines)
+
+            current_line.append(word_text)
+            current_line_len += word_len + 1
+        lines.append(current_line)
+
+        # Build final display text (up to 3 lines)
+        display_text = Text()
+        start_line = max(0, active_word_line_idx - 1)
+        end_line = min(len(lines), start_line + 3)
+
+        # Adjust start_line if we're at the end
+        if end_line - start_line < 3 and start_line > 0:
+            start_line = max(0, end_line - 3)
+
+        for l_idx in range(start_line, end_line):
+            line = lines[l_idx]
+            for i, word_text in enumerate(line):
+                if i > 0:
+                    display_text.append(" ")
+                display_text.append(word_text)
+            display_text.append("\n")
+
+        self.query_one("#text-display", Static).update(display_text)
 
     def _update_stats(self) -> None:
         if self.start_time is None:
@@ -288,11 +346,19 @@ class TypingScreen(Screen):
 
         elapsed = time.time() - self.start_time
         minutes = elapsed / 60
-        wpm = (self.total_correct_chars / 5) / minutes if minutes > 0 else 0
-        accuracy = (self.total_correct_chars / max(self.total_keystrokes, 1)) * 100
+        if minutes <= 0:
+            minutes = 0.001
+
+        gross_wpm = (self.total_keystrokes / 5) / minutes
+        net_wpm = max(0, gross_wpm - (self.uncorrected_errors / minutes))
+        accuracy = (
+            max(0, (self.total_keystrokes - self.total_errors)
+            / max(self.total_keystrokes, 1))
+            * 100
+        )
 
         t = Text()
-        t.append(f"{wpm:.0f}", style=f"bold {COL_ACCENT}")
+        t.append(f"{net_wpm:.0f}", style=f"bold {COL_ACCENT}")
         t.append(" wpm   ", style=COL_DIM)
         t.append(f"{accuracy:.0f}%", style=f"bold {COL_ACCENT}")
         t.append(" acc   ", style=COL_DIM)
@@ -563,30 +629,129 @@ class HistoryScreen(Screen):
                 if not results:
                     yield Static("No results yet — go type!", id="history-empty")
                 else:
-                    table = DataTable(id="history-table")
-                    table.add_columns("Date", "WPM", "Acc", "Lang", "Time", "Words")
-                    for r in reversed(results[-50:]):
-                        date_str = ""
-                        if "date" in r:
-                            try:
-                                dt = datetime.fromisoformat(r["date"])
-                                date_str = dt.strftime("%Y-%m-%d %H:%M")
-                            except (ValueError, TypeError):
-                                date_str = str(r["date"])[:16]
-                        table.add_row(
-                            date_str,
-                            f"{r.get('wpm', 0):.0f}",
-                            f"{r.get('accuracy', 0):.1f}%",
-                            r.get("lang", "?"),
-                            f"{r.get('time', 0):.0f}s",
-                            f"{r.get('correct', 0)}/{r.get('words', 0)}",
-                        )
-                    yield table
+                    yield self._create_history_table(results)
 
                 yield Static("esc back", id="history-hints")
+
+    def _create_history_table(self, results: list[dict[str, Any]]) -> DataTable:
+        """Create a table showing the last 50 typing results."""
+        table = DataTable(id="history-table")
+        table.add_columns("Date", "WPM", "Acc", "Lang", "Time", "Words")
+
+        for r in reversed(results[-50:]):
+            date_str = ""
+            if "date" in r:
+                try:
+                    dt = datetime.fromisoformat(r["date"])
+                    date_str = dt.strftime("%Y-%m-%d %H:%M")
+                except (ValueError, TypeError):
+                    date_str = str(r["date"])[:16]
+
+            table.add_row(
+                date_str,
+                f"{r.get('wpm', 0):.0f}",
+                f"{r.get('accuracy', 0):.1f}%",
+                r.get("lang", "?"),
+                f"{r.get('time', 0):.0f}s",
+                f"{r.get('correct', 0)}/{r.get('words', 0)}",
+            )
+        return table
 
     def action_go_back(self) -> None:
         if len(self.app.screen_stack) > 1:
             self.app.pop_screen()
         else:
             self.app.exit()
+
+# ── MenuScreen ─────────────────────────────────────────────────────────────
+
+
+
+
+class MenuScreen(Screen):
+    """Initial menu to select test parameters."""
+
+    DEFAULT_CSS = """
+    MenuScreen {
+        align: center middle;
+    }
+
+    #menu-container {
+        width: 40;
+        height: auto;
+        border: round """ + COL_ACCENT + """;
+        padding: 1 2;
+        background: """ + COL_SUB_BG + """;
+    }
+
+    #menu-title {
+        width: 100%;
+        text-align: center;
+        color: """ + COL_ACCENT + """;
+        text-style: bold;
+        margin-bottom: 1;
+    }
+
+    OptionList {
+        background: """ + COL_SUB_BG + """;
+        border: none;
+    }
+
+    #menu-hints {
+        width: 100%;
+        text-align: center;
+        color: """ + COL_DIM + """;
+        margin-top: 1;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static("ttyping", id="menu-title")
+                yield OptionList(
+                    Option("English (25 words)", id="en_25"),
+                    Option("English (50 words)", id="en_50"),
+                    Option("English (15s)", id="en_t15"),
+                    Option("English (30s)", id="en_t30"),
+                    Option("Korean (25 words)", id="ko_25"),
+                    Option("Alice in Wonderland", id="alice"),
+                    Option("Pride and Prejudice", id="pride"),
+                    Option("View History", id="history"),
+                    Option("Quit", id="quit"),
+                    id="menu-options"
+                )
+                yield Static("enter select · esc quit", id="menu-hints")
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        opt_id = event.option_id
+        app = cast("TypingApp", self.app)
+
+        if opt_id == "quit":
+            app.exit_app()
+        elif opt_id == "history":
+            app.push_screen(HistoryScreen())
+        else:
+            lang = "en"
+            words = 25
+            duration = None
+
+            if opt_id == "en_25":
+                pass
+            elif opt_id == "en_50":
+                words = 50
+            elif opt_id == "en_t15":
+                duration = 15
+            elif opt_id == "en_t30":
+                duration = 30
+            elif opt_id == "ko_25":
+                lang = "ko"
+            elif opt_id == "alice":
+                lang = "alice"
+            elif opt_id == "pride":
+                lang = "pride"
+
+            app.start_custom_test(lang, words, duration)
+
+    def action_quit_app(self) -> None:
+        self.app.exit()
