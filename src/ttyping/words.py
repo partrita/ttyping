@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from pathlib import Path
 
 ENGLISH: list[str] = [
     "the",
@@ -421,6 +422,13 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
 
 def words_from_file(path: str, count: int = 25) -> list[str]:
     """Read words from a file and return up to `count` words."""
+    p = Path(path)
+    if not p.is_file():
+        raise ValueError(f"'{path}' is not a regular file")
+
+    if p.stat().st_size > 1_000_000:
+        raise ValueError(f"'{path}' is too large (max 1MB)")
+
     if count <= 0:
         return []
 
