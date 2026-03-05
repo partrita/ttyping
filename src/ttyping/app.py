@@ -23,38 +23,44 @@ class TypingApp(App):
 
     def __init__(
         self,
-        lang: str = "en",
+        lang: str | None = None,
         file_path: str | None = None,
-        word_count: int = 25,
+        word_count: int | None = None,
         duration: int | None = None,
         show_history: bool = False,
-        show_menu: bool = False,
     ) -> None:
         super().__init__()
-        self._lang = lang
-        self._file_path = file_path
-        self._word_count = word_count
-        self._duration = duration
+        from ttyping.storage import load_config
+        config = load_config()
+
+        self._lang = lang or config.get("lang", "en_qwerty")
+        self._file_path = file_path or config.get("file_path")
+        self._word_count = word_count or config.get("word_count", 25)
+        self._duration = duration or config.get("duration")
         self._show_history = show_history
-        self._show_menu = show_menu
 
     def on_mount(self) -> None:
         if self._show_history:
             self.push_screen(HistoryScreen())
-        elif self._show_menu:
-            self.push_screen(MenuScreen())
         else:
-            self._start_typing()
+            self.push_screen(MenuScreen())
 
     def _start_typing(self) -> None:
+        # Save current settings as default for next run
+        from ttyping.storage import save_config
+        save_config({
+            "lang": self._lang,
+            "file_path": self._file_path,
+            "word_count": self._word_count,
+            "duration": self._duration,
+        })
+        
         words = self._get_words()
         self.push_screen(TypingScreen(words, lang=self._lang, duration=self._duration))
 
     def _get_words(self) -> list[str]:
         count = self._word_count
         if self._duration:
-            # For timed tests, provide plenty of words.
-            # 500 is likely more than enough for 1-2 minutes.
             count = 500
 
         if self._file_path:
@@ -73,12 +79,12 @@ class TypingApp(App):
 
         self.push_screen(ResultScreen(result))
 
-
     def start_custom_test(self, lang: str, words: int, duration: int | None) -> None:
-        """Start a test with custom parameters."""
+        """Start a test with custom parameters and clear file_path."""
         self._lang = lang
         self._word_count = words
         self._duration = duration
+        self._file_path = None
         self._start_typing()
 
     def exit_app(self) -> None:

@@ -11,6 +11,8 @@ from ttyping import storage
 def mock_storage(tmp_path: Path):
     storage_dir = tmp_path / ".ttyping"
     results_file = storage_dir / "results.json"
+    # Reset the ensured flag so each test actually runs _ensure_storage
+    storage._STORAGE_ENSURED = False
     with patch("ttyping.storage.STORAGE_DIR", storage_dir), \
          patch("ttyping.storage.RESULTS_FILE", results_file):
         yield storage_dir, results_file

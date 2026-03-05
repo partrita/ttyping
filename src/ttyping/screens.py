@@ -668,90 +668,6 @@ class HistoryScreen(Screen):
 
 
 
-class ENSubMenu(Screen):
-    """Submenu for English layout selection."""
-
-    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
-
-    def compose(self) -> ComposeResult:
-        with Center():
-            with Vertical(id="menu-container"):
-                yield Static("English Typing", id="menu-title")
-                yield OptionList(
-                    Option("QWERTY (25 words)", id="en_qwerty_25"),
-                    Option("QWERTY (50 words)", id="en_qwerty_50"),
-                    Option("DVORAK (25 words)", id="en_dvorak_25"),
-                    Option("DVORAK (50 words)", id="en_dvorak_50"),
-                    Option("Back", id="back"),
-                    id="menu-options"
-                )
-                yield Static("enter select · esc back", id="menu-hints")
-
-    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
-        opt_id = event.option_id
-        app = cast("TypingApp", self.app)
-
-        if opt_id == "back":
-            app.pop_screen()
-        else:
-            lang = "en_qwerty"
-            words = 25
-            if opt_id == "en_qwerty_50":
-                words = 50
-            elif opt_id == "en_dvorak_25":
-                lang = "en_dvorak"
-            elif opt_id == "en_dvorak_50":
-                lang = "en_dvorak"
-                words = 50
-            
-            app.start_custom_test(lang, words, None)
-
-    def action_quit_app(self) -> None:
-        self.app.pop_screen()
-
-
-class KOSubMenu(Screen):
-    """Submenu for Korean layout selection."""
-
-    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
-
-    def compose(self) -> ComposeResult:
-        with Center():
-            with Vertical(id="menu-container"):
-                yield Static("한글 타이핑", id="menu-title")
-                yield OptionList(
-                    Option("두벌식 (25 words)", id="ko_2set_25"),
-                    Option("두벌식 (50 words)", id="ko_2set_50"),
-                    Option("세벌식 (25 words)", id="ko_3set_25"),
-                    Option("세벌식 (50 words)", id="ko_3set_50"),
-                    Option("Back", id="back"),
-                    id="menu-options"
-                )
-                yield Static("enter select · esc back", id="menu-hints")
-
-    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
-        opt_id = event.option_id
-        app = cast("TypingApp", self.app)
-
-        if opt_id == "back":
-            app.pop_screen()
-        else:
-            lang = "ko_2set"
-            words = 25
-            if opt_id == "ko_2set_50":
-                words = 50
-            elif opt_id == "ko_3set_25":
-                lang = "ko_3set"
-            elif opt_id == "ko_3set_50":
-                lang = "ko_3set"
-                words = 50
-            
-            app.start_custom_test(lang, words, None)
-
-    def action_quit_app(self) -> None:
-        self.app.pop_screen()
-
-
 class MenuScreen(Screen):
     """Initial menu to select test parameters."""
 
@@ -817,3 +733,161 @@ class MenuScreen(Screen):
 
     def action_quit_app(self) -> None:
         self.app.exit()
+
+
+class ENSubMenu(Screen):
+    """Submenu for English layout selection."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+
+    def compose(self) -> ComposeResult:
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static("English Typing", id="menu-title")
+                yield OptionList(
+                    Option("QWERTY", id="en_qwerty"),
+                    Option("DVORAK", id="en_dvorak"),
+                    Option("Back", id="back"),
+                    id="menu-options"
+                )
+                yield Static("enter select · esc back", id="menu-hints")
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        opt_id = event.option_id
+        app = cast("TypingApp", self.app)
+
+        if opt_id == "back":
+            app.pop_screen()
+        elif opt_id == "en_qwerty":
+            app.push_screen(PracticeMenu("en_qwerty"))
+        elif opt_id == "en_dvorak":
+            # DVORAK doesn't have specific practice sets yet in words.py
+            # So just show word count options or start with 25
+            app.push_screen(WordCountMenu("en_dvorak"))
+
+    def action_quit_app(self) -> None:
+        self.app.pop_screen()
+
+
+class KOSubMenu(Screen):
+    """Submenu for Korean layout selection."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+
+    def compose(self) -> ComposeResult:
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static("한글 타이핑", id="menu-title")
+                yield OptionList(
+                    Option("두벌식 (2-set)", id="ko_2set"),
+                    Option("세벌식 (3-set)", id="ko_3set"),
+                    Option("Back", id="back"),
+                    id="menu-options"
+                )
+                yield Static("enter select · esc back", id="menu-hints")
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        opt_id = event.option_id
+        app = cast("TypingApp", self.app)
+
+        if opt_id == "back":
+            app.pop_screen()
+        elif opt_id == "ko_2set":
+            app.push_screen(PracticeMenu("ko_2set"))
+        elif opt_id == "ko_3set":
+            app.push_screen(WordCountMenu("ko_3set"))
+
+    def action_quit_app(self) -> None:
+        self.app.pop_screen()
+
+
+class PracticeMenu(Screen):
+    """Menu for selecting specific practice sets (hands, rows, etc.)."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+
+    def __init__(self, layout: str) -> None:
+        super().__init__()
+        self.layout = layout
+
+    def compose(self) -> ComposeResult:
+        title = "Practice"
+        if self.layout == "en_qwerty":
+            title = "QWERTY Practice"
+            options = [
+                Option("Full Words (25)", id="full:25"),
+                Option("Full Words (50)", id="full:50"),
+                Option("Home Row", id="practice:home_row"),
+                Option("Top Row", id="practice:top_row"),
+                Option("Bottom Row", id="practice:bottom_row"),
+                Option("Left Hand", id="practice:left_hand"),
+                Option("Right Hand", id="practice:right_hand"),
+                Option("Index Fingers (Left)", id="practice:left_index"),
+                Option("Index Fingers (Right)", id="practice:right_index"),
+            ]
+        elif self.layout == "ko_2set":
+            title = "두벌식 연습"
+            options = [
+                Option("전체 단어 (25)", id="full:25"),
+                Option("전체 단어 (50)", id="full:50"),
+                Option("가운데 줄 (Home Row)", id="practice:home_row"),
+                Option("윗 줄 (Top Row)", id="practice:top_row"),
+                Option("아랫 줄 (Bottom Row)", id="practice:bottom_row"),
+                Option("왼손 (자음)", id="practice:left_hand"),
+                Option("오른손 (모음)", id="practice:right_hand"),
+            ]
+        else:
+            options = [Option("25 words", id="full:25")]
+
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static(title, id="menu-title")
+                yield OptionList(*options, Option("Back", id="back"), id="menu-options")
+                yield Static("enter select · esc back", id="menu-hints")
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        opt_id = str(event.option_id)
+        app = cast("TypingApp", self.app)
+
+        if opt_id == "back":
+            app.pop_screen()
+        elif opt_id.startswith("full:"):
+            words = int(opt_id.split(":")[1])
+            app.start_custom_test(self.layout, words, None)
+        elif opt_id.startswith("practice:"):
+            set_name = opt_id.split(":")[1]
+            # Use a prefix to tell get_words to use practice set
+            app.start_custom_test(f"{self.layout}:{set_name}", 25, None)
+
+
+class WordCountMenu(Screen):
+    """Fallback menu for layouts without specific practice sets."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+
+    def __init__(self, layout: str) -> None:
+        super().__init__()
+        self.layout = layout
+
+    def compose(self) -> ComposeResult:
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static(f"{self.layout.upper()}", id="menu-title")
+                yield OptionList(
+                    Option("25 words", id="25"),
+                    Option("50 words", id="50"),
+                    Option("100 words", id="100"),
+                    Option("Back", id="back"),
+                    id="menu-options"
+                )
+                yield Static("enter select · esc back", id="menu-hints")
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        opt_id = event.option_id
+        app = cast("TypingApp", self.app)
+
+        if opt_id == "back":
+            app.pop_screen()
+        else:
+            app.start_custom_test(self.layout, int(str(opt_id)), None)
+
