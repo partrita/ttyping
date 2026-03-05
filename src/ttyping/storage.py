@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -11,12 +12,22 @@ STORAGE_DIR = Path.home() / ".ttyping"
 RESULTS_FILE = STORAGE_DIR / "results.json"
 CONFIG_FILE = STORAGE_DIR / "config.json"
 
+_STORAGE_ENSURED = False
+
 
 def _ensure_storage() -> None:
+    """Ensure storage directory and file exist with correct permissions."""
+    global _STORAGE_ENSURED
+    if _STORAGE_ENSURED:
+        return
+
     # Security: Ensure storage directory and file have restricted permissions
     # 0o700 for directory (rwx------)
     # 0o600 for file (rw-------)
-    if not STORAGE_DIR.exists():
+    # We use umask and atomic creation to prevent TOCTOU race conditions.
+    old_umask = os.umask(0o077)
+    try:
+        # Create directory with restricted permissions from the start
         STORAGE_DIR.mkdir(parents=True, exist_ok=True)
         STORAGE_DIR.chmod(0o700)
     elif (STORAGE_DIR.stat().st_mode & 0o777) != 0o700:
