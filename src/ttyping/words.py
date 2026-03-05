@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from pathlib import Path
 
 ENGLISH: list[str] = [
     "the",
@@ -423,6 +424,13 @@ def words_from_file(path: str, count: int = 25) -> list[str]:
     """Read words from a file and return up to `count` words."""
     if count <= 0:
         return []
+
+    # Security: Limit practice file size to 1MB and ensure it is a regular file
+    p = Path(path)
+    if not p.is_file():
+        raise ValueError(f"{path} is not a regular file")
+    if p.stat().st_size > 1_000_000:
+        raise ValueError(f"{path} is too large (max 1MB)")
 
     words: list[str] = []
     # Optimization: Read file line by line and exit early once we have enough words.
