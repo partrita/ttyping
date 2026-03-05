@@ -29,9 +29,10 @@ def _ensure_storage() -> None:
     try:
         # Create directory with restricted permissions from the start
         STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-        STORAGE_DIR.chmod(0o700)
-    elif (STORAGE_DIR.stat().st_mode & 0o777) != 0o700:
-        STORAGE_DIR.chmod(0o700)
+        if (STORAGE_DIR.stat().st_mode & 0o777) != 0o700:
+            STORAGE_DIR.chmod(0o700)
+    finally:
+        os.umask(old_umask)
 
     for file_path, default_content in [
         (RESULTS_FILE, "[]"),
@@ -42,6 +43,8 @@ def _ensure_storage() -> None:
             file_path.write_text(default_content, encoding="utf-8")
         elif (file_path.stat().st_mode & 0o777) != 0o600:
             file_path.chmod(0o600)
+
+    _STORAGE_ENSURED = True
 
 
 def save_result(result: dict[str, Any]) -> None:
