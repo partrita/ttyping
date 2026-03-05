@@ -17,8 +17,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--lang",
-        choices=["en", "ko"],
-        default=config.get("lang", "en"),
+        choices=["en", "ko", "alice", "pride"],
+        default="en",
         help="language for random words (default: en)",
     )
     parser.add_argument(
@@ -43,7 +43,7 @@ def main() -> None:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["history"],
+        choices=["history", "serve"],
         help="subcommand (history: view past results)",
     )
 
@@ -66,17 +66,21 @@ def main() -> None:
     if args.words > 1000:
         args.words = 1000
 
-    # Save configuration (unless viewing history)
-    if args.command != "history":
-        new_config = {
-            "lang": args.lang,
-            "words": args.words,
-            "time": args.time,
-            "file": args.file,
-        }
-        save_config(new_config)
+    # If no specific test args provided, show menu
+    import sys
 
     from ttyping.app import TypingApp
+    is_default = (len(sys.argv) == 1)
+
+    if args.command == "serve":
+        import asyncio
+
+        from ttyping.server import start_server
+        try:
+            asyncio.run(start_server())
+        except KeyboardInterrupt:
+            pass
+        return
 
     app = TypingApp(
         lang=args.lang,
@@ -84,6 +88,7 @@ def main() -> None:
         word_count=args.words,
         duration=args.time,
         show_history=args.command == "history",
+        show_menu=is_default
     )
     app.run()
 

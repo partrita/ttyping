@@ -23,12 +23,32 @@ ENGLISH: list[str] = _load_resource_words("en.txt")
 KOREAN: list[str] = _load_resource_words("ko.txt")
 
 
+
+ALICE: list[str] = [
+    "alice", "rabbit", "hole", "wonderland", "queen", "hearts", "mad", "hatter",
+    "caterpillar", "chess", "white", "cheshire", "cat", "tea", "party", "garden",
+    "croquet", "duchess", "turtle", "gryphon", "dormouse", "march", "hare",
+    "curious", "adventure", "shrink", "grow", "bottle", "key", "door",
+]
+
+PRIDE: list[str] = [
+    "elizabeth", "darcy", "bennet", "jane", "bingley", "wickham", "lydia",
+    "collins", "pemberley", "netherfield", "marriage", "prejudice", "pride",
+    "proposal", "sister", "fortune", "lady", "catherine", "ball", "dance",
+    "letter", "reputation", "estate", "gentleman", "mother", "father",
+    "wiltshire", "longbourn", "character", "manners",
+]
+
+
 def get_words(lang: str = "en", count: int = 25) -> list[str]:
-    """Return a random selection of words for the given language."""
-    source = ENGLISH if lang == "en" else KOREAN
-    if not source:
-        # If resource loading failed, return a basic fallback word list
-        source = ["error", "missing", "data", "check", "install"]
+    """Return a random selection of words for the given language or book."""
+    sources = {
+        "en": ENGLISH,
+        "ko": KOREAN,
+        "alice": ALICE,
+        "pride": PRIDE
+    }
+    source = sources.get(lang, ENGLISH)
     return random.choices(source, k=count)
 
 
@@ -39,11 +59,9 @@ def words_from_file(path: str, count: int = 25) -> list[str]:
 
     p = Path(path)
     if not p.is_file():
-        raise ValueError(f"'{path}' is not a regular file")
-
-    # Security: Limit practice file size to 1MB to prevent DoS
+        raise ValueError(f"{path} is not a regular file")
     if p.stat().st_size > 1_000_000:
-        raise ValueError(f"'{path}' is too large (max 1MB)")
+        raise ValueError(f"{path} is too large")
 
     words: list[str] = []
     # Optimization: Read file line by line and exit early once we have enough words.
