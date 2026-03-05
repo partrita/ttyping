@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import sys
+
+from ttyping.storage import load_config, save_config
 
 
 def main() -> None:
+    config = load_config()
+
     parser = argparse.ArgumentParser(
         prog="ttyping",
         description="A minimal terminal typing test",
@@ -19,20 +24,20 @@ def main() -> None:
     parser.add_argument(
         "--file",
         type=str,
-        default=None,
+        default=config.get("file"),
         help="path to a text file for typing practice",
     )
     parser.add_argument(
         "--words",
         type=int,
-        default=25,
+        default=config.get("words", 25),
         help="number of words to type (default: 25, max: 1000)",
     )
     parser.add_argument(
         "--time",
         "-t",
         type=int,
-        default=None,
+        default=config.get("time"),
         help="duration of the test in seconds (overrides --words)",
     )
     parser.add_argument(
@@ -43,6 +48,19 @@ def main() -> None:
     )
 
     args = parser.parse_args()
+
+    # If the user explicitly provided one of the mode flags, clear the others
+    # to avoid mixing saved state (e.g., if --words is saved, but --time is passed now)
+    cli_args = sys.argv[1:]
+    if "--time" in cli_args or "-t" in cli_args:
+        args.words = 25  # Reset to default if time is explicitly set
+        args.file = None
+    elif "--words" in cli_args:
+        args.time = None
+        args.file = None
+    elif "--file" in cli_args:
+        args.time = None
+        args.words = 25
 
     # Security: Limit number of words to avoid excessive memory allocation
     if args.words > 1000:

@@ -629,27 +629,33 @@ class HistoryScreen(Screen):
                 if not results:
                     yield Static("No results yet — go type!", id="history-empty")
                 else:
-                    table = DataTable(id="history-table")
-                    table.add_columns("Date", "WPM", "Acc", "Lang", "Time", "Words")
-                    for r in reversed(results[-50:]):
-                        date_str = ""
-                        if "date" in r:
-                            try:
-                                dt = datetime.fromisoformat(r["date"])
-                                date_str = dt.strftime("%Y-%m-%d %H:%M")
-                            except (ValueError, TypeError):
-                                date_str = str(r["date"])[:16]
-                        table.add_row(
-                            date_str,
-                            f"{r.get('wpm', 0):.0f}",
-                            f"{r.get('accuracy', 0):.1f}%",
-                            r.get("lang", "?"),
-                            f"{r.get('time', 0):.0f}s",
-                            f"{r.get('correct', 0)}/{r.get('words', 0)}",
-                        )
-                    yield table
+                    yield self._create_history_table(results)
 
                 yield Static("esc back", id="history-hints")
+
+    def _create_history_table(self, results: list[dict[str, Any]]) -> DataTable:
+        """Create a table showing the last 50 typing results."""
+        table = DataTable(id="history-table")
+        table.add_columns("Date", "WPM", "Acc", "Lang", "Time", "Words")
+
+        for r in reversed(results[-50:]):
+            date_str = ""
+            if "date" in r:
+                try:
+                    dt = datetime.fromisoformat(r["date"])
+                    date_str = dt.strftime("%Y-%m-%d %H:%M")
+                except (ValueError, TypeError):
+                    date_str = str(r["date"])[:16]
+
+            table.add_row(
+                date_str,
+                f"{r.get('wpm', 0):.0f}",
+                f"{r.get('accuracy', 0):.1f}%",
+                r.get("lang", "?"),
+                f"{r.get('time', 0):.0f}s",
+                f"{r.get('correct', 0)}/{r.get('words', 0)}",
+            )
+        return table
 
     def action_go_back(self) -> None:
         if len(self.app.screen_stack) > 1:
