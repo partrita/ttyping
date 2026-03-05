@@ -6,20 +6,20 @@ from ttyping.words import get_words, words_from_file
 
 
 def test_get_words_en() -> None:
-    words = get_words("en", 10)
+    words = get_words("en_qwerty", 10)
     assert len(words) == 10
     # Check if words are from the English list (at least one check)
-    from ttyping.words import ENGLISH
+    from ttyping.words import EN_QWERTY
 
-    assert all(w in ENGLISH for w in words)
+    assert all(w in EN_QWERTY for w in words)
 
 
 def test_get_words_ko() -> None:
-    words = get_words("ko", 5)
+    words = get_words("ko_2set", 5)
     assert len(words) == 5
-    from ttyping.words import KOREAN
+    from ttyping.words import KO_2SET
 
-    assert all(w in KOREAN for w in words)
+    assert all(w in KO_2SET for w in words)
 
 
 def test_words_from_file(tmp_path: Path) -> None:

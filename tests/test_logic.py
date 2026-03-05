@@ -2,15 +2,15 @@ import pytest
 from ttyping.words import get_words
 
 def test_get_words_extended() -> None:
-    words = get_words("alice", 10)
+    words = get_words("en_dvorak", 10)
     assert len(words) == 10
-    from ttyping.words import ALICE
-    assert all(w in ALICE for w in words)
+    from ttyping.words import EN_DVORAK
+    assert all(w in EN_DVORAK for w in words)
 
-    words = get_words("pride", 5)
+    words = get_words("ko_3set", 5)
     assert len(words) == 5
-    from ttyping.words import PRIDE
-    assert all(w in PRIDE for w in words)
+    from ttyping.words import KO_3SET
+    assert all(w in KO_3SET for w in words)
 
 def test_wpm_calculation_logic():
     # Mocking basic calculation logic that was added to TypingScreen

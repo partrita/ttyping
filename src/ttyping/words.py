@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from importlib import resources
 from pathlib import Path
 
 
@@ -18,36 +19,26 @@ def _load_resource_words(filename: str) -> list[str]:
         return []
 
 
-ENGLISH: list[str] = _load_resource_words("en.txt")
-KOREAN: list[str] = _load_resource_words("ko.txt")
-
-
-
-ALICE: list[str] = [
-    "alice", "rabbit", "hole", "wonderland", "queen", "hearts", "mad", "hatter",
-    "caterpillar", "chess", "white", "cheshire", "cat", "tea", "party", "garden",
-    "croquet", "duchess", "turtle", "gryphon", "dormouse", "march", "hare",
-    "curious", "adventure", "shrink", "grow", "bottle", "key", "door",
-]
-
-PRIDE: list[str] = [
-    "elizabeth", "darcy", "bennet", "jane", "bingley", "wickham", "lydia",
-    "collins", "pemberley", "netherfield", "marriage", "prejudice", "pride",
-    "proposal", "sister", "fortune", "lady", "catherine", "ball", "dance",
-    "letter", "reputation", "estate", "gentleman", "mother", "father",
-    "wiltshire", "longbourn", "character", "manners",
-]
+EN_QWERTY: list[str] = _load_resource_words("en_qwerty.txt")
+EN_DVORAK: list[str] = _load_resource_words("en_dvorak.txt")
+KO_2SET: list[str] = _load_resource_words("ko_2set.txt")
+KO_3SET: list[str] = _load_resource_words("ko_3set.txt")
 
 
 def get_words(lang: str = "en", count: int = 25) -> list[str]:
-    """Return a random selection of words for the given language or book."""
+    """Return a random selection of words for the given language or layout."""
     sources = {
-        "en": ENGLISH,
-        "ko": KOREAN,
-        "alice": ALICE,
-        "pride": PRIDE
+        "en": EN_QWERTY,
+        "en_qwerty": EN_QWERTY,
+        "en_dvorak": EN_DVORAK,
+        "ko": KO_2SET,
+        "ko_2set": KO_2SET,
+        "ko_3set": KO_3SET,
     }
-    source = sources.get(lang, ENGLISH)
+    source = sources.get(lang, EN_QWERTY)
+    if not source:
+        # Fallback if the selected source is empty
+        source = EN_QWERTY
     return random.choices(source, k=count)
 
 
@@ -63,16 +54,8 @@ def words_from_file(path: str, count: int = 25) -> list[str]:
     if count <= 0:
         return []
 
-    p = Path(path)
-    if not p.is_file():
-        raise ValueError(f"{path} is not a regular file")
-    if p.stat().st_size > 1_000_000:
-        raise ValueError(f"{path} is too large")
-
     words: list[str] = []
     # Optimization: Read file line by line and exit early once we have enough words.
-    # This avoids loading massive files into memory entirely.
-    # Measured ~750x speedup for large multi-line files.
     with open(path, encoding="utf-8") as f:
         for line in f:
             for word in line.split():

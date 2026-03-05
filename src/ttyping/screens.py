@@ -668,11 +668,95 @@ class HistoryScreen(Screen):
 
 
 
+class ENSubMenu(Screen):
+    """Submenu for English layout selection."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+
+    def compose(self) -> ComposeResult:
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static("English Typing", id="menu-title")
+                yield OptionList(
+                    Option("QWERTY (25 words)", id="en_qwerty_25"),
+                    Option("QWERTY (50 words)", id="en_qwerty_50"),
+                    Option("DVORAK (25 words)", id="en_dvorak_25"),
+                    Option("DVORAK (50 words)", id="en_dvorak_50"),
+                    Option("Back", id="back"),
+                    id="menu-options"
+                )
+                yield Static("enter select · esc back", id="menu-hints")
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        opt_id = event.option_id
+        app = cast("TypingApp", self.app)
+
+        if opt_id == "back":
+            app.pop_screen()
+        else:
+            lang = "en_qwerty"
+            words = 25
+            if opt_id == "en_qwerty_50":
+                words = 50
+            elif opt_id == "en_dvorak_25":
+                lang = "en_dvorak"
+            elif opt_id == "en_dvorak_50":
+                lang = "en_dvorak"
+                words = 50
+            
+            app.start_custom_test(lang, words, None)
+
+    def action_quit_app(self) -> None:
+        self.app.pop_screen()
+
+
+class KOSubMenu(Screen):
+    """Submenu for Korean layout selection."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+
+    def compose(self) -> ComposeResult:
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static("한글 타이핑", id="menu-title")
+                yield OptionList(
+                    Option("두벌식 (25 words)", id="ko_2set_25"),
+                    Option("두벌식 (50 words)", id="ko_2set_50"),
+                    Option("세벌식 (25 words)", id="ko_3set_25"),
+                    Option("세벌식 (50 words)", id="ko_3set_50"),
+                    Option("Back", id="back"),
+                    id="menu-options"
+                )
+                yield Static("enter select · esc back", id="menu-hints")
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        opt_id = event.option_id
+        app = cast("TypingApp", self.app)
+
+        if opt_id == "back":
+            app.pop_screen()
+        else:
+            lang = "ko_2set"
+            words = 25
+            if opt_id == "ko_2set_50":
+                words = 50
+            elif opt_id == "ko_3set_25":
+                lang = "ko_3set"
+            elif opt_id == "ko_3set_50":
+                lang = "ko_3set"
+                words = 50
+            
+            app.start_custom_test(lang, words, None)
+
+    def action_quit_app(self) -> None:
+        self.app.pop_screen()
+
+
 class MenuScreen(Screen):
     """Initial menu to select test parameters."""
 
     DEFAULT_CSS = """
-    MenuScreen {
+    MenuScreen, ENSubMenu, KOSubMenu {
         align: center middle;
     }
 
@@ -710,13 +794,8 @@ class MenuScreen(Screen):
             with Vertical(id="menu-container"):
                 yield Static("ttyping", id="menu-title")
                 yield OptionList(
-                    Option("English (25 words)", id="en_25"),
-                    Option("English (50 words)", id="en_50"),
-                    Option("English (15s)", id="en_t15"),
-                    Option("English (30s)", id="en_t30"),
-                    Option("Korean (25 words)", id="ko_25"),
-                    Option("Alice in Wonderland", id="alice"),
-                    Option("Pride and Prejudice", id="pride"),
+                    Option("English (영어)", id="en"),
+                    Option("Korean (한글)", id="ko"),
                     Option("View History", id="history"),
                     Option("Quit", id="quit"),
                     id="menu-options"
@@ -731,27 +810,10 @@ class MenuScreen(Screen):
             app.exit_app()
         elif opt_id == "history":
             app.push_screen(HistoryScreen())
-        else:
-            lang = "en"
-            words = 25
-            duration = None
-
-            if opt_id == "en_25":
-                pass
-            elif opt_id == "en_50":
-                words = 50
-            elif opt_id == "en_t15":
-                duration = 15
-            elif opt_id == "en_t30":
-                duration = 30
-            elif opt_id == "ko_25":
-                lang = "ko"
-            elif opt_id == "alice":
-                lang = "alice"
-            elif opt_id == "pride":
-                lang = "pride"
-
-            app.start_custom_test(lang, words, duration)
+        elif opt_id == "en":
+            app.push_screen(ENSubMenu())
+        elif opt_id == "ko":
+            app.push_screen(KOSubMenu())
 
     def action_quit_app(self) -> None:
         self.app.exit()
