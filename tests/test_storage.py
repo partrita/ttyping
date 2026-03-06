@@ -14,7 +14,8 @@ def mock_storage(tmp_path: Path):
     # Reset the ensured flag so each test actually runs _ensure_storage
     storage._STORAGE_ENSURED = False
     with patch("ttyping.storage.STORAGE_DIR", storage_dir), \
-         patch("ttyping.storage.RESULTS_FILE", results_file):
+         patch("ttyping.storage.RESULTS_FILE", results_file), \
+         patch("ttyping.storage.CONFIG_FILE", storage_dir / "config.json"):
         yield storage_dir, results_file
 
 
