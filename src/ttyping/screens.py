@@ -114,7 +114,7 @@ class TypingScreen(Screen):
         words: list[str],
         lang: str = "en",
         duration: int | None = None,
-        target_accuracy: float | None = None
+        target_accuracy: float | None = None,
     ) -> None:
         super().__init__()
         self.words = words
@@ -512,7 +512,7 @@ class ResultScreen(Screen):
     def __init__(
         self,
         result: dict[str, Any],
-        session_attempts: list[dict[str, Any]] | None = None
+        session_attempts: list[dict[str, Any]] | None = None,
     ) -> None:
         super().__init__()
         self.result = result
@@ -559,15 +559,15 @@ class ResultScreen(Screen):
                         table.add_row(
                             str(i),
                             f"{att['accuracy']:.1f}%",
-                            str(att['keystrokes']),
-                            str(att['errors']),
+                            str(att["keystrokes"]),
+                            str(att["errors"]),
                         )
                     # Add current successful attempt
                     table.add_row(
                         str(len(self.session_attempts) + 1),
                         f"{r['accuracy']:.1f}%",
-                        str(r.get('keystrokes', '-')),
-                        str(r.get('errors', '-')),
+                        str(r.get("keystrokes", "-")),
+                        str(r.get("errors", "-")),
                     )
                     yield table
 
