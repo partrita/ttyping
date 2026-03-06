@@ -61,11 +61,14 @@ def save_result(result: dict[str, Any]) -> None:
 def load_results() -> list[dict[str, Any]]:
     """Load all results from local storage."""
     _ensure_storage()
-    text = RESULTS_FILE.read_text(encoding="utf-8")
     try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        return []
+        with RESULTS_FILE.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                return data
+    except (json.JSONDecodeError, OSError):
+        pass
+    return []
 
 
 def save_config(config: dict[str, Any]) -> None:
@@ -79,8 +82,11 @@ def save_config(config: dict[str, Any]) -> None:
 def load_config() -> dict[str, Any]:
     """Load user configuration from local storage."""
     _ensure_storage()
-    text = CONFIG_FILE.read_text(encoding="utf-8")
     try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        return {}
+        with CONFIG_FILE.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, dict):
+                return data
+    except (json.JSONDecodeError, OSError):
+        pass
+    return {}

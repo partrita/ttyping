@@ -11,10 +11,12 @@ from ttyping import storage
 def mock_storage(tmp_path: Path):
     storage_dir = tmp_path / ".ttyping"
     results_file = storage_dir / "results.json"
+    config_file = storage_dir / "config.json"
     # Reset the ensured flag so each test actually runs _ensure_storage
     storage._STORAGE_ENSURED = False
     with patch("ttyping.storage.STORAGE_DIR", storage_dir), \
-         patch("ttyping.storage.RESULTS_FILE", results_file):
+         patch("ttyping.storage.RESULTS_FILE", results_file), \
+         patch("ttyping.storage.CONFIG_FILE", config_file):
         yield storage_dir, results_file
 
 
@@ -87,3 +89,15 @@ def test_load_results_invalid_json(mock_storage):
 
     # Should return empty list on decode error
     assert storage.load_results() == []
+
+def test_load_results_not_a_list(mock_storage):
+    _, results_file = mock_storage
+
+    results_file.parent.mkdir(parents=True, exist_ok=True)
+    # Valid JSON but not a list
+    results_file.write_text(json.dumps({"not": "a list"}))
+
+    # Currently this would return the dict, but we want it to return []
+    # This test will fail if load_results doesn't check for list type
+    loaded = storage.load_results()
+    assert loaded == []

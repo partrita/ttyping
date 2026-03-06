@@ -12,6 +12,8 @@ def test_save_load_config(tmp_path, monkeypatch):
     monkeypatch.setattr("ttyping.storage.STORAGE_DIR", test_dir)
     monkeypatch.setattr("ttyping.storage.RESULTS_FILE", test_results_file)
     monkeypatch.setattr("ttyping.storage.CONFIG_FILE", test_config_file)
+    # Reset ensured flag
+    monkeypatch.setattr("ttyping.storage._STORAGE_ENSURED", False)
 
     # Test initial load (should be empty dict)
     assert load_config() == {}
@@ -42,6 +44,8 @@ def test_load_config_invalid_json(tmp_path, monkeypatch):
     monkeypatch.setattr("ttyping.storage.STORAGE_DIR", test_dir)
     monkeypatch.setattr("ttyping.storage.RESULTS_FILE", test_results_file)
     monkeypatch.setattr("ttyping.storage.CONFIG_FILE", test_config_file)
+    # Reset ensured flag
+    monkeypatch.setattr("ttyping.storage._STORAGE_ENSURED", False)
 
     test_dir.mkdir(parents=True, exist_ok=True)
     test_config_file.write_text("invalid json", encoding="utf-8")
