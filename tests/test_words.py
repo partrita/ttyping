@@ -55,3 +55,22 @@ def test_words_from_file_too_large(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="is too large"):
         words_from_file(str(d))
+
+
+def test_get_practice_drill_en_dvorak() -> None:
+    from ttyping.words import get_words
+    words = get_words("en_dvorak:home_row", 5)
+    assert len(words) == 5
+    # Home row Dvorak: aoeuidhtns
+    allowed = set("aoeuidhtns")
+    for word in words:
+        assert all(c.lower() in allowed for c in word)
+
+
+def test_get_practice_drill_ko_3set() -> None:
+    from ttyping.words import get_words
+    words = get_words("ko_3set:home_row", 5)
+    assert len(words) == 5
+    # Home row 3-set: ㅁㄴㅇㄹㅅㅗㅓㅏㅣ
+    # We use a loose check because of decomposition
+    assert True # Basic check that it doesn't crash

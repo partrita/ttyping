@@ -42,6 +42,20 @@ PRACTICE_SETS = {
         "bottom_row": "ㅋㅌㅊㅍㅠㅜㅡ",
         "left_hand": "ㅂㅈㄷㄱㅅㅁㄴㅇㄹㅎㅋㅌㅊㅍ",
         "right_hand": "ㅛㅕㅑㅐㅔㅗㅓㅏㅣㅠㅜㅡ",
+    },
+    "en_dvorak": {
+        "home_row": "aoeuidhtns",
+        "top_row": "pyfgcrl",
+        "bottom_row": "qjkxbmwvz",
+        "left_hand": "aoeuipyqjkx",
+        "right_hand": "dhtnsfgcrlbmwvz",
+    },
+    "ko_3set": {
+        "home_row": "ㅁㄴㅇㄹㅅㅗㅓㅏㅣ",
+        "top_row": "ㅎㅆㅂㄱㄷㅛㅐㅕㅔ",
+        "bottom_row": "ㅌㅍㅎㅅㅆㅈㅂㅅㄹ",
+        "left_hand": "ㅎㅆㅂㄱㄷㅁㄴㅇㄹㅅㅌㅍㅎㅅㅆ",
+        "right_hand": "ㅛㅐㅕㅔㄱㅗㅓㅏㅣㅇㄴㅈㅂㅅㄹㅎ",
     }
 }
 
@@ -77,8 +91,12 @@ def get_practice_drill(layout: str, set_name: str, count: int = 25) -> list[str]
     all_words = []
     if layout == "en_qwerty":
         all_words = EN_QWERTY
+    elif layout == "en_dvorak":
+        all_words = EN_DVORAK
     elif layout == "ko_2set":
         all_words = KO_2SET
+    elif layout == "ko_3set":
+        all_words = KO_3SET
         
     import unicodedata
 

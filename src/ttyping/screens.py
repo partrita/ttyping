@@ -761,9 +761,7 @@ class ENSubMenu(Screen):
         elif opt_id == "en_qwerty":
             app.push_screen(PracticeMenu("en_qwerty"))
         elif opt_id == "en_dvorak":
-            # DVORAK doesn't have specific practice sets yet in words.py
-            # So just show word count options or start with 25
-            app.push_screen(WordCountMenu("en_dvorak"))
+            app.push_screen(PracticeMenu("en_dvorak"))
 
     def action_quit_app(self) -> None:
         self.app.pop_screen()
@@ -795,7 +793,7 @@ class KOSubMenu(Screen):
         elif opt_id == "ko_2set":
             app.push_screen(PracticeMenu("ko_2set"))
         elif opt_id == "ko_3set":
-            app.push_screen(WordCountMenu("ko_3set"))
+            app.push_screen(PracticeMenu("ko_3set"))
 
     def action_quit_app(self) -> None:
         self.app.pop_screen()
@@ -806,13 +804,13 @@ class PracticeMenu(Screen):
 
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
 
-    def __init__(self, layout: str) -> None:
+    def __init__(self, layout_id: str) -> None:
         super().__init__()
-        self.layout = layout
+        self.layout_id = layout_id
 
     def compose(self) -> ComposeResult:
         title = "Practice"
-        if self.layout == "en_qwerty":
+        if self.layout_id == "en_qwerty":
             title = "QWERTY Practice"
             options = [
                 Option("Full Words (25)", id="full:25"),
@@ -825,7 +823,18 @@ class PracticeMenu(Screen):
                 Option("Index Fingers (Left)", id="practice:left_index"),
                 Option("Index Fingers (Right)", id="practice:right_index"),
             ]
-        elif self.layout == "ko_2set":
+        elif self.layout_id == "en_dvorak":
+            title = "Dvorak Practice"
+            options = [
+                Option("Full Words (25)", id="full:25"),
+                Option("Full Words (50)", id="full:50"),
+                Option("Home Row", id="practice:home_row"),
+                Option("Top Row", id="practice:top_row"),
+                Option("Bottom Row", id="practice:bottom_row"),
+                Option("Left Hand", id="practice:left_hand"),
+                Option("Right Hand", id="practice:right_hand"),
+            ]
+        elif self.layout_id == "ko_2set":
             title = "두벌식 연습"
             options = [
                 Option("전체 단어 (25)", id="full:25"),
@@ -835,6 +844,17 @@ class PracticeMenu(Screen):
                 Option("아랫 줄 (Bottom Row)", id="practice:bottom_row"),
                 Option("왼손 (자음)", id="practice:left_hand"),
                 Option("오른손 (모음)", id="practice:right_hand"),
+            ]
+        elif self.layout_id == "ko_3set":
+            title = "세벌식 연습"
+            options = [
+                Option("전체 단어 (25)", id="full:25"),
+                Option("전체 단어 (50)", id="full:50"),
+                Option("가운데 줄 (Home Row)", id="practice:home_row"),
+                Option("윗 줄 (Top Row)", id="practice:top_row"),
+                Option("아랫 줄 (Bottom Row)", id="practice:bottom_row"),
+                Option("왼손 (받침)", id="practice:left_hand"),
+                Option("오른손 (초성/모음)", id="practice:right_hand"),
             ]
         else:
             options = [Option("25 words", id="full:25")]
@@ -853,11 +873,11 @@ class PracticeMenu(Screen):
             app.pop_screen()
         elif opt_id.startswith("full:"):
             words = int(opt_id.split(":")[1])
-            app.start_custom_test(self.layout, words, None)
+            app.start_custom_test(self.layout_id, words, None)
         elif opt_id.startswith("practice:"):
             set_name = opt_id.split(":")[1]
             # Use a prefix to tell get_words to use practice set
-            app.start_custom_test(f"{self.layout}:{set_name}", 25, None)
+            app.start_custom_test(f"{self.layout_id}:{set_name}", 25, None)
 
 
 class WordCountMenu(Screen):
@@ -865,14 +885,14 @@ class WordCountMenu(Screen):
 
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
 
-    def __init__(self, layout: str) -> None:
+    def __init__(self, layout_id: str) -> None:
         super().__init__()
-        self.layout = layout
+        self.layout_id = layout_id
 
     def compose(self) -> ComposeResult:
         with Center():
             with Vertical(id="menu-container"):
-                yield Static(f"{self.layout.upper()}", id="menu-title")
+                yield Static(f"{self.layout_id.upper()}", id="menu-title")
                 yield OptionList(
                     Option("25 words", id="25"),
                     Option("50 words", id="50"),
@@ -889,5 +909,5 @@ class WordCountMenu(Screen):
         if opt_id == "back":
             app.pop_screen()
         else:
-            app.start_custom_test(self.layout, int(str(opt_id)), None)
+            app.start_custom_test(self.layout_id, int(str(opt_id)), None)
 
