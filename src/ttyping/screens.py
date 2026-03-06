@@ -714,7 +714,7 @@ class MenuScreen(Screen):
                     Option("Korean (한글)", id="ko"),
                     Option("View History", id="history"),
                     Option("Quit", id="quit"),
-                    id="menu-options"
+                    id="menu-options", name="Main Menu"
                 )
                 yield Static("enter select · esc quit", id="menu-hints")
 
@@ -748,7 +748,7 @@ class ENSubMenu(Screen):
                     Option("QWERTY", id="en_qwerty"),
                     Option("DVORAK", id="en_dvorak"),
                     Option("Back", id="back"),
-                    id="menu-options"
+                    id="menu-options", name="English Layout Selection"
                 )
                 yield Static("enter select · esc back", id="menu-hints")
 
@@ -780,7 +780,7 @@ class KOSubMenu(Screen):
                     Option("두벌식 (2-set)", id="ko_2set"),
                     Option("세벌식 (3-set)", id="ko_3set"),
                     Option("Back", id="back"),
-                    id="menu-options"
+                    id="menu-options", name="Korean Layout Selection"
                 )
                 yield Static("enter select · esc back", id="menu-hints")
 
@@ -862,7 +862,10 @@ class PracticeMenu(Screen):
         with Center():
             with Vertical(id="menu-container"):
                 yield Static(title, id="menu-title")
-                yield OptionList(*options, Option("Back", id="back"), id="menu-options")
+                yield OptionList(
+                    *options, Option("Back", id="back"),
+                    id="menu-options", name="Practice Set Selection"
+                )
                 yield Static("enter select · esc back", id="menu-hints")
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
@@ -898,7 +901,7 @@ class WordCountMenu(Screen):
                     Option("50 words", id="50"),
                     Option("100 words", id="100"),
                     Option("Back", id="back"),
-                    id="menu-options"
+                    id="menu-options", name="Word Count Selection"
                 )
                 yield Static("enter select · esc back", id="menu-hints")
 

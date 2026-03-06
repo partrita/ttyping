@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import unicodedata
 from importlib import resources
 from pathlib import Path
 
@@ -98,9 +99,7 @@ def get_practice_drill(layout: str, set_name: str, count: int = 25) -> list[str]
     elif layout == "ko_3set":
         all_words = KO_3SET
         
-    import unicodedata
-
-    def is_match(word, char_set):
+    def is_match(word: str, char_set: str) -> bool:
         if layout.startswith("en"):
             return all(c.lower() in char_set for c in word)
         else:
