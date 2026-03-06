@@ -50,6 +50,7 @@ def main() -> None:
         import asyncio
 
         from ttyping.server import start_server
+
         try:
             asyncio.run(start_server())
         except KeyboardInterrupt:
