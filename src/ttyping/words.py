@@ -100,7 +100,7 @@ def get_practice_drill(layout: str, set_name: str, count: int = 25) -> list[str]
         
     import unicodedata
 
-    def is_match(word, char_set):
+    def is_match(word: str, char_set: set[str]) -> bool:
         if layout.startswith("en"):
             return all(c.lower() in char_set for c in word)
         else:
