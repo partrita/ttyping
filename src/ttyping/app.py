@@ -31,6 +31,7 @@ class TypingApp(App):
     ) -> None:
         super().__init__()
         from ttyping.storage import load_config
+
         config = load_config()
 
         self._lang = lang or config.get("lang", "en_qwerty")
@@ -48,13 +49,16 @@ class TypingApp(App):
     def _start_typing(self) -> None:
         # Save current settings as default for next run
         from ttyping.storage import save_config
-        save_config({
-            "lang": self._lang,
-            "file_path": self._file_path,
-            "word_count": self._word_count,
-            "duration": self._duration,
-        })
-        
+
+        save_config(
+            {
+                "lang": self._lang,
+                "file_path": self._file_path,
+                "word_count": self._word_count,
+                "duration": self._duration,
+            }
+        )
+
         words = self._get_words()
         self.push_screen(TypingScreen(words, lang=self._lang, duration=self._duration))
 
