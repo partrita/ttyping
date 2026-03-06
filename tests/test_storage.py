@@ -11,10 +11,12 @@ from ttyping import storage
 def mock_storage(tmp_path: Path):
     storage_dir = tmp_path / ".ttyping"
     results_file = storage_dir / "results.json"
+    config_file = storage_dir / "config.json"
     # Reset the ensured flag so each test actually runs _ensure_storage
     storage._STORAGE_ENSURED = False
     with patch("ttyping.storage.STORAGE_DIR", storage_dir), \
-         patch("ttyping.storage.RESULTS_FILE", results_file):
+         patch("ttyping.storage.RESULTS_FILE", results_file), \
+         patch("ttyping.storage.CONFIG_FILE", config_file):
         yield storage_dir, results_file
 
 
@@ -62,6 +64,53 @@ def test_save_result(mock_storage):
     assert data[0]["wpm"] == 60
     assert data[0]["accuracy"] == 95
     assert "date" in data[0]
+
+
+def test_save_multiple_results(mock_storage):
+    _, results_file = mock_storage
+
+    result1 = {"wpm": 60, "accuracy": 95}
+    result2 = {"wpm": 70, "accuracy": 98}
+
+    storage.save_result(result1)
+    storage.save_result(result2)
+
+    data = json.loads(results_file.read_text())
+    assert len(data) == 2
+    assert data[0]["wpm"] == 60
+    assert data[1]["wpm"] == 70
+
+
+def test_save_result_appends_to_existing(mock_storage):
+    storage_dir, results_file = mock_storage
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    existing_data = [{"wpm": 50, "accuracy": 90, "date": "2023-01-01T00:00:00Z"}]
+    results_file.write_text(json.dumps(existing_data))
+
+    new_result = {"wpm": 60, "accuracy": 95}
+    storage.save_result(new_result)
+
+    data = json.loads(results_file.read_text())
+    assert len(data) == 2
+    assert data[0]["wpm"] == 50
+    assert data[1]["wpm"] == 60
+
+
+def test_save_result_corrupt_file(mock_storage):
+    storage_dir, results_file = mock_storage
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    results_file.write_text("corrupt json")
+
+    new_result = {"wpm": 60, "accuracy": 95}
+    # save_result calls load_results, which handles JSONDecodeError by returning []
+    # So it should just overwrite the corrupt file with a new list containing one result.
+    storage.save_result(new_result)
+
+    data = json.loads(results_file.read_text())
+    assert len(data) == 1
+    assert data[0]["wpm"] == 60
 
 
 def test_load_results(mock_storage):
