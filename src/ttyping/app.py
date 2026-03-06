@@ -87,6 +87,3 @@ class TypingApp(App):
         self._file_path = None
         self._start_typing()
 
-    def exit_app(self) -> None:
-        """Exit the application."""
-        self.exit()

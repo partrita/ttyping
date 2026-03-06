@@ -723,7 +723,7 @@ class MenuScreen(Screen):
         app = cast("TypingApp", self.app)
 
         if opt_id == "quit":
-            app.exit_app()
+            app.exit()
         elif opt_id == "history":
             app.push_screen(HistoryScreen())
         elif opt_id == "en":
