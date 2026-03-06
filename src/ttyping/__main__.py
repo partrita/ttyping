@@ -32,6 +32,12 @@ def main() -> None:
         help="duration of the test in seconds (overrides --words)",
     )
     parser.add_argument(
+        "--target-accuracy",
+        "-a",
+        type=float,
+        help="target accuracy percentage (0-100); restart on drop",
+    )
+    parser.add_argument(
         "command",
         nargs="?",
         choices=["history", "serve"],
@@ -62,6 +68,7 @@ def main() -> None:
         file_path=args.file,
         word_count=args.words,
         duration=args.time,
+        target_accuracy=args.target_accuracy,
         show_history=args.command == "history",
     )
     app.run()
