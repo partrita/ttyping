@@ -150,7 +150,7 @@ class TypingScreen(Screen):
 
         # Track raw keystrokes and errors
         if len(value) > len(self.current_input):
-            added = value[len(self.current_input):]
+            added = value[len(self.current_input) :]
             self.total_keystrokes += len(added)
 
             target_word = self.words[self.current_word_idx]
@@ -240,8 +240,11 @@ class TypingScreen(Screen):
         gross_wpm = (self.total_keystrokes / 5) / minutes
         net_wpm = max(0, gross_wpm - (self.uncorrected_errors / minutes))
         accuracy = (
-            max(0, (self.total_keystrokes - self.total_errors)
-            / max(self.total_keystrokes, 1))
+            max(
+                0,
+                (self.total_keystrokes - self.total_errors)
+                / max(self.total_keystrokes, 1),
+            )
             * 100
         )
         correct_words = self.current_word_idx - self.uncorrected_errors
@@ -272,7 +275,7 @@ class TypingScreen(Screen):
         # 1. previous line
         # 2. current line (containing active word)
         # 3. next line
-        container_width = 72 # matches #typing-container width minus padding
+        container_width = 72  # matches #typing-container width minus padding
 
         all_words_text = []
         for i, word in enumerate(self.words):
@@ -293,9 +296,9 @@ class TypingScreen(Screen):
                     elif j == len(typed):
                         t.append(ch, style=f"underline {COL_TEXT}")
                     else:
-                        t.append(ch, style=COL_TEXT) # Focused word is more visible
+                        t.append(ch, style=COL_TEXT)  # Focused word is more visible
                 if len(typed) > len(word):
-                    t.append(typed[len(word):], style=f"bold {COL_ERROR}")
+                    t.append(typed[len(word) :], style=f"bold {COL_ERROR}")
             else:
                 t.append(word, style=COL_DIM)
             all_words_text.append(t)
@@ -352,8 +355,11 @@ class TypingScreen(Screen):
         gross_wpm = (self.total_keystrokes / 5) / minutes
         net_wpm = max(0, gross_wpm - (self.uncorrected_errors / minutes))
         accuracy = (
-            max(0, (self.total_keystrokes - self.total_errors)
-            / max(self.total_keystrokes, 1))
+            max(
+                0,
+                (self.total_keystrokes - self.total_errors)
+                / max(self.total_keystrokes, 1),
+            )
             * 100
         )
 
@@ -663,15 +669,15 @@ class HistoryScreen(Screen):
         else:
             self.app.exit()
 
+
 # ── MenuScreen ─────────────────────────────────────────────────────────────
-
-
 
 
 class MenuScreen(Screen):
     """Initial menu to select test parameters."""
 
-    DEFAULT_CSS = """
+    DEFAULT_CSS = (
+        """
     MenuScreen, ENSubMenu, KOSubMenu {
         align: center middle;
     }
@@ -679,31 +685,42 @@ class MenuScreen(Screen):
     #menu-container {
         width: 40;
         height: auto;
-        border: round """ + COL_ACCENT + """;
+        border: round """
+        + COL_ACCENT
+        + """;
         padding: 1 2;
-        background: """ + COL_SUB_BG + """;
+        background: """
+        + COL_SUB_BG
+        + """;
     }
 
     #menu-title {
         width: 100%;
         text-align: center;
-        color: """ + COL_ACCENT + """;
+        color: """
+        + COL_ACCENT
+        + """;
         text-style: bold;
         margin-bottom: 1;
     }
 
     OptionList {
-        background: """ + COL_SUB_BG + """;
+        background: """
+        + COL_SUB_BG
+        + """;
         border: none;
     }
 
     #menu-hints {
         width: 100%;
         text-align: center;
-        color: """ + COL_DIM + """;
+        color: """
+        + COL_DIM
+        + """;
         margin-top: 1;
     }
     """
+    )
 
     def compose(self) -> ComposeResult:
         with Center():
@@ -714,7 +731,7 @@ class MenuScreen(Screen):
                     Option("Korean (한글)", id="ko"),
                     Option("View History", id="history"),
                     Option("Quit", id="quit"),
-                    id="menu-options"
+                    id="menu-options",
                 )
                 yield Static("enter select · esc quit", id="menu-hints")
 
@@ -748,7 +765,7 @@ class ENSubMenu(Screen):
                     Option("QWERTY", id="en_qwerty"),
                     Option("DVORAK", id="en_dvorak"),
                     Option("Back", id="back"),
-                    id="menu-options"
+                    id="menu-options",
                 )
                 yield Static("enter select · esc back", id="menu-hints")
 
@@ -780,7 +797,7 @@ class KOSubMenu(Screen):
                     Option("두벌식 (2-set)", id="ko_2set"),
                     Option("세벌식 (3-set)", id="ko_3set"),
                     Option("Back", id="back"),
-                    id="menu-options"
+                    id="menu-options",
                 )
                 yield Static("enter select · esc back", id="menu-hints")
 
@@ -898,7 +915,7 @@ class WordCountMenu(Screen):
                     Option("50 words", id="50"),
                     Option("100 words", id="100"),
                     Option("Back", id="back"),
-                    id="menu-options"
+                    id="menu-options",
                 )
                 yield Static("enter select · esc back", id="menu-hints")
 
@@ -910,4 +927,3 @@ class WordCountMenu(Screen):
             app.pop_screen()
         else:
             app.start_custom_test(self.layout_id, int(str(opt_id)), None)
-
