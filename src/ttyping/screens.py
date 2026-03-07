@@ -341,10 +341,29 @@ class TypingScreen(Screen):
                 if len(typed) > len(word):
                     t.append(typed[len(word) :], style=f"bold {COL_ERROR}")
             else:
-                t.append(word, style=COL_DIM)
-            all_words_text.append(t)
+                t.append(word, style=f"{COL_ERROR} strike")
+        elif i == self.current_word_idx:
+            typed = self.current_input
+            for j, ch in enumerate(word):
+                if j < len(typed):
+                    if typed[j] == ch:
+                        t.append(ch, style=f"bold {COL_CORRECT}")
+                    else:
+                        t.append(ch, style=f"bold {COL_ERROR}")
+                elif j == len(typed):
+                    t.append(ch, style=f"underline {COL_TEXT}")
+                else:
+                    t.append(ch, style=COL_TEXT)  # Focused word is more visible
+            if len(typed) > len(word):
+                t.append(typed[len(word):], style=f"bold {COL_ERROR}")
+        else:
+            t.append(word, style=COL_DIM)
+        return t
 
-        # Wrap words into lines
+    def _wrap_words(
+        self, all_words_text: list[Text], container_width: int
+    ) -> tuple[list[list[Text]], int]:
+        """Wrap words into lines and return (lines, active_word_line_idx)."""
         lines = []
         current_line = []
         current_line_len = 0
@@ -363,6 +382,17 @@ class TypingScreen(Screen):
             current_line.append(word_text)
             current_line_len += word_len + 1
         lines.append(current_line)
+        return lines, active_word_line_idx
+
+    def _render_display(self) -> None:
+        # Use a simple line-wrapping approach to show 3 lines:
+        # 1. previous line
+        # 2. current line (containing active word)
+        # 3. next line
+        container_width = 72  # matches #typing-container width minus padding
+
+        all_words_text = [self._get_word_text(i) for i in range(len(self.words))]
+        lines, active_word_line_idx = self._wrap_words(all_words_text, container_width)
 
         # Build final display text (up to 3 lines)
         display_text = Text()
