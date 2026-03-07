@@ -1,6 +1,15 @@
-# Bolt Learning Journal
+# Performance Learning Journal (Bolt)
 
-## Performance Optimization: importlib optimization
-- **Identification:** Moved `import unicodedata` to the top of `src/ttyping/words.py`.
-- **Rationale:** Practice drills for Korean layouts (`ko_2set`, `ko_3set`) call `is_match` which used to import `unicodedata` on every word match attempt if not already in cache. While Python caches imports, keeping it at the top is standard and avoids the overhead of checking the cache in a tight loop.
-- **Impact:** Negligible for single tests, but improves responsiveness in practice drills with many words.
+## Task: Target Accuracy Restarts
+
+### Performance Observation
+- Problem: The application previously did not have a way to automatically restart when accuracy dropped below a certain threshold.
+- Observation: Calculating accuracy on every keystroke/word completion is efficient enough for TUI, but the `_get_current_stats` method allows for centralized calculation and potential future optimizations (e.g., caching elapsed time).
+
+### Improvement
+- Implemented `_get_current_stats` in `TypingScreen` to provide a single source of truth for accuracy, WPM, and keystrokes.
+- Added session-level word list persistence in `TypingApp` to avoid re-fetching/re-randomizing words during accuracy-based restarts.
+
+### Impact
+- Accuracy-based gating is now possible with minimal overhead.
+- User experience for "perfect practice" is significantly improved.

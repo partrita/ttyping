@@ -1,5 +1,4 @@
 import json
-import os
 from pathlib import Path
 from unittest.mock import patch
 
@@ -54,6 +53,10 @@ def test_ensure_storage_fixes_permissions(mock_storage):
     config_file.chmod(0o644)
     config_file.write_text("{}")
 
+    config_file.touch()
+    config_file.chmod(0o644)
+    config_file.write_text("{}")
+
     storage._ensure_storage()
 
     assert (storage_dir.stat().st_mode & 0o777) == 0o700
@@ -72,6 +75,53 @@ def test_save_result(mock_storage):
     assert data[0]["wpm"] == 60
     assert data[0]["accuracy"] == 95
     assert "date" in data[0]
+
+
+def test_save_multiple_results(mock_storage):
+    _, results_file = mock_storage
+
+    result1 = {"wpm": 60, "accuracy": 95}
+    result2 = {"wpm": 70, "accuracy": 98}
+
+    storage.save_result(result1)
+    storage.save_result(result2)
+
+    data = json.loads(results_file.read_text())
+    assert len(data) == 2
+    assert data[0]["wpm"] == 60
+    assert data[1]["wpm"] == 70
+
+
+def test_save_result_appends_to_existing(mock_storage):
+    storage_dir, results_file = mock_storage
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    existing_data = [{"wpm": 50, "accuracy": 90, "date": "2023-01-01T00:00:00Z"}]
+    results_file.write_text(json.dumps(existing_data))
+
+    new_result = {"wpm": 60, "accuracy": 95}
+    storage.save_result(new_result)
+
+    data = json.loads(results_file.read_text())
+    assert len(data) == 2
+    assert data[0]["wpm"] == 50
+    assert data[1]["wpm"] == 60
+
+
+def test_save_result_corrupt_file(mock_storage):
+    storage_dir, results_file = mock_storage
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    results_file.write_text("corrupt json")
+
+    new_result = {"wpm": 60, "accuracy": 95}
+    # save_result calls load_results, which handles JSONDecodeError by returning []
+    # So it should just overwrite the corrupt file with a new list containing one result.
+    storage.save_result(new_result)
+
+    data = json.loads(results_file.read_text())
+    assert len(data) == 1
+    assert data[0]["wpm"] == 60
 
 
 def test_load_results(mock_storage):
