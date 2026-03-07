@@ -163,12 +163,12 @@ class TypingApp(App):
         is_dark = config.get("theme", "dark") == "dark"
         self.theme = "textual-dark" if is_dark else "textual-light"
 
-
     def on_mount(self) -> None:
         if self._show_history:
             self.push_screen(HistoryScreen())
         else:
             from ttyping.screens import MenuScreen
+
             self.push_screen(MenuScreen())
 
     def _start_typing(self, keep_words: bool = False) -> None:
@@ -213,7 +213,7 @@ class TypingApp(App):
             words = words_from_file(self._file_path, count)
         else:
             words = get_words(self._lang, count)
-        
+
         self._current_session_words = words
         return words
 

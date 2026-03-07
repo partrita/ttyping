@@ -63,6 +63,7 @@ def main() -> None:
             pass
         except Exception as e:
             import sys
+
             print(f"Sentinel: Server error encountered: {e}", file=sys.stderr)
             sys.exit(1)
         return
@@ -79,6 +80,7 @@ def main() -> None:
         app.run()
     except Exception as e:
         import sys
+
         print(f"Sentinel: Application error encountered: {e}", file=sys.stderr)
         sys.exit(1)
 

@@ -311,14 +311,12 @@ class TypingScreen(Screen):
                 else:
                     t.append(ch, style=COL_TEXT)  # Focused word is more visible
             if len(typed) > len(word):
-                t.append(typed[len(word):], style=f"bold {COL_ERROR}")
+                t.append(typed[len(word) :], style=f"bold {COL_ERROR}")
         else:
             t.append(word, style=COL_DIM)
         return t
 
-    def _wrap_words(
-        self, container_width: int
-    ) -> tuple[list[list[int]], int]:
+    def _wrap_words(self, container_width: int) -> tuple[list[list[int]], int]:
         """Wrap words into lines and return (lines, active_word_line_idx)."""
         lines = []
         current_line = []
@@ -777,9 +775,7 @@ class HistoryScreen(Screen):
                         "d → delete selected row  ·  D → delete all",
                         id="history-delete-hint",
                     )
-                    yield self._create_history_table(
-                        results, self._row_to_storage_idx
-                    )
+                    yield self._create_history_table(results, self._row_to_storage_idx)
 
                 yield Static("esc back", id="history-hints")
 
@@ -1140,8 +1136,10 @@ class PracticeMenu(Screen):
             with Vertical(id="menu-container"):
                 yield Static(title, id="menu-title")
                 yield OptionList(
-                    *options, Option("Back", id="back"),
-                    id="menu-options", name="Practice Set Selection"
+                    *options,
+                    Option("Back", id="back"),
+                    id="menu-options",
+                    name="Practice Set Selection",
                 )
                 yield Static("enter select · esc back", id="menu-hints")
 
@@ -1226,9 +1224,7 @@ class AccuracyMenu(Screen):
                 )
                 yield Static("enter select · esc back", id="menu-hints")
 
-    def on_option_list_option_selected(
-        self, event: OptionList.OptionSelected
-    ) -> None:
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         from ttyping.storage import load_config, save_config
 
         opt_id = str(event.option_id)
@@ -1297,9 +1293,7 @@ class OptionsScreen(Screen):
         except Exception:
             pass
 
-    def on_option_list_option_selected(
-        self, event: OptionList.OptionSelected
-    ) -> None:
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = str(event.option_id)
         app = cast("TypingApp", self.app)
         if opt_id == "accuracy":
@@ -1336,9 +1330,7 @@ class ThemeScreen(Screen):
                 )
                 yield Static("enter select · esc back", id="menu-hints")
 
-    def on_option_list_option_selected(
-        self, event: OptionList.OptionSelected
-    ) -> None:
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         from ttyping.storage import load_config, save_config
 
         opt_id = str(event.option_id)
@@ -1474,16 +1466,15 @@ class WeaknessScreen(Screen):
                     return
 
                 # Top 10 chars by cumulative error count
-                sorted_chars = sorted(
-                    stats.items(), key=lambda x: x[1], reverse=True
-                )[:10]
+                sorted_chars = sorted(stats.items(), key=lambda x: x[1], reverse=True)[
+                    :10
+                ]
                 top_chars_str = "".join(c for c, _ in sorted_chars)
 
                 # Map to fingers
                 finger_map = chars_to_finger(layout, top_chars_str)
                 finger_totals: dict[str, int] = {
-                    f: sum(stats.get(c, 0) for c in cs)
-                    for f, cs in finger_map.items()
+                    f: sum(stats.get(c, 0) for c in cs) for f, cs in finger_map.items()
                 }
 
                 sorted_fingers = sorted(
@@ -1511,9 +1502,7 @@ class WeaknessScreen(Screen):
                 yield OptionList(*options, id="weakness-options")
 
                 # Finger breakdown table
-                yield Static(
-                    "▸ Errors by Finger", classes="weakness-section"
-                )
+                yield Static("▸ Errors by Finger", classes="weakness-section")
                 table: DataTable[str] = DataTable(id="weakness-table")
                 table.add_columns("Finger", "Weak Keys", "Errors")
                 for finger, total in sorted_fingers:
@@ -1524,9 +1513,7 @@ class WeaknessScreen(Screen):
                 yield table
 
                 # Top missed chars bar chart
-                yield Static(
-                    "▸ Top Missed Keys", classes="weakness-section"
-                )
+                yield Static("▸ Top Missed Keys", classes="weakness-section")
                 yield Static(
                     self._render_char_bars(sorted_chars[:6]),
                     id="weakness-graph",
@@ -1550,9 +1537,7 @@ class WeaknessScreen(Screen):
             t.append(f" {count}\n", style=COL_DIM)
         return t
 
-    def on_option_list_option_selected(
-        self, event: OptionList.OptionSelected
-    ) -> None:
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         from ttyping.words import chars_to_finger
 
         opt_id = str(event.option_id)
@@ -1564,15 +1549,13 @@ class WeaknessScreen(Screen):
             app.pop_screen()
             return
 
-        sorted_chars = sorted(
-            stats.items(), key=lambda x: x[1], reverse=True
-        )[:10]
+        sorted_chars = sorted(stats.items(), key=lambda x: x[1], reverse=True)[:10]
         top_chars_str = "".join(c for c, _ in sorted_chars)
 
         if opt_id == "drill:all":
             app.start_weak_drill(layout, top_chars_str)
         elif opt_id.startswith("drill:"):
-            finger = opt_id[len("drill:"):]
+            finger = opt_id[len("drill:") :]
             finger_map = chars_to_finger(layout, top_chars_str)
             weak_chars = "".join(finger_map.get(finger, []))
             if weak_chars:

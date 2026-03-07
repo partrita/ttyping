@@ -324,9 +324,7 @@ FINGER_LABELS_KO: dict[str, str] = {
 }
 
 
-def chars_to_finger(
-    layout: str, chars: str
-) -> dict[str, list[str]]:
+def chars_to_finger(layout: str, chars: str) -> dict[str, list[str]]:
     """Map a set of characters to their finger groups for the given layout.
 
     Returns a dict of {finger_key: [chars_belonging_to_that_finger]}.
@@ -343,9 +341,7 @@ def chars_to_finger(
     return result
 
 
-def get_weak_drill(
-    layout: str, weak_chars: str, count: int = 25
-) -> list[str]:
+def get_weak_drill(layout: str, weak_chars: str, count: int = 25) -> list[str]:
     """Generate a drill focused on the given weak characters.
 
     Tries to find real words from the word list that contain those chars.
