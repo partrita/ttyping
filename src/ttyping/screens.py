@@ -879,10 +879,27 @@ class MenuScreen(Screen):
     }
     """
 
+    BINDINGS: list[Binding] = [
+        Binding("e", "select_en", "English"),
+        Binding("k", "select_ko", "Korean"),
+        Binding("w", "select_weak", "Weak Analysis"),
+        Binding("h", "select_history", "History"),
+        Binding("o", "select_options", "Options"),
+        Binding("q", "quit_app", "Quit"),
+    ]
+
     def compose(self) -> ComposeResult:
+        ascii_art = r"""
+   __  __             _            
+  / /_/ /___  __  __ (_)___  ____ _
+ / __/ __/ / / / __ \/ / __ \/ __ `/
+/ /_/ /_/ /_/ / /_/ / / / / / /_/ / 
+\__/\__/\__, / .___/_/_/ /_/\__, /  
+       /____/_/            /____/   
+"""
         with Center():
             with Vertical(id="menu-container"):
-                yield Static("ttyping", id="menu-title")
+                yield Static(ascii_art, id="menu-title", markup=False)
                 yield OptionList(
                     Option("English typing(영어)", id="en"),
                     Option("Korean typing(한글)", id="ko"),
@@ -892,7 +909,7 @@ class MenuScreen(Screen):
                     Option("Quit", id="quit"),
                     id="menu-options",
                 )
-                yield Static("enter select · esc quit", id="menu-hints")
+                yield Static("arrow keys · enter · shortcut keys", id="menu-hints")
 
     def on_resume(self) -> None:
         pass  # no dynamic labels needed
@@ -913,6 +930,21 @@ class MenuScreen(Screen):
             app.push_screen(ENSubMenu())
         elif opt_id == "ko":
             app.push_screen(KOSubMenu())
+
+    def action_select_en(self) -> None:
+        self.app.push_screen(ENSubMenu())
+
+    def action_select_ko(self) -> None:
+        self.app.push_screen(KOSubMenu())
+
+    def action_select_weak(self) -> None:
+        self.app.push_screen(WeaknessScreen())
+
+    def action_select_history(self) -> None:
+        self.app.push_screen(HistoryScreen())
+
+    def action_select_options(self) -> None:
+        self.app.push_screen(OptionsScreen())
 
     def action_quit_app(self) -> None:
         self.app.exit()
