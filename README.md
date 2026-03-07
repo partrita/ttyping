@@ -1,36 +1,68 @@
-# ttyping
+# ttyping ⌨️
 
-A minimal, monkeytype-inspired terminal typing test. English & Korean.
+A minimal, monkeytype-inspired terminal typing test for English and Korean, built with Python and [Textual](https://github.com/Textualize/textual).
 
-## Install
+`ttyping` provides a clean and focused typing practice environment directly in your terminal. It tracks speed (WPM) and accuracy, saving results locally for history viewing.
 
-```
-pip install ttyping
-```
+## ✨ Features
 
-Or with uv:
+- **Multi-language Support**: Practice English (QWERTY, Dvorak) and Korean (2-set, 3-set).
+- **Custom Content**: Type from internal word lists, sentences, or your own text files.
+- **Finger Practice**: Target specific finger groups to improve muscle memory.
+- **Accuracy Focused**: Optional target accuracy mode that restarts on mistakes.
+- **Local History**: Keep track of your speed (WPM) and accuracy over time.
+- **Premium Aesthetics**: Clean UI with a monkeytype-inspired color palette.
 
-```
+## 🚀 Installation
+
+Install using `uv` (recommended):
+
+```bash
 uv tool install ttyping
 ```
 
-## Usage
+Or with `pip`:
 
-```
-ttyping                    # English, 25 random words
-ttyping --lang ko          # Korean random words
-ttyping --file path.txt    # Practice from file
-ttyping --words 50         # Custom word count
-ttyping --time 30          # 30-second timed test
-ttyping history            # View past results
+```bash
+pip install ttyping
 ```
 
-## Keybindings
+## 🎮 Usage
 
-| Key   | Action         |
-|-------|----------------|
-| Tab   | Restart test   |
-| Esc   | Quit           |
-| Space | Next word      |
+Run the app without arguments to start English practice:
 
-Results are saved locally at `~/.ttyping/results.json`.
+```bash
+ttyping
+```
+
+### CLI Options
+
+| Argument | shorthand | Description |
+|----------|-----------|-------------|
+| `--lang [lang]` | | Set language/layout (`en_qwerty`, `ko_2set`, etc.) |
+| `--file [path]` | | Practice using a custom text file |
+| `--words [n]` | | Set number of words (max 1000) |
+| `--time [s]` | `-t` | Set test duration in seconds (overrides words) |
+| `--target-accuracy [n]` | `-a` | Set target (0-100); restarts on drop below |
+| `history` | | View past results directly |
+
+## ⌨️ Keybindings
+
+| Key | Action |
+|-----|--------|
+| **e, k, w, h, o, q** | Main Menu shortcuts (English, Korean, Weak, History, Options, Quit) |
+| **Tab** | Restart the test |
+| **Esc** | Quit or Go Back |
+| **Space** | Proceed to the next word |
+| **Enter** | Select menu option or complete word |
+
+## 🛠️ Tech Stack
+
+- **Language**: Python 3.10+
+- **TUI Framework**: [Textual](https://github.com/Textualize/textual)
+- **Styling**: [Rich](https://github.com/Textualize/rich)
+- **Data storage**: `~/.ttyping/results.json`
+
+## 📄 License
+
+MIT

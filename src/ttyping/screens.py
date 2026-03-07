@@ -16,7 +16,13 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Input, OptionList, Static
 from textual.widgets.option_list import Option
 
-from ttyping.storage import load_results, save_result
+from ttyping.storage import (
+    clear_results,
+    delete_result_by_index,
+    load_error_stats,
+    load_results,
+    save_result,
+)
 
 if TYPE_CHECKING:
     from ttyping.app import TypingApp
@@ -38,13 +44,12 @@ COL_SUB_BG = "#2c2e31"
 class TypingScreen(Screen):
     """Main typing test screen."""
 
-    BINDINGS = [
+    BINDINGS: list[Binding] = [
         Binding("tab", "restart", "Restart", priority=True),
         Binding("escape", "quit_app", "Quit", priority=True),
     ]
 
-    DEFAULT_CSS = (
-        """
+    DEFAULT_CSS = """
     TypingScreen {
         align: center middle;
     }
@@ -61,9 +66,6 @@ class TypingScreen(Screen):
         height: 2;
         content-align: center middle;
         text-align: center;
-        color: """
-        + COL_ACCENT
-        + """;
         margin-bottom: 1;
     }
 
@@ -78,22 +80,7 @@ class TypingScreen(Screen):
     #input-area {
         width: 100%;
         margin-top: 1;
-        border: round """
-        + COL_DIM
-        + """;
-        background: """
-        + COL_SUB_BG
-        + """;
-        color: """
-        + COL_TEXT
-        + """;
         padding: 0 1;
-    }
-
-    #input-area:focus {
-        border: round """
-        + COL_ACCENT
-        + """;
     }
 
     #hints {
@@ -101,13 +88,9 @@ class TypingScreen(Screen):
         height: 1;
         content-align: center middle;
         text-align: center;
-        color: """
-        + COL_DIM
-        + """;
         margin-top: 1;
     }
     """
-    )
 
     def __init__(
         self,
@@ -125,13 +108,12 @@ class TypingScreen(Screen):
         self.current_input = ""
         self.word_correct: list[bool | None] = [None] * len(words)
         self.start_time: float | None = None
-        self.total_keystrokes = 0
-        self.total_errors = 0
-        self.uncorrected_errors = 0
-        self._timer_handle: Any = None
-        self._finished = False
-        self.errors = Counter()  # Tracks characters missed
-        self.word_errors = Counter()  # Tracks words missed
+        self.total_keystrokes: int = 0
+        self.total_errors: int = 0
+        self.uncorrected_errors: int = 0
+        self._timer_handle: Any | None = None  # textual.timer.Timer at runtime
+        self._finished: bool = False
+        self.errors: Counter[str] = Counter()  # Tracks characters missed
 
     def compose(self) -> ComposeResult:
         with Center():
@@ -240,7 +222,6 @@ class TypingScreen(Screen):
         self.word_correct[self.current_word_idx] = is_correct
         if not is_correct:
             self.uncorrected_errors += 1
-            self.word_errors[target] += 1
 
         self.current_word_idx += 1
         self.current_input = ""
@@ -290,7 +271,6 @@ class TypingScreen(Screen):
 
         # Get top errors
         top_char_errors = self.errors.most_common(5)
-        top_word_errors = self.word_errors.most_common(5)
 
         result: dict[str, Any] = {
             "wpm": round(net_wpm, 1),
@@ -303,7 +283,6 @@ class TypingScreen(Screen):
             "keystrokes": self.total_keystrokes,
             "errors": self.total_errors,
             "top_char_errors": top_char_errors,
-            "top_word_errors": top_word_errors,
         }
 
         save_result(result)
@@ -311,35 +290,12 @@ class TypingScreen(Screen):
 
     # ── rendering ──────────────────────────────────────────────────────
 
-    def _render_display(self) -> None:
-        # Use a simple line-wrapping approach to show 3 lines:
-        # 1. previous line
-        # 2. current line (containing active word)
-        # 3. next line
-        container_width = 72  # matches #typing-container width minus padding
-
-        all_words_text = []
-        for i, word in enumerate(self.words):
-            t = Text()
-            if i < self.current_word_idx:
-                if self.word_correct[i]:
-                    t.append(word, style=f"dim {COL_CORRECT}")
-                else:
-                    t.append(word, style=f"{COL_ERROR} strike")
-            elif i == self.current_word_idx:
-                typed = self.current_input
-                for j, ch in enumerate(word):
-                    if j < len(typed):
-                        if typed[j] == ch:
-                            t.append(ch, style=f"bold {COL_CORRECT}")
-                        else:
-                            t.append(ch, style=f"bold {COL_ERROR}")
-                    elif j == len(typed):
-                        t.append(ch, style=f"underline {COL_TEXT}")
-                    else:
-                        t.append(ch, style=COL_TEXT)  # Focused word is more visible
-                if len(typed) > len(word):
-                    t.append(typed[len(word) :], style=f"bold {COL_ERROR}")
+    def _get_word_text(self, i: int) -> Text:
+        word = self.words[i]
+        t = Text()
+        if i < self.current_word_idx:
+            if self.word_correct[i]:
+                t.append(word, style=f"dim {COL_CORRECT}")
             else:
                 t.append(word, style=f"{COL_ERROR} strike")
         elif i == self.current_word_idx:
@@ -361,16 +317,16 @@ class TypingScreen(Screen):
         return t
 
     def _wrap_words(
-        self, all_words_text: list[Text], container_width: int
-    ) -> tuple[list[list[Text]], int]:
+        self, container_width: int
+    ) -> tuple[list[list[int]], int]:
         """Wrap words into lines and return (lines, active_word_line_idx)."""
         lines = []
         current_line = []
         current_line_len = 0
         active_word_line_idx = 0
 
-        for i, word_text in enumerate(all_words_text):
-            word_len = len(self.words[i])
+        for i, word in enumerate(self.words):
+            word_len = len(word)
             if current_line_len + word_len + 1 > container_width:
                 lines.append(current_line)
                 current_line = []
@@ -379,7 +335,7 @@ class TypingScreen(Screen):
             if i == self.current_word_idx:
                 active_word_line_idx = len(lines)
 
-            current_line.append(word_text)
+            current_line.append(i)
             current_line_len += word_len + 1
         lines.append(current_line)
         return lines, active_word_line_idx
@@ -391,8 +347,7 @@ class TypingScreen(Screen):
         # 3. next line
         container_width = 72  # matches #typing-container width minus padding
 
-        all_words_text = [self._get_word_text(i) for i in range(len(self.words))]
-        lines, active_word_line_idx = self._wrap_words(all_words_text, container_width)
+        lines, active_word_line_idx = self._wrap_words(container_width)
 
         # Build final display text (up to 3 lines)
         display_text = Text()
@@ -405,10 +360,10 @@ class TypingScreen(Screen):
 
         for l_idx in range(start_line, end_line):
             line = lines[l_idx]
-            for i, word_text in enumerate(line):
+            for i, word_idx in enumerate(line):
                 if i > 0:
                     display_text.append(" ")
-                display_text.append(word_text)
+                display_text.append(self._get_word_text(word_idx))
             display_text.append("\n")
 
         self.query_one("#text-display", Static).update(display_text)
@@ -473,14 +428,13 @@ class TypingScreen(Screen):
 class ResultScreen(Screen):
     """Post-test results."""
 
-    BINDINGS = [
+    BINDINGS: list[Binding] = [
         Binding("tab", "retry", "Retry", priority=True),
         Binding("h", "history", "History"),
         Binding("escape", "quit_app", "Quit"),
     ]
 
-    DEFAULT_CSS = (
-        """
+    DEFAULT_CSS = """
     ResultScreen {
         align: center middle;
     }
@@ -501,18 +455,12 @@ class ResultScreen(Screen):
     .result-detail {
         width: 100%;
         text-align: center;
-        color: """
-        + COL_DIM
-        + """;
     }
 
-    #top-errors-title {
+    .result-title {
         width: 100%;
         text-align: center;
         margin-top: 1;
-        color: """
-        + COL_DIM
-        + """;
     }
 
     #top-errors-graph {
@@ -531,13 +479,9 @@ class ResultScreen(Screen):
     #result-hints {
         width: 100%;
         text-align: center;
-        color: """
-        + COL_DIM
-        + """;
         margin-top: 2;
     }
     """
-    )
 
     def __init__(
         self,
@@ -568,21 +512,15 @@ class ResultScreen(Screen):
                 detail.append(f"  ·  {r['lang']}", style=COL_DIM)
                 yield Static(detail, classes="result-detail")
 
-                if r.get("top_word_errors"):
-                    yield Static("top missed words", id="top-errors-title")
-                    yield Static(
-                        self._render_bar_graph(r["top_word_errors"]),
-                        id="top-errors-graph",
-                    )
-                elif r.get("top_char_errors"):
-                    yield Static("top missed characters", id="top-errors-title")
+                if r.get("top_char_errors"):
+                    yield Static("top missed characters", classes="result-title")
                     yield Static(
                         self._render_bar_graph(r["top_char_errors"]),
                         id="top-errors-graph",
                     )
 
                 if self.session_attempts:
-                    yield Static("session summary", id="top-errors-title")
+                    yield Static("session summary", classes="result-title")
                     table = DataTable(id="session-table")
                     table.add_columns("Try", "Acc", "KPM", "Err")
                     for i, att in enumerate(self.session_attempts, 1):
@@ -666,24 +604,112 @@ class ResultScreen(Screen):
         self.app.exit()
 
 
+# ── ConfirmDeleteScreen ────────────────────────────────────────────────────
+
+
+class ConfirmDeleteScreen(Screen):
+    """Confirmation dialog before deleting all history."""
+
+    DEFAULT_CSS = (
+        """
+    ConfirmDeleteScreen {
+        align: center middle;
+        background: rgba(0,0,0,0.7);
+    }
+
+    #confirm-box {
+        width: 50;
+        height: auto;
+        border: round """
+        + COL_ERROR
+        + """;
+        padding: 2 4;
+        background: """
+        + COL_SUB_BG
+        + """;
+        align: center middle;
+    }
+
+    #confirm-title {
+        width: 100%;
+        text-align: center;
+        color: """
+        + COL_ERROR
+        + """;
+        text-style: bold;
+        margin-bottom: 1;
+    }
+
+    #confirm-body {
+        width: 100%;
+        text-align: center;
+        color: """
+        + COL_TEXT
+        + """;
+        margin-bottom: 1;
+    }
+
+    #confirm-hints {
+        width: 100%;
+        text-align: center;
+        color: """
+        + COL_DIM
+        + """;
+    }
+    """
+    )
+
+    BINDINGS: list[Binding] = [
+        Binding("y", "confirm", "Yes"),
+        Binding("n", "cancel", "No"),
+        Binding("escape", "cancel", "Cancel"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        with Center():
+            with Vertical(id="confirm-box"):
+                yield Static("Delete History", id="confirm-title")
+                yield Static(
+                    "This will permanently delete ALL typing history"
+                    " and error statistics.",
+                    id="confirm-body",
+                )
+                yield Static("y confirm · n / esc cancel", id="confirm-hints")
+
+    def action_confirm(self) -> None:
+        clear_results()
+        # Pop both this screen and the HistoryScreen
+        self.app.pop_screen()  # pop ConfirmDeleteScreen
+        self.app.pop_screen()  # pop HistoryScreen
+
+    def action_cancel(self) -> None:
+        self.app.pop_screen()
+
+
 # ── HistoryScreen ──────────────────────────────────────────────────────────
 
 
 class HistoryScreen(Screen):
     """Past typing results."""
 
-    BINDINGS = [
+    BINDINGS: list[Binding] = [
         Binding("escape", "go_back", "Back"),
+        Binding("d", "delete_selected", "Delete Selected", priority=True),
+        Binding("D", "delete_all", "Delete All", priority=True),
     ]
 
-    DEFAULT_CSS = (
-        """
+    def __init__(self) -> None:
+        super().__init__()
+        # Maps display row index (newest-first) -> original storage index
+        self._row_to_storage_idx: list[int] = []
+
+    DEFAULT_CSS = """
     HistoryScreen {
         align: center middle;
     }
 
     #history-container {
-        width: 80;
+        width: 82;
         height: auto;
         max-height: 90%;
         align: center middle;
@@ -692,52 +718,48 @@ class HistoryScreen(Screen):
     #history-title {
         width: 100%;
         text-align: center;
-        color: """
-        + COL_ACCENT
-        + """;
         text-style: bold;
     }
 
     #history-stats {
         width: 100%;
         text-align: center;
-        color: """
-        + COL_DIM
-        + """;
-        margin-bottom: 1;
+        margin-bottom: 0;
     }
 
     #history-table {
         width: 100%;
         height: auto;
-        max-height: 20;
-        background: """
-        + COL_SUB_BG
-        + """;
+        max-height: 18;
+    }
+
+    #history-delete-hint {
+        width: 100%;
+        text-align: center;
+        height: 1;
     }
 
     #history-empty {
         width: 100%;
         text-align: center;
-        color: """
-        + COL_DIM
-        + """;
         padding: 2;
     }
 
     #history-hints {
         width: 100%;
         text-align: center;
-        color: """
-        + COL_DIM
-        + """;
         margin-top: 1;
+        height: 1;
     }
     """
-    )
 
     def compose(self) -> ComposeResult:
         results = load_results()
+        n = len(results)
+        # Build newest-first mapping (up to 50)
+        display_count = min(n, 50)
+        # storage indices newest-first
+        self._row_to_storage_idx = list(range(n - 1, n - 1 - display_count, -1))
 
         with Center():
             with Vertical(id="history-container"):
@@ -746,30 +768,43 @@ class HistoryScreen(Screen):
                 if not results:
                     yield Static("No results yet — go type!", id="history-empty")
                 else:
-                    avg_wpm = sum(r.get("wpm", 0) for r in results) / len(results)
+                    avg_wpm = sum(r.get("wpm", 0) for r in results) / n
                     yield Static(
-                        f"Tests: {len(results)} · Avg WPM: {avg_wpm:.1f}",
+                        f"Tests: {n} · Avg WPM: {avg_wpm:.1f}",
                         id="history-stats",
                     )
-                    yield self._create_history_table(results)
+                    yield Static(
+                        "d → delete selected row  ·  D → delete all",
+                        id="history-delete-hint",
+                    )
+                    yield self._create_history_table(
+                        results, self._row_to_storage_idx
+                    )
 
                 yield Static("esc back", id="history-hints")
 
-    def _create_history_table(self, results: list[dict[str, Any]]) -> DataTable:
-        """Create a table showing the last 50 typing results."""
-        table = DataTable(id="history-table")
-        table.add_columns("Date", "WPM", "Acc", "Lang", "Time", "Words")
+    def _create_history_table(
+        self,
+        results: list[dict[str, Any]],
+        row_indices: list[int],
+    ) -> DataTable:
+        """Create a table showing the last 50 typing results (newest first)."""
+        table: DataTable[str] = DataTable(id="history-table")
+        table.cursor_type = "row"
+        table.add_columns("#", "Date", "WPM", "Acc", "Lang", "Time", "Words")
 
-        for r in results[:-51:-1]:
+        for display_idx, storage_idx in enumerate(row_indices, 1):
+            r = results[storage_idx]
             date_str = ""
             if "date" in r:
                 try:
                     dt = datetime.fromisoformat(r["date"])
-                    date_str = dt.strftime("%Y-%m-%d %H:%M")
+                    date_str = dt.strftime("%m-%d %H:%M")
                 except (ValueError, TypeError):
-                    date_str = str(r["date"])[:16]
+                    date_str = str(r["date"])[:11]
 
             table.add_row(
+                str(display_idx),
                 date_str,
                 f"{r.get('wpm', 0):.0f}",
                 f"{r.get('accuracy', 0):.1f}%",
@@ -785,6 +820,23 @@ class HistoryScreen(Screen):
         else:
             self.app.exit()
 
+    def action_delete_selected(self) -> None:
+        """Delete the row currently highlighted in the table."""
+        try:
+            table = self.query_one("#history-table", DataTable)
+        except Exception:
+            return
+        row_idx = table.cursor_row  # 0-based display index
+        if 0 <= row_idx < len(self._row_to_storage_idx):
+            storage_idx = self._row_to_storage_idx[row_idx]
+            delete_result_by_index(storage_idx)
+            # Rebuild screen
+            self.app.pop_screen()
+            self.app.push_screen(HistoryScreen())
+
+    def action_delete_all(self) -> None:
+        self.app.push_screen(ConfirmDeleteScreen())
+
 
 # ── MenuScreen ─────────────────────────────────────────────────────────────
 
@@ -792,8 +844,7 @@ class HistoryScreen(Screen):
 class MenuScreen(Screen):
     """Initial menu to select test parameters."""
 
-    DEFAULT_CSS = (
-        """
+    DEFAULT_CSS = """
     MenuScreen, ENSubMenu, KOSubMenu {
         align: center middle;
     }
@@ -801,55 +852,67 @@ class MenuScreen(Screen):
     #menu-container {
         width: 40;
         height: auto;
-        border: round """
-        + COL_ACCENT
-        + """;
         padding: 1 2;
-        background: """
-        + COL_SUB_BG
-        + """;
     }
 
     #menu-title {
         width: 100%;
         text-align: center;
-        color: """
-        + COL_ACCENT
-        + """;
         text-style: bold;
         margin-bottom: 1;
     }
 
     OptionList {
-        background: """
-        + COL_SUB_BG
-        + """;
         border: none;
     }
 
     #menu-hints {
         width: 100%;
         text-align: center;
-        color: """
-        + COL_DIM
-        + """;
         margin-top: 1;
     }
+
+    .about-text {
+        width: 100%;
+        text-align: left;
+        padding: 0 1;
+    }
     """
-    )
+
+    BINDINGS: list[Binding] = [
+        Binding("e", "select_en", "English"),
+        Binding("k", "select_ko", "Korean"),
+        Binding("w", "select_weak", "Weak Analysis"),
+        Binding("h", "select_history", "History"),
+        Binding("o", "select_options", "Options"),
+        Binding("q", "quit_app", "Quit"),
+    ]
 
     def compose(self) -> ComposeResult:
+        ascii_art = r"""
+   __  __             _            
+  / /_/ /___  __  __ (_)___  ____ _
+ / __/ __/ / / / __ \/ / __ \/ __ `/
+/ /_/ /_/ /_/ / /_/ / / / / / /_/ / 
+\__/\__/\__, / .___/_/_/ /_/\__, /  
+       /____/_/            /____/   
+"""
         with Center():
             with Vertical(id="menu-container"):
-                yield Static("ttyping", id="menu-title")
+                yield Static(ascii_art, id="menu-title", markup=False)
                 yield OptionList(
-                    Option("English (영어)", id="en"),
-                    Option("Korean (한글)", id="ko"),
-                    Option("View History", id="history"),
+                    Option("English typing(영어)", id="en"),
+                    Option("Korean typing(한글)", id="ko"),
+                    Option("Weak Analysis(약점 분석)", id="weakness"),
+                    Option("View History(기록 보기)", id="history"),
+                    Option("Options", id="options"),
                     Option("Quit", id="quit"),
                     id="menu-options",
                 )
-                yield Static("enter select · esc quit", id="menu-hints")
+                yield Static("arrow keys · enter · shortcut keys", id="menu-hints")
+
+    def on_resume(self) -> None:
+        pass  # no dynamic labels needed
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
@@ -859,10 +922,29 @@ class MenuScreen(Screen):
             app.exit()
         elif opt_id == "history":
             app.push_screen(HistoryScreen())
+        elif opt_id == "weakness":
+            app.push_screen(WeaknessScreen())
+        elif opt_id == "options":
+            app.push_screen(OptionsScreen())
         elif opt_id == "en":
             app.push_screen(ENSubMenu())
         elif opt_id == "ko":
             app.push_screen(KOSubMenu())
+
+    def action_select_en(self) -> None:
+        self.app.push_screen(ENSubMenu())
+
+    def action_select_ko(self) -> None:
+        self.app.push_screen(KOSubMenu())
+
+    def action_select_weak(self) -> None:
+        self.app.push_screen(WeaknessScreen())
+
+    def action_select_history(self) -> None:
+        self.app.push_screen(HistoryScreen())
+
+    def action_select_options(self) -> None:
+        self.app.push_screen(OptionsScreen())
 
     def action_quit_app(self) -> None:
         self.app.exit()
@@ -880,6 +962,7 @@ class ENSubMenu(Screen):
                 yield OptionList(
                     Option("QWERTY", id="en_qwerty"),
                     Option("DVORAK", id="en_dvorak"),
+                    Option("COLEMAK", id="en_colemak"),
                     Option("Back", id="back"),
                     id="menu-options",
                 )
@@ -895,6 +978,8 @@ class ENSubMenu(Screen):
             app.push_screen(PracticeMenu("en_qwerty"))
         elif opt_id == "en_dvorak":
             app.push_screen(PracticeMenu("en_dvorak"))
+        elif opt_id == "en_colemak":
+            app.push_screen(PracticeMenu("en_colemak"))
 
     def action_quit_app(self) -> None:
         self.app.pop_screen()
@@ -946,48 +1031,107 @@ class PracticeMenu(Screen):
         if self.layout_id == "en_qwerty":
             title = "QWERTY Practice"
             options = [
-                Option("Full Words (25)", id="full:25"),
-                Option("Full Words (50)", id="full:50"),
+                Option("Words", id="full:words"),
+                Option("Sentences", id="full:sentences"),
                 Option("Home Row", id="practice:home_row"),
                 Option("Top Row", id="practice:top_row"),
                 Option("Bottom Row", id="practice:bottom_row"),
+                Option("Number Row (1-0)", id="practice:number_row"),
+                Option("Symbol Row (!@#...)", id="practice:symbol_row"),
                 Option("Left Hand", id="practice:left_hand"),
                 Option("Right Hand", id="practice:right_hand"),
-                Option("Index Fingers (Left)", id="practice:left_index"),
-                Option("Index Fingers (Right)", id="practice:right_index"),
+                Option("Left Index", id="practice:left_index"),
+                Option("Right Index", id="practice:right_index"),
+                Option("Left Middle", id="practice:left_middle"),
+                Option("Right Middle", id="practice:right_middle"),
+                Option("Left Ring", id="practice:left_ring"),
+                Option("Right Ring", id="practice:right_ring"),
+                Option("Left Pinky", id="practice:left_pinky"),
+                Option("Right Pinky", id="practice:right_pinky"),
             ]
         elif self.layout_id == "en_dvorak":
             title = "Dvorak Practice"
             options = [
-                Option("Full Words (25)", id="full:25"),
-                Option("Full Words (50)", id="full:50"),
+                Option("Words", id="full:words"),
+                Option("Sentences", id="full:sentences"),
                 Option("Home Row", id="practice:home_row"),
                 Option("Top Row", id="practice:top_row"),
                 Option("Bottom Row", id="practice:bottom_row"),
+                Option("Number Row (1-0)", id="practice:number_row"),
+                Option("Symbol Row (!@#...)", id="practice:symbol_row"),
                 Option("Left Hand", id="practice:left_hand"),
                 Option("Right Hand", id="practice:right_hand"),
+                Option("Left Index", id="practice:left_index"),
+                Option("Right Index", id="practice:right_index"),
+                Option("Left Middle", id="practice:left_middle"),
+                Option("Right Middle", id="practice:right_middle"),
+                Option("Left Ring", id="practice:left_ring"),
+                Option("Right Ring", id="practice:right_ring"),
+                Option("Left Pinky", id="practice:left_pinky"),
+                Option("Right Pinky", id="practice:right_pinky"),
+            ]
+        elif self.layout_id == "en_colemak":
+            title = "Colemak Practice"
+            options = [
+                Option("Words", id="full:words"),
+                Option("Sentences", id="full:sentences"),
+                Option("Home Row", id="practice:home_row"),
+                Option("Top Row", id="practice:top_row"),
+                Option("Bottom Row", id="practice:bottom_row"),
+                Option("Number Row (1-0)", id="practice:number_row"),
+                Option("Symbol Row (!@#...)", id="practice:symbol_row"),
+                Option("Left Hand", id="practice:left_hand"),
+                Option("Right Hand", id="practice:right_hand"),
+                Option("Left Index", id="practice:left_index"),
+                Option("Right Index", id="practice:right_index"),
+                Option("Left Middle", id="practice:left_middle"),
+                Option("Right Middle", id="practice:right_middle"),
+                Option("Left Ring", id="practice:left_ring"),
+                Option("Right Ring", id="practice:right_ring"),
+                Option("Left Pinky", id="practice:left_pinky"),
+                Option("Right Pinky", id="practice:right_pinky"),
             ]
         elif self.layout_id == "ko_2set":
             title = "두벌식 연습"
             options = [
-                Option("전체 단어 (25)", id="full:25"),
-                Option("전체 단어 (50)", id="full:50"),
-                Option("가운데 줄 (Home Row)", id="practice:home_row"),
-                Option("윗 줄 (Top Row)", id="practice:top_row"),
-                Option("아랫 줄 (Bottom Row)", id="practice:bottom_row"),
-                Option("왼손 (자음)", id="practice:left_hand"),
-                Option("오른손 (모음)", id="practice:right_hand"),
+                Option("단어", id="full:words"),
+                Option("짧은 글", id="full:sentences"),
+                Option("가운데 줄", id="practice:home_row"),
+                Option("윗 줄", id="practice:top_row"),
+                Option("아랫 줄", id="practice:bottom_row"),
+                Option("숫자 줄 (1-0)", id="practice:number_row"),
+                Option("특수문자 (!@#...)", id="practice:symbol_row"),
+                Option("왼손 자음", id="practice:left_hand"),
+                Option("오른손 모음", id="practice:right_hand"),
+                Option("왼손 검지", id="practice:left_index"),
+                Option("오른손 검지", id="practice:right_index"),
+                Option("왼손 중지", id="practice:left_middle"),
+                Option("오른손 중지", id="practice:right_middle"),
+                Option("왼손 약지", id="practice:left_ring"),
+                Option("오른손 약지", id="practice:right_ring"),
+                Option("왼손 새끼", id="practice:left_pinky"),
+                Option("오른손 새끼", id="practice:right_pinky"),
             ]
         elif self.layout_id == "ko_3set":
             title = "세벌식 연습"
             options = [
-                Option("전체 단어 (25)", id="full:25"),
-                Option("전체 단어 (50)", id="full:50"),
-                Option("가운데 줄 (Home Row)", id="practice:home_row"),
-                Option("윗 줄 (Top Row)", id="practice:top_row"),
-                Option("아랫 줄 (Bottom Row)", id="practice:bottom_row"),
-                Option("왼손 (받침)", id="practice:left_hand"),
-                Option("오른손 (초성/모음)", id="practice:right_hand"),
+                Option("단어", id="full:words"),
+                Option("짧은 글", id="full:sentences"),
+                Option("가운데 줄", id="practice:home_row"),
+                Option("윗 줄", id="practice:top_row"),
+                Option("아랫 줄", id="practice:bottom_row"),
+                Option("숫자 줄 (1-0)", id="practice:number_row"),
+                Option("특수문자 (!@#...)", id="practice:symbol_row"),
+                Option("왼손 자음", id="practice:left_hand"),
+                Option("오른손 모음", id="practice:right_hand"),
+                Option("왼손 검지", id="practice:left_index"),
+                Option("오른손 검지", id="practice:right_index"),
+                Option("왼손 중지", id="practice:left_middle"),
+                Option("오른손 중지", id="practice:right_middle"),
+                Option("왼손 약지", id="practice:left_ring"),
+                Option("오른손 약지", id="practice:right_ring"),
+                Option("왼손 새끼", id="practice:left_pinky"),
+                Option("오른손 새끼", id="practice:right_pinky"),
             ]
         else:
             options = [Option("25 words", id="full:25")]
@@ -1007,9 +1151,11 @@ class PracticeMenu(Screen):
 
         if opt_id == "back":
             app.pop_screen()
-        elif opt_id.startswith("full:"):
-            words = int(opt_id.split(":")[1])
-            app.start_custom_test(self.layout_id, words, None)
+        elif opt_id == "full:words":
+            app.start_custom_test(self.layout_id, 50, None)
+        elif opt_id == "full:sentences":
+            lang = "ko_sentences" if "ko" in self.layout_id else "en_sentences"
+            app.start_custom_test(lang, 25, None)
         elif opt_id.startswith("practice:"):
             set_name = opt_id.split(":")[1]
             # Use a prefix to tell get_words to use practice set
@@ -1030,19 +1176,407 @@ class WordCountMenu(Screen):
             with Vertical(id="menu-container"):
                 yield Static(f"{self.layout_id.upper()}", id="menu-title")
                 yield OptionList(
-                    Option("25 words", id="25"),
-                    Option("50 words", id="50"),
-                    Option("100 words", id="100"),
+                    Option("Words", id=f"{self.layout_id}:words"),
+                    Option("Sentences", id=f"{self.layout_id}:sentences"),
                     Option("Back", id="back"),
                     id="menu-options",
                 )
                 yield Static("enter select · esc back", id="menu-hints")
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
-        opt_id = event.option_id
+        opt_id = str(event.option_id)
         app = cast("TypingApp", self.app)
 
         if opt_id == "back":
             app.pop_screen()
+        elif opt_id.endswith(":words"):
+            app.start_custom_test(self.layout_id, 50, None)
+        elif opt_id.endswith(":sentences"):
+            lang = "ko_sentences" if "ko" in self.layout_id else "en_sentences"
+            app.start_custom_test(lang, 25, None)
+
+
+class AccuracyMenu(Screen):
+    """Menu to select and persist target accuracy."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+
+    def compose(self) -> ComposeResult:
+        app = cast("TypingApp", self.app)
+        current = app._target_accuracy
+        if current is None:
+            current_label = "None (Free Practice)"
         else:
-            app.start_custom_test(self.layout_id, int(str(opt_id)), None)
+            current_label = f"{int(current)}%"
+
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static("Target Accuracy", id="menu-title")
+                yield Static(
+                    f"Current: {current_label}",
+                    classes="about-text",
+                )
+                yield OptionList(
+                    Option("None (Free Practice)", id="none"),
+                    Option("80%", id="80"),
+                    Option("90%", id="90"),
+                    Option("95%", id="95"),
+                    Option("100% (No Mistakes)", id="100"),
+                    id="menu-options",
+                )
+                yield Static("enter select · esc back", id="menu-hints")
+
+    def on_option_list_option_selected(
+        self, event: OptionList.OptionSelected
+    ) -> None:
+        from ttyping.storage import load_config, save_config
+
+        opt_id = str(event.option_id)
+        app = cast("TypingApp", self.app)
+
+        if opt_id == "none":
+            app._target_accuracy = None
+        else:
+            app._target_accuracy = float(opt_id)
+
+        # Persist to config
+        cfg = load_config()
+        cfg["target_accuracy"] = app._target_accuracy
+        save_config(cfg)
+
+        app.pop_screen()
+
+    def action_quit_app(self) -> None:
+        self.app.exit()
+
+    BINDINGS: list[Binding] = [
+        Binding("escape", "go_back", "Back"),
+    ]
+
+    def action_go_back(self) -> None:
+        self.app.pop_screen()
+
+
+class OptionsScreen(Screen):
+    """Options submenu: Accuracy, Theme, About."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+
+    BINDINGS: list[Binding] = [
+        Binding("escape", "go_back", "Back"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        app = cast("TypingApp", self.app)
+        theme_label = "Dark" if app.theme == "textual-dark" else "Light"
+        acc = app._target_accuracy
+        acc_label = "None" if acc is None else f"{int(acc)}%"
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static("Options", id="menu-title")
+                yield OptionList(
+                    Option(f"Accuracy: {acc_label}", id="accuracy"),
+                    Option(f"Theme: {theme_label}", id="theme"),
+                    Option("About", id="about"),
+                    id="menu-options",
+                )
+                yield Static("enter select \u00b7 esc back", id="menu-hints")
+
+    def on_resume(self) -> None:
+        """Refresh labels when returning from a nested screen."""
+        app = cast("TypingApp", self.app)
+        theme_label = "Dark" if app.theme == "textual-dark" else "Light"
+        acc = app._target_accuracy
+        acc_label = "None" if acc is None else f"{int(acc)}%"
+        try:
+            ol = self.query_one("#menu-options", OptionList)
+            ol.clear_options()
+            ol.add_option(Option(f"Accuracy: {acc_label}", id="accuracy"))
+            ol.add_option(Option(f"Theme: {theme_label}", id="theme"))
+            ol.add_option(Option("About", id="about"))
+        except Exception:
+            pass
+
+    def on_option_list_option_selected(
+        self, event: OptionList.OptionSelected
+    ) -> None:
+        opt_id = str(event.option_id)
+        app = cast("TypingApp", self.app)
+        if opt_id == "accuracy":
+            app.push_screen(AccuracyMenu())
+        elif opt_id == "theme":
+            app.push_screen(ThemeScreen())
+        elif opt_id == "about":
+            app.push_screen(AboutScreen())
+
+    def action_go_back(self) -> None:
+        self.app.pop_screen()
+
+
+class ThemeScreen(Screen):
+    """Select dark or light theme."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+
+    BINDINGS: list[Binding] = [
+        Binding("escape", "go_back", "Back"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        app = cast("TypingApp", self.app)
+        current = "Dark" if app.theme == "textual-dark" else "Light"
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static("Theme", id="menu-title")
+                yield Static(f"Current: {current}", classes="about-text")
+                yield OptionList(
+                    Option("🌙  Dark", id="dark"),
+                    Option("☀️  Light", id="light"),
+                    id="menu-options",
+                )
+                yield Static("enter select · esc back", id="menu-hints")
+
+    def on_option_list_option_selected(
+        self, event: OptionList.OptionSelected
+    ) -> None:
+        from ttyping.storage import load_config, save_config
+
+        opt_id = str(event.option_id)
+        app = cast("TypingApp", self.app)
+        app.theme = "textual-dark" if opt_id == "dark" else "textual-light"
+
+        cfg = load_config()
+        cfg["theme"] = opt_id
+        save_config(cfg)
+
+        app.pop_screen()
+
+    def action_go_back(self) -> None:
+        self.app.pop_screen()
+
+
+class AboutScreen(Screen):
+    """About ttyping description screen."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+
+    BINDINGS: list[Binding] = [
+        Binding("escape", "go_back", "Back"),
+        Binding("enter", "go_back", "Back"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        about_text = [
+            "# ttyping",
+            "",
+            "A minimal, monkeytype-inspired terminal typing test.",
+            "",
+            "Practice layouts, track WPM/accuracy, and",
+            "target specific finger muscle memory.",
+            "",
+            "Built with Python & Textual.",
+            "",
+            "---",
+            "MIT License",
+        ]
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static("About ttyping", id="menu-title")
+                yield Static("\n".join(about_text), classes="about-text")
+                yield Static("esc/enter back", id="menu-hints")
+
+    def action_go_back(self) -> None:
+        self.app.pop_screen()
+
+
+class WeaknessScreen(Screen):
+    """Weak Key Analysis — aggregated error stats with targeted drill."""
+
+    DEFAULT_CSS = """
+    WeaknessScreen {
+        align: center middle;
+    }
+
+    #weakness-container {
+        width: 70;
+        height: auto;
+        align: center middle;
+        padding: 1 2;
+    }
+
+    #weakness-title {
+        width: 100%;
+        text-align: center;
+        text-style: bold;
+        margin-bottom: 1;
+    }
+
+    .weakness-section {
+        width: 100%;
+        text-align: center;
+        margin-top: 1;
+    }
+
+    #weakness-table {
+        width: 100%;
+        height: auto;
+        max-height: 10;
+        margin-top: 0;
+    }
+
+    #weakness-graph {
+        width: 100%;
+        margin-top: 0;
+        content-align: center middle;
+    }
+
+    #weakness-options {
+        width: 100%;
+        margin-top: 1;
+        border: none;
+    }
+
+    #weakness-hints {
+        width: 100%;
+        text-align: center;
+        margin-top: 1;
+    }
+    """
+
+    BINDINGS: list[Binding] = [
+        Binding("escape", "go_back", "Back"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        from ttyping.words import (
+            FINGER_LABELS,
+            FINGER_LABELS_KO,
+            chars_to_finger,
+        )
+
+        stats = load_error_stats()
+        app = cast("TypingApp", self.app)
+        layout = app._lang
+        is_ko = layout.startswith("ko")
+        labels = FINGER_LABELS_KO if is_ko else FINGER_LABELS
+
+        with Center():
+            with Vertical(id="weakness-container"):
+                yield Static("Weak Key Analysis", id="weakness-title")
+
+                if not stats:
+                    yield Static(
+                        "No error data yet.\n"
+                        "Complete more typing tests to build analysis.",
+                        classes="weakness-section",
+                    )
+                    yield Static("esc back", id="weakness-hints")
+                    return
+
+                # Top 10 chars by cumulative error count
+                sorted_chars = sorted(
+                    stats.items(), key=lambda x: x[1], reverse=True
+                )[:10]
+                top_chars_str = "".join(c for c, _ in sorted_chars)
+
+                # Map to fingers
+                finger_map = chars_to_finger(layout, top_chars_str)
+                finger_totals: dict[str, int] = {
+                    f: sum(stats.get(c, 0) for c in cs)
+                    for f, cs in finger_map.items()
+                }
+
+                sorted_fingers = sorted(
+                    finger_totals.items(),
+                    key=lambda x: x[1],
+                    reverse=True,
+                )
+
+                # Action options (Practice Menu)
+                options: list[Option] = [
+                    Option("Practice All Weak Keys ▶", id="drill:all"),
+                ]
+                for finger, total in sorted_fingers[:3]:
+                    finger_chars = "".join(finger_map.get(finger, []))
+                    if finger_chars:
+                        label = labels.get(finger, finger)
+                        options.append(
+                            Option(
+                                f"Practice {label} ({total} err) ▶",
+                                id=f"drill:{finger}",
+                            )
+                        )
+                options.append(Option("← Back", id="back"))
+
+                yield OptionList(*options, id="weakness-options")
+
+                # Finger breakdown table
+                yield Static(
+                    "▸ Errors by Finger", classes="weakness-section"
+                )
+                table: DataTable[str] = DataTable(id="weakness-table")
+                table.add_columns("Finger", "Weak Keys", "Errors")
+                for finger, total in sorted_fingers:
+                    chars_list = finger_map.get(finger, [])
+                    chars_display = " ".join(chars_list[:8])
+                    label = labels.get(finger, finger)
+                    table.add_row(label, chars_display, str(total))
+                yield table
+
+                # Top missed chars bar chart
+                yield Static(
+                    "▸ Top Missed Keys", classes="weakness-section"
+                )
+                yield Static(
+                    self._render_char_bars(sorted_chars[:6]),
+                    id="weakness-graph",
+                )
+
+                yield Static("enter select · esc back", id="weakness-hints")
+
+    def _render_char_bars(self, data: list[tuple[str, int]]) -> Text:
+        from rich.cells import cell_len
+
+        if not data:
+            return Text()
+        max_val = max(c for _, c in data)
+        max_bar = 22
+        t = Text()
+        for char, count in data:
+            bar_len = int((count / max(max_val, 1)) * max_bar)
+            pad = " " * (4 - cell_len(char))
+            t.append(pad + char + " ", style=COL_TEXT)
+            t.append("█" * bar_len, style=COL_ERROR)
+            t.append(f" {count}\n", style=COL_DIM)
+        return t
+
+    def on_option_list_option_selected(
+        self, event: OptionList.OptionSelected
+    ) -> None:
+        from ttyping.words import chars_to_finger
+
+        opt_id = str(event.option_id)
+        app = cast("TypingApp", self.app)
+        layout = app._lang
+        stats = load_error_stats()
+
+        if opt_id == "back":
+            app.pop_screen()
+            return
+
+        sorted_chars = sorted(
+            stats.items(), key=lambda x: x[1], reverse=True
+        )[:10]
+        top_chars_str = "".join(c for c, _ in sorted_chars)
+
+        if opt_id == "drill:all":
+            app.start_weak_drill(layout, top_chars_str)
+        elif opt_id.startswith("drill:"):
+            finger = opt_id[len("drill:"):]
+            finger_map = chars_to_finger(layout, top_chars_str)
+            weak_chars = "".join(finger_map.get(finger, []))
+            if weak_chars:
+                app.start_weak_drill(layout, weak_chars)
+
+    def action_go_back(self) -> None:
+        self.app.pop_screen()
