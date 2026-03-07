@@ -35,24 +35,24 @@ def test_accuracy_drop_trigger(monkeypatch: pytest.MonkeyPatch) -> None:
 
     app = MockApp()
     screen = TypingScreen(words=["apple", "banana"], target_accuracy=95.0)
-    
+
     # Mock query_one to return a mock widget for #accuracy-warning
     class MockWidget:
         def __init__(self) -> None:
             self.styles = type("Styles", (), {"display": "none"})()
-    
+
     warning_widget = MockWidget()
     monkeypatch.setattr(
         screen,
         "query_one",
         lambda sel: warning_widget if sel == "#accuracy-warning" else None,
     )
-    
+
     # Patch the property 'app'
     monkeypatch.setattr(TypingScreen, "app", app)
     # Patch set_timer to execute immediately for testing
     monkeypatch.setattr(screen, "set_timer", lambda delay, callback: callback())
-    
+
     screen.start_time = time.time()
 
     # 10 keystrokes, 1 error -> 90% accuracy < 95% target
