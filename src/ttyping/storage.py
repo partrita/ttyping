@@ -13,6 +13,7 @@ RESULTS_FILE = STORAGE_DIR / "results.json"
 CONFIG_FILE = STORAGE_DIR / "config.json"
 
 _STORAGE_ENSURED = False
+_CONFIG_CACHE: dict[str, Any] | None = None
 
 
 def _ensure_storage() -> None:
@@ -61,26 +62,36 @@ def save_result(result: dict[str, Any]) -> None:
 def load_results() -> list[dict[str, Any]]:
     """Load all results from local storage."""
     _ensure_storage()
-    text = RESULTS_FILE.read_text(encoding="utf-8")
     try:
-        return json.loads(text)
+        data = json.loads(text)
+        if not isinstance(data, list):
+            return []
+        return data
     except json.JSONDecodeError:
         return []
 
 
 def save_config(config: dict[str, Any]) -> None:
     """Save user configuration to local storage."""
+    global _CONFIG_CACHE
     _ensure_storage()
     CONFIG_FILE.write_text(
         json.dumps(config, indent=2, ensure_ascii=False), encoding="utf-8"
     )
+    _CONFIG_CACHE = config
 
 
 def load_config() -> dict[str, Any]:
     """Load user configuration from local storage."""
+    global _CONFIG_CACHE
+    if _CONFIG_CACHE is not None:
+        return _CONFIG_CACHE
+
     _ensure_storage()
-    text = CONFIG_FILE.read_text(encoding="utf-8")
     try:
-        return json.loads(text)
-    except json.JSONDecodeError:
+        text = CONFIG_FILE.read_text(encoding="utf-8")
+        _CONFIG_CACHE = json.loads(text)
+        return _CONFIG_CACHE or {}
+    except (json.JSONDecodeError, FileNotFoundError):
+        _CONFIG_CACHE = {}
         return {}
