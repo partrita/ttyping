@@ -35,8 +35,13 @@ def test_storage_permissions(tmp_path, monkeypatch):
         mode = test_results_file.stat().st_mode & 0o777
         assert mode == 0o600, f"Expected 0o600, got {oct(mode)}"
 
+        assert test_config_file.exists()
+        mode = test_config_file.stat().st_mode & 0o777
+        assert mode == 0o600, f"Expected 0o600, got {oct(mode)}"
+
         # Verify content
         assert test_results_file.read_text() == "[]"
+        assert test_config_file.read_text() == "{}"
 
     finally:
         os.umask(old_umask)

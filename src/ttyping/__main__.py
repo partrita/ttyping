@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import sys
-
-from ttyping.storage import load_config, save_config
 
 
 def main() -> None:
@@ -35,6 +32,12 @@ def main() -> None:
         help="duration of the test in seconds (overrides --words)",
     )
     parser.add_argument(
+        "--target-accuracy",
+        "-a",
+        type=float,
+        help="target accuracy percentage (0-100); restart on drop",
+    )
+    parser.add_argument(
         "command",
         nargs="?",
         choices=["history", "serve"],
@@ -53,6 +56,7 @@ def main() -> None:
         import asyncio
 
         from ttyping.server import start_server
+
         try:
             asyncio.run(start_server())
         except KeyboardInterrupt:
@@ -64,6 +68,7 @@ def main() -> None:
         file_path=args.file,
         word_count=args.words,
         duration=args.time,
+        target_accuracy=args.target_accuracy,
         show_history=args.command == "history",
     )
     app.run()

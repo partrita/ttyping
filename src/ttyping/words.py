@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import unicodedata
 from importlib import resources
 from pathlib import Path
 
@@ -56,7 +57,7 @@ PRACTICE_SETS = {
         "bottom_row": "ㅌㅍㅎㅅㅆㅈㅂㅅㄹ",
         "left_hand": "ㅎㅆㅂㄱㄷㅁㄴㅇㄹㅅㅌㅍㅎㅅㅆ",
         "right_hand": "ㅛㅐㅕㅔㄱㅗㅓㅏㅣㅇㄴㅈㅂㅅㄹㅎ",
-    }
+    },
 }
 
 
@@ -70,7 +71,7 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
         "ko_2set": KO_2SET,
         "ko_3set": KO_3SET,
     }
-    
+
     # Handle practice sets (format: layout:set_name)
     if ":" in lang:
         layout, set_name = lang.split(":", 1)
@@ -86,7 +87,7 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
 def get_practice_drill(layout: str, set_name: str, count: int = 25) -> list[str]:
     """Generate a typing drill for a specific practice set."""
     chars = PRACTICE_SETS[layout][set_name]
-    
+
     # Try to find real words first
     all_words = []
     if layout == "en_qwerty":
@@ -97,10 +98,10 @@ def get_practice_drill(layout: str, set_name: str, count: int = 25) -> list[str]
         all_words = KO_2SET
     elif layout == "ko_3set":
         all_words = KO_3SET
-        
+
     import unicodedata
 
-    def is_match(word, char_set):
+    def is_match(word: str, char_set: str) -> bool:
         if layout.startswith("en"):
             return all(c.lower() in char_set for c in word)
         else:
@@ -115,11 +116,11 @@ def get_practice_drill(layout: str, set_name: str, count: int = 25) -> list[str]
             return True
 
     filtered = [w for w in all_words if is_match(w, chars)]
-    
+
     # If we have enough real words, use them
     if len(filtered) >= count // 2 and len(filtered) > 5:
         return random.choices(filtered, k=count)
-    
+
     # Otherwise, mix in random character combinations (nonsense words)
     drills = []
     for _ in range(count):
@@ -129,21 +130,73 @@ def get_practice_drill(layout: str, set_name: str, count: int = 25) -> list[str]
 
 
 JAMO_TO_KEY = {
-    "\u1100": "ㄱ", "\u1101": "ㄲ", "\u1102": "ㄴ", "\u1103": "ㄷ", "\u1104": "ㄸ",
-    "\u1105": "ㄹ", "\u1106": "ㅁ", "\u1107": "ㅂ", "\u1108": "ㅃ", "\u1109": "ㅅ",
-    "\u110a": "ㅆ", "\u110b": "ㅇ", "\u110c": "ㅈ", "\u110d": "ㅉ", "\u110e": "ㅊ",
-    "\u110f": "ㅋ", "\u1110": "ㅌ", "\u1111": "ㅍ", "\u1112": "ㅎ",
-    "\u1161": "ㅏ", "\u1162": "ㅐ", "\u1163": "ㅑ", "\u1164": "ㅒ", "\u1165": "ㅓ",
-    "\u1166": "ㅔ", "\u1167": "ㅕ", "\u1168": "ㅖ", "\u1169": "ㅗ", "\u116a": "ㅘ",
-    "\u116b": "ㅙ", "\u116c": "ㅚ", "\u116d": "ㅛ", "\u116e": "ㅜ", "\u116f": "ㅝ",
-    "\u1170": "ㅞ", "\u1171": "ㅟ", "\u1172": "ㅠ", "\u1173": "ㅡ", "\u1174": "ㅢ",
+    "\u1100": "ㄱ",
+    "\u1101": "ㄲ",
+    "\u1102": "ㄴ",
+    "\u1103": "ㄷ",
+    "\u1104": "ㄸ",
+    "\u1105": "ㄹ",
+    "\u1106": "ㅁ",
+    "\u1107": "ㅂ",
+    "\u1108": "ㅃ",
+    "\u1109": "ㅅ",
+    "\u110a": "ㅆ",
+    "\u110b": "ㅇ",
+    "\u110c": "ㅈ",
+    "\u110d": "ㅉ",
+    "\u110e": "ㅊ",
+    "\u110f": "ㅋ",
+    "\u1110": "ㅌ",
+    "\u1111": "ㅍ",
+    "\u1112": "ㅎ",
+    "\u1161": "ㅏ",
+    "\u1162": "ㅐ",
+    "\u1163": "ㅑ",
+    "\u1164": "ㅒ",
+    "\u1165": "ㅓ",
+    "\u1166": "ㅔ",
+    "\u1167": "ㅕ",
+    "\u1168": "ㅖ",
+    "\u1169": "ㅗ",
+    "\u116a": "ㅘ",
+    "\u116b": "ㅙ",
+    "\u116c": "ㅚ",
+    "\u116d": "ㅛ",
+    "\u116e": "ㅜ",
+    "\u116f": "ㅝ",
+    "\u1170": "ㅞ",
+    "\u1171": "ㅟ",
+    "\u1172": "ㅠ",
+    "\u1173": "ㅡ",
+    "\u1174": "ㅢ",
     "\u1175": "ㅣ",
-    "\u11a8": "ㄱ", "\u11a9": "ㄲ", "\u11aa": "ㄳ", "\u11ab": "ㄴ", "\u11ac": "ㄵ",
-    "\u11ad": "ㄶ", "\u11ae": "ㄷ", "\u11af": "ㄹ", "\u11b0": "ㄺ", "\u11b1": "ㄻ",
-    "\u11b2": "ㄼ", "\u11b3": "ㄽ", "\u11b4": "ㄾ", "\u11b5": "ㄿ", "\u11b6": "ㅀ",
-    "\u11b7": "ㅁ", "\u11b8": "ㅂ", "\u11b9": "ㅄ", "\u11ba": "ㅅ", "\u11bb": "ㅆ",
-    "\u11bc": "ㅇ", "\u11bd": "ㅈ", "\u11be": "ㅊ", "\u11bf": "ㅋ", "\u11c0": "ㅌ",
-    "\u11c1": "ㅍ", "\u11c2": "ㅎ"
+    "\u11a8": "ㄱ",
+    "\u11a9": "ㄲ",
+    "\u11aa": "ㄳ",
+    "\u11ab": "ㄴ",
+    "\u11ac": "ㄵ",
+    "\u11ad": "ㄶ",
+    "\u11ae": "ㄷ",
+    "\u11af": "ㄹ",
+    "\u11b0": "ㄺ",
+    "\u11b1": "ㄻ",
+    "\u11b2": "ㄼ",
+    "\u11b3": "ㄽ",
+    "\u11b4": "ㄾ",
+    "\u11b5": "ㄿ",
+    "\u11b6": "ㅀ",
+    "\u11b7": "ㅁ",
+    "\u11b8": "ㅂ",
+    "\u11b9": "ㅄ",
+    "\u11ba": "ㅅ",
+    "\u11bb": "ㅆ",
+    "\u11bc": "ㅇ",
+    "\u11bd": "ㅈ",
+    "\u11be": "ㅊ",
+    "\u11bf": "ㅋ",
+    "\u11c0": "ㅌ",
+    "\u11c1": "ㅍ",
+    "\u11c2": "ㅎ",
 }
 
 
