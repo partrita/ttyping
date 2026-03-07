@@ -110,12 +110,17 @@ class TypingScreen(Screen):
     )
 
     def __init__(
-        self, words: list[str], lang: str = "en", duration: int | None = None
+        self,
+        words: list[str],
+        lang: str = "en",
+        duration: int | None = None,
+        target_accuracy: float | None = None,
     ) -> None:
         super().__init__()
         self.words = words
         self.lang = lang
         self.duration = duration
+        self.target_accuracy = target_accuracy
         self.current_word_idx = 0
         self.current_input = ""
         self.word_correct: list[bool | None] = [None] * len(words)
@@ -201,6 +206,31 @@ class TypingScreen(Screen):
                 self._complete_word(inp.value)
                 inp.value = ""
 
+    def _get_current_stats(self) -> dict[str, Any]:
+        elapsed = time.time() - self.start_time if self.start_time else 0.01
+        minutes = elapsed / 60
+        if minutes <= 0:
+            minutes = 0.001
+
+        gross_wpm = (self.total_keystrokes / 5) / minutes
+        net_wpm = max(0, gross_wpm - (self.uncorrected_errors / minutes))
+        accuracy = (
+            max(
+                0,
+                (self.total_keystrokes - self.total_errors)
+                / max(self.total_keystrokes, 1),
+            )
+            * 100
+        )
+        return {
+            "wpm": round(net_wpm, 1),
+            "gross_wpm": round(gross_wpm, 1),
+            "accuracy": round(accuracy, 1),
+            "time": round(elapsed, 1),
+            "keystrokes": self.total_keystrokes,
+            "errors": self.total_errors,
+        }
+
     # ── word completion ────────────────────────────────────────────────
 
     def _complete_word(self, typed: str) -> None:
@@ -214,6 +244,15 @@ class TypingScreen(Screen):
 
         self.current_word_idx += 1
         self.current_input = ""
+
+        if self.target_accuracy is not None:
+            stats = self._get_current_stats()
+            if stats["accuracy"] < self.target_accuracy:
+                self._finished = True
+                if self._timer_handle:
+                    self._timer_handle.stop()
+                cast("TypingApp", self.app).reset_session_attempt(stats)
+                return
 
         if self.current_word_idx >= len(self.words):
             self._end_test()
@@ -261,6 +300,8 @@ class TypingScreen(Screen):
             "lang": self.lang,
             "words": self.current_word_idx,  # Number of words attempted
             "correct": correct_words,
+            "keystrokes": self.total_keystrokes,
+            "errors": self.total_errors,
             "top_char_errors": top_char_errors,
             "top_word_errors": top_word_errors,
         }
@@ -300,10 +341,29 @@ class TypingScreen(Screen):
                 if len(typed) > len(word):
                     t.append(typed[len(word) :], style=f"bold {COL_ERROR}")
             else:
-                t.append(word, style=COL_DIM)
-            all_words_text.append(t)
+                t.append(word, style=f"{COL_ERROR} strike")
+        elif i == self.current_word_idx:
+            typed = self.current_input
+            for j, ch in enumerate(word):
+                if j < len(typed):
+                    if typed[j] == ch:
+                        t.append(ch, style=f"bold {COL_CORRECT}")
+                    else:
+                        t.append(ch, style=f"bold {COL_ERROR}")
+                elif j == len(typed):
+                    t.append(ch, style=f"underline {COL_TEXT}")
+                else:
+                    t.append(ch, style=COL_TEXT)  # Focused word is more visible
+            if len(typed) > len(word):
+                t.append(typed[len(word):], style=f"bold {COL_ERROR}")
+        else:
+            t.append(word, style=COL_DIM)
+        return t
 
-        # Wrap words into lines
+    def _wrap_words(
+        self, all_words_text: list[Text], container_width: int
+    ) -> tuple[list[list[Text]], int]:
+        """Wrap words into lines and return (lines, active_word_line_idx)."""
         lines = []
         current_line = []
         current_line_len = 0
@@ -322,6 +382,17 @@ class TypingScreen(Screen):
             current_line.append(word_text)
             current_line_len += word_len + 1
         lines.append(current_line)
+        return lines, active_word_line_idx
+
+    def _render_display(self) -> None:
+        # Use a simple line-wrapping approach to show 3 lines:
+        # 1. previous line
+        # 2. current line (containing active word)
+        # 3. next line
+        container_width = 72  # matches #typing-container width minus padding
+
+        all_words_text = [self._get_word_text(i) for i in range(len(self.words))]
+        lines, active_word_line_idx = self._wrap_words(all_words_text, container_width)
 
         # Build final display text (up to 3 lines)
         display_text = Text()
@@ -450,6 +521,13 @@ class ResultScreen(Screen):
         content-align: center middle;
     }
 
+    #session-table {
+        width: 100%;
+        height: auto;
+        max-height: 10;
+        margin-top: 1;
+    }
+
     #result-hints {
         width: 100%;
         text-align: center;
@@ -461,9 +539,14 @@ class ResultScreen(Screen):
     """
     )
 
-    def __init__(self, result: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        result: dict[str, Any],
+        session_attempts: list[dict[str, Any]] | None = None,
+    ) -> None:
         super().__init__()
         self.result = result
+        self.session_attempts = session_attempts or []
 
     def compose(self) -> ComposeResult:
         r = self.result
@@ -497,6 +580,26 @@ class ResultScreen(Screen):
                         self._render_bar_graph(r["top_char_errors"]),
                         id="top-errors-graph",
                     )
+
+                if self.session_attempts:
+                    yield Static("session summary", id="top-errors-title")
+                    table = DataTable(id="session-table")
+                    table.add_columns("Try", "Acc", "KPM", "Err")
+                    for i, att in enumerate(self.session_attempts, 1):
+                        table.add_row(
+                            str(i),
+                            f"{att['accuracy']:.1f}%",
+                            str(att["keystrokes"]),
+                            str(att["errors"]),
+                        )
+                    # Add current successful attempt
+                    table.add_row(
+                        str(len(self.session_attempts) + 1),
+                        f"{r['accuracy']:.1f}%",
+                        str(r.get("keystrokes", "-")),
+                        str(r.get("errors", "-")),
+                    )
+                    yield table
 
                 yield Static(
                     "tab retry · h history · esc quit",
@@ -740,7 +843,7 @@ class MenuScreen(Screen):
         app = cast("TypingApp", self.app)
 
         if opt_id == "quit":
-            app.exit_app()
+            app.exit()
         elif opt_id == "history":
             app.push_screen(HistoryScreen())
         elif opt_id == "en":

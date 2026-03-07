@@ -1,5 +1,4 @@
 import json
-import os
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,16 +10,17 @@ from ttyping import storage
 def mock_storage(tmp_path: Path):
     storage_dir = tmp_path / ".ttyping"
     results_file = storage_dir / "results.json"
+    config_file = storage_dir / "config.json"
     # Reset the ensured flag so each test actually runs _ensure_storage
     storage._STORAGE_ENSURED = False
     with patch("ttyping.storage.STORAGE_DIR", storage_dir), \
-         patch("ttyping.storage.CONFIG_FILE", storage_dir / "config.json"), \
-         patch("ttyping.storage.RESULTS_FILE", results_file):
-        yield storage_dir, results_file
+         patch("ttyping.storage.RESULTS_FILE", results_file), \
+         patch("ttyping.storage.CONFIG_FILE", config_file):
+        yield storage_dir, results_file, config_file
 
 
 def test_ensure_storage_creates_new(mock_storage):
-    storage_dir, results_file = mock_storage
+    storage_dir, results_file, config_file = mock_storage
 
     storage._ensure_storage()
 
@@ -35,9 +35,14 @@ def test_ensure_storage_creates_new(mock_storage):
 
     assert results_file.read_text() == "[]"
 
+    assert config_file.exists()
+    assert config_file.is_file()
+    assert (config_file.stat().st_mode & 0o777) == 0o600
+    assert config_file.read_text() == "{}"
+
 
 def test_ensure_storage_fixes_permissions(mock_storage):
-    storage_dir, results_file = mock_storage
+    storage_dir, results_file, config_file = mock_storage
 
     # Pre-create with loose permissions
     storage_dir.mkdir(parents=True)
@@ -46,14 +51,19 @@ def test_ensure_storage_fixes_permissions(mock_storage):
     results_file.chmod(0o644)
     results_file.write_text("[]")
 
+    config_file.touch()
+    config_file.chmod(0o644)
+    config_file.write_text("{}")
+
     storage._ensure_storage()
 
     assert (storage_dir.stat().st_mode & 0o777) == 0o700
     assert (results_file.stat().st_mode & 0o777) == 0o600
+    assert (config_file.stat().st_mode & 0o777) == 0o600
 
 
 def test_save_result(mock_storage):
-    _, results_file = mock_storage
+    _, results_file, _ = mock_storage
 
     test_result = {"wpm": 60, "accuracy": 95}
     storage.save_result(test_result)
@@ -65,8 +75,55 @@ def test_save_result(mock_storage):
     assert "date" in data[0]
 
 
-def test_load_results(mock_storage):
+def test_save_multiple_results(mock_storage):
     _, results_file = mock_storage
+
+    result1 = {"wpm": 60, "accuracy": 95}
+    result2 = {"wpm": 70, "accuracy": 98}
+
+    storage.save_result(result1)
+    storage.save_result(result2)
+
+    data = json.loads(results_file.read_text())
+    assert len(data) == 2
+    assert data[0]["wpm"] == 60
+    assert data[1]["wpm"] == 70
+
+
+def test_save_result_appends_to_existing(mock_storage):
+    storage_dir, results_file = mock_storage
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    existing_data = [{"wpm": 50, "accuracy": 90, "date": "2023-01-01T00:00:00Z"}]
+    results_file.write_text(json.dumps(existing_data))
+
+    new_result = {"wpm": 60, "accuracy": 95}
+    storage.save_result(new_result)
+
+    data = json.loads(results_file.read_text())
+    assert len(data) == 2
+    assert data[0]["wpm"] == 50
+    assert data[1]["wpm"] == 60
+
+
+def test_save_result_corrupt_file(mock_storage):
+    storage_dir, results_file = mock_storage
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    results_file.write_text("corrupt json")
+
+    new_result = {"wpm": 60, "accuracy": 95}
+    # save_result calls load_results, which handles JSONDecodeError by returning []
+    # So it should just overwrite the corrupt file with a new list containing one result.
+    storage.save_result(new_result)
+
+    data = json.loads(results_file.read_text())
+    assert len(data) == 1
+    assert data[0]["wpm"] == 60
+
+
+def test_load_results(mock_storage):
+    _, results_file, _ = mock_storage
 
     # Initially should be empty list (via _ensure_storage called in load_results)
     assert storage.load_results() == []
@@ -81,7 +138,7 @@ def test_load_results(mock_storage):
 
 
 def test_load_results_invalid_json(mock_storage):
-    storage_dir, results_file = mock_storage
+    storage_dir, results_file, _ = mock_storage
 
     storage_dir.mkdir(parents=True, exist_ok=True)
     results_file.write_text("invalid json")
