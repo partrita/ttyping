@@ -15,9 +15,11 @@ def mock_storage(tmp_path: Path) -> Generator[tuple[Path, Path, Path], None, Non
     config_file = storage_dir / "config.json"
     # Reset the ensured flag so each test actually runs _ensure_storage
     storage._STORAGE_ENSURED = False
-    with patch("ttyping.storage.STORAGE_DIR", storage_dir), \
-         patch("ttyping.storage.RESULTS_FILE", results_file), \
-         patch("ttyping.storage.CONFIG_FILE", config_file):
+    with (
+        patch("ttyping.storage.STORAGE_DIR", storage_dir),
+        patch("ttyping.storage.RESULTS_FILE", results_file),
+        patch("ttyping.storage.CONFIG_FILE", config_file),
+    ):
         yield storage_dir, results_file, config_file
 
 
@@ -43,7 +45,7 @@ def test_ensure_storage_creates_new(mock_storage: tuple[Path, Path, Path]) -> No
 
 
 def test_ensure_storage_fixes_permissions(
-    mock_storage: tuple[Path, Path, Path]
+    mock_storage: tuple[Path, Path, Path],
 ) -> None:
     storage_dir, results_file, config_file = mock_storage
 
@@ -151,6 +153,7 @@ def test_load_results_invalid_json(mock_storage: tuple[Path, Path, Path]) -> Non
 
     # Should return empty list on decode error
     assert storage.load_results() == []
+
 
 def test_load_results_wrong_type(mock_storage: tuple[Path, Path, Path]) -> None:
     storage_dir, results_file, _ = mock_storage

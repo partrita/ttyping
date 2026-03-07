@@ -59,6 +59,7 @@ def test_words_from_file_too_large(tmp_path: Path) -> None:
 
 def test_get_practice_drill_en_dvorak() -> None:
     from ttyping.words import get_words
+
     words = get_words("en_dvorak:home_row", 5)
     assert len(words) == 5
     # Home row Dvorak: aoeuidhtns
@@ -69,8 +70,9 @@ def test_get_practice_drill_en_dvorak() -> None:
 
 def test_get_practice_drill_ko_3set() -> None:
     from ttyping.words import get_words
+
     words = get_words("ko_3set:home_row", 5)
     assert len(words) == 5
     # Home row 3-set: ㅁㄴㅇㄹㅅㅗㅓㅏㅣ
     # We use a loose check because of decomposition
-    assert True # Basic check that it doesn't crash
+    assert True  # Basic check that it doesn't crash

@@ -34,6 +34,7 @@ def test_save_load_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     loaded_data = load_config()
     assert loaded_data == config_data
 
+
 def test_load_config_invalid_json(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -50,6 +51,7 @@ def test_load_config_invalid_json(
     test_config_file.write_text("invalid json", encoding="utf-8")
 
     assert load_config() == {}
+
 
 def test_load_config_wrong_type(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch

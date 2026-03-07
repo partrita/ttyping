@@ -15,7 +15,7 @@ classifiers = [
     "Topic :: Games/Entertainment",
 ]
 dependencies = [
-    "textual>=0.40",
+    "textual>=0.63.0",
     "asyncssh",
 ]
 

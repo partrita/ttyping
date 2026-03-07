@@ -5,12 +5,15 @@ def test_get_words_extended() -> None:
     words = get_words("en_dvorak", 10)
     assert len(words) == 10
     from ttyping.words import EN_DVORAK
+
     assert all(w in EN_DVORAK for w in words)
 
     words = get_words("ko_3set", 5)
     assert len(words) == 5
     from ttyping.words import KO_3SET
+
     assert all(w in KO_3SET for w in words)
+
 
 def test_wpm_calculation_logic() -> None:
     # Mocking basic calculation logic that was added to TypingScreen
@@ -28,6 +31,7 @@ def test_wpm_calculation_logic() -> None:
     # Example from speedtypingonline: 80 gross WPM, 8 errors in 2 mins -> 76 Net WPM
     # 80 gross WPM in 2 mins = 80 * 5 * 2 = 800 keystrokes
     assert calculate(800, 8, 120) == 76.0
+
 
 def test_accuracy_calculation_logic() -> None:
     def calculate_acc(keystrokes: int, total_errors: int) -> float:

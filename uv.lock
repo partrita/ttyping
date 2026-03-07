@@ -427,7 +427,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "asyncssh" },
-    { name = "textual", specifier = ">=0.40" },
+    { name = "textual", specifier = ">=0.63.0" },
 ]
 
 [package.metadata.requires-dev]

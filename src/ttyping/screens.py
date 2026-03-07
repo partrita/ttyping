@@ -83,11 +83,12 @@ class TypingScreen(Screen):
         padding: 0 1;
     }
 
-    #hints {
+    #accuracy-warning {
         width: 100%;
-        height: 1;
-        content-align: center middle;
         text-align: center;
+        color: #ca4754;
+        text-style: bold;
+        display: none;
         margin-top: 1;
     }
     """
@@ -119,9 +120,10 @@ class TypingScreen(Screen):
         with Center():
             with Vertical(id="typing-container"):
                 yield Static("", id="stats")
+                yield Static("Accuracy Too Low! Restarting...", id="accuracy-warning")
                 yield Static("", id="text-display")
-                yield Input(placeholder="start typing…", id="input-area")
-                yield Static("tab restart · esc quit", id="hints")
+                yield Input(id="input-area", password=False)
+                yield Static("Tab: restart  ·  Esc: quit", id="hints")
 
     def on_mount(self) -> None:
         self._render_display()
@@ -232,7 +234,13 @@ class TypingScreen(Screen):
                 self._finished = True
                 if self._timer_handle:
                     self._timer_handle.stop()
-                cast("TypingApp", self.app).reset_session_attempt(stats)
+
+                # Show warning and delay restart
+                self.query_one("#accuracy-warning").styles.display = "block"
+                self.set_timer(
+                    1.0,
+                    lambda: cast("TypingApp", self.app).reset_session_attempt(stats),
+                )
                 return
 
         if self.current_word_idx >= len(self.words):
@@ -430,6 +438,8 @@ class ResultScreen(Screen):
         Binding("tab", "retry", "Retry", priority=True),
         Binding("h", "history", "History"),
         Binding("escape", "quit_app", "Quit"),
+        # Korean IME support (2-set)
+        Binding("ㅗ", "history", show=False),
     ]
 
     DEFAULT_CSS = """
@@ -472,12 +482,6 @@ class ResultScreen(Screen):
         height: auto;
         max-height: 10;
         margin-top: 1;
-    }
-
-    #result-hints {
-        width: 100%;
-        text-align: center;
-        margin-top: 2;
     }
     """
 
@@ -536,11 +540,6 @@ class ResultScreen(Screen):
                         str(r.get("errors", "-")),
                     )
                     yield table
-
-                yield Static(
-                    "tab retry · h history · esc quit",
-                    id="result-hints",
-                )
 
     def _render_bar_graph(self, data: list[tuple[str, int]]) -> Text:
         from rich.cells import cell_len
@@ -661,6 +660,9 @@ class ConfirmDeleteScreen(Screen):
         Binding("y", "confirm", "Yes"),
         Binding("n", "cancel", "No"),
         Binding("escape", "cancel", "Cancel"),
+        # Korean IME support (2-set)
+        Binding("ㅛ", "confirm", show=False),
+        Binding("ㅜ", "cancel", show=False),
     ]
 
     def compose(self) -> ComposeResult:
@@ -672,7 +674,7 @@ class ConfirmDeleteScreen(Screen):
                     " and error statistics.",
                     id="confirm-body",
                 )
-                yield Static("y confirm · n / esc cancel", id="confirm-hints")
+                yield Static(" [Y] Yes   [N] No ", id="confirm-hints")
 
     def action_confirm(self) -> None:
         clear_results()
@@ -694,6 +696,8 @@ class HistoryScreen(Screen):
         Binding("escape", "go_back", "Back"),
         Binding("d", "delete_selected", "Delete Selected", priority=True),
         Binding("D", "delete_all", "Delete All", priority=True),
+        # Korean IME support (2-set)
+        Binding("ㅇ", "delete_selected", show=False),
     ]
 
     def __init__(self) -> None:
@@ -731,23 +735,11 @@ class HistoryScreen(Screen):
         max-height: 18;
     }
 
-    #history-delete-hint {
-        width: 100%;
-        text-align: center;
-        height: 1;
-    }
-
-    #history-empty {
-        width: 100%;
-        text-align: center;
-        padding: 2;
-    }
-
-    #history-hints {
+    .history-hint {
         width: 100%;
         text-align: center;
         margin-top: 1;
-        height: 1;
+        text-style: dim;
     }
     """
 
@@ -772,12 +764,10 @@ class HistoryScreen(Screen):
                         id="history-stats",
                     )
                     yield Static(
-                        "d → delete selected row  ·  D → delete all",
-                        id="history-delete-hint",
+                        "Press 'd' to delete selected, 'D' to delete all",
+                        classes="history-hint",
                     )
                     yield self._create_history_table(results, self._row_to_storage_idx)
-
-                yield Static("esc back", id="history-hints")
 
     def _create_history_table(
         self,
@@ -841,14 +831,15 @@ class MenuScreen(Screen):
     """Initial menu to select test parameters."""
 
     DEFAULT_CSS = """
-    MenuScreen, ENSubMenu, KOSubMenu {
+    MenuScreen {
         align: center middle;
     }
 
     #menu-container {
-        width: 40;
+        width: 44;
         height: auto;
         padding: 1 2;
+        align: center middle;
     }
 
     #menu-title {
@@ -860,12 +851,8 @@ class MenuScreen(Screen):
 
     OptionList {
         border: none;
-    }
-
-    #menu-hints {
-        width: 100%;
-        text-align: center;
-        margin-top: 1;
+        height: auto;
+        max-height: 15;
     }
 
     .about-text {
@@ -882,20 +869,19 @@ class MenuScreen(Screen):
         Binding("h", "select_history", "History"),
         Binding("o", "select_options", "Options"),
         Binding("q", "quit_app", "Quit"),
+        # Korean IME support (2-set)
+        Binding("ㄷ", "select_en", show=False),
+        Binding("ㅏ", "select_ko", show=False),
+        Binding("ㅈ", "select_weak", show=False),
+        Binding("ㅗ", "select_history", show=False),
+        Binding("ㅐ", "select_options", show=False),
+        Binding("ㅂ", "quit_app", show=False),
     ]
 
     def compose(self) -> ComposeResult:
-        ascii_art = r"""
-   __  __             _            
-  / /_/ /___  __  __ (_)___  ____ _
- / __/ __/ / / / __ \/ / __ \/ __ `/
-/ /_/ /_/ /_/ / /_/ / / / / / /_/ / 
-\__/\__/\__, / .___/_/_/ /_/\__, /  
-       /____/_/            /____/   
-"""
         with Center():
             with Vertical(id="menu-container"):
-                yield Static(ascii_art, id="menu-title", markup=False)
+                yield Static("ttyping", id="menu-title")
                 yield OptionList(
                     Option("English typing(영어)", id="en"),
                     Option("Korean typing(한글)", id="ko"),
@@ -905,7 +891,6 @@ class MenuScreen(Screen):
                     Option("Quit", id="quit"),
                     id="menu-options",
                 )
-                yield Static("arrow keys · enter · shortcut keys", id="menu-hints")
 
     def on_resume(self) -> None:
         pass  # no dynamic labels needed
@@ -957,12 +942,11 @@ class ENSubMenu(Screen):
                 yield Static("English Typing", id="menu-title")
                 yield OptionList(
                     Option("QWERTY", id="en_qwerty"),
-                    Option("DVORAK", id="en_dvorak"),
-                    Option("COLEMAK", id="en_colemak"),
+                    Option("Dvorak", id="en_dvorak"),
+                    Option("Colemak", id="en_colemak"),
                     Option("Back", id="back"),
                     id="menu-options",
                 )
-                yield Static("enter select · esc back", id="menu-hints")
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
@@ -996,7 +980,6 @@ class KOSubMenu(Screen):
                     Option("Back", id="back"),
                     id="menu-options",
                 )
-                yield Static("enter select · esc back", id="menu-hints")
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
@@ -1141,7 +1124,6 @@ class PracticeMenu(Screen):
                     id="menu-options",
                     name="Practice Set Selection",
                 )
-                yield Static("enter select · esc back", id="menu-hints")
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = str(event.option_id)
@@ -1179,7 +1161,6 @@ class WordCountMenu(Screen):
                     Option("Back", id="back"),
                     id="menu-options",
                 )
-                yield Static("enter select · esc back", id="menu-hints")
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = str(event.option_id)
@@ -1222,7 +1203,6 @@ class AccuracyMenu(Screen):
                     Option("100% (No Mistakes)", id="100"),
                     id="menu-options",
                 )
-                yield Static("enter select · esc back", id="menu-hints")
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         from ttyping.storage import load_config, save_config
@@ -1276,7 +1256,6 @@ class OptionsScreen(Screen):
                     Option("About", id="about"),
                     id="menu-options",
                 )
-                yield Static("enter select \u00b7 esc back", id="menu-hints")
 
     def on_resume(self) -> None:
         """Refresh labels when returning from a nested screen."""
@@ -1328,7 +1307,6 @@ class ThemeScreen(Screen):
                     Option("☀️  Light", id="light"),
                     id="menu-options",
                 )
-                yield Static("enter select · esc back", id="menu-hints")
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         from ttyping.storage import load_config, save_config
@@ -1375,7 +1353,6 @@ class AboutScreen(Screen):
             with Vertical(id="menu-container"):
                 yield Static("About ttyping", id="menu-title")
                 yield Static("\n".join(about_text), classes="about-text")
-                yield Static("esc/enter back", id="menu-hints")
 
     def action_go_back(self) -> None:
         self.app.pop_screen()
@@ -1427,12 +1404,6 @@ class WeaknessScreen(Screen):
         margin-top: 1;
         border: none;
     }
-
-    #weakness-hints {
-        width: 100%;
-        text-align: center;
-        margin-top: 1;
-    }
     """
 
     BINDINGS: list[Binding] = [
@@ -1454,15 +1425,12 @@ class WeaknessScreen(Screen):
 
         with Center():
             with Vertical(id="weakness-container"):
-                yield Static("Weak Key Analysis", id="weakness-title")
-
+                yield Static("Weakness Analysis", id="weakness-title")
                 if not stats:
                     yield Static(
-                        "No error data yet.\n"
                         "Complete more typing tests to build analysis.",
                         classes="weakness-section",
                     )
-                    yield Static("esc back", id="weakness-hints")
                     return
 
                 # Top 10 chars by cumulative error count
@@ -1518,8 +1486,6 @@ class WeaknessScreen(Screen):
                     self._render_char_bars(sorted_chars[:6]),
                     id="weakness-graph",
                 )
-
-                yield Static("enter select · esc back", id="weakness-hints")
 
     def _render_char_bars(self, data: list[tuple[str, int]]) -> Text:
         from rich.cells import cell_len

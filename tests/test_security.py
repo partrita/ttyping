@@ -50,6 +50,7 @@ def test_storage_permissions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     finally:
         os.umask(old_umask)
 
+
 def test_storage_ensured_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     test_storage_dir = tmp_path / ".ttyping"
     test_results_file = test_storage_dir / "results.json"

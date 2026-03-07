@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from textual.app import App
+from textual.app import App, ComposeResult
+from textual.binding import Binding
+from textual.widgets import Footer
 
 from ttyping.screens import HistoryScreen, TypingScreen
 from ttyping.words import get_weak_drill, get_words, words_from_file
@@ -14,6 +16,10 @@ class TypingApp(App):
     """A minimal terminal typing test."""
 
     TITLE = "ttyping"
+
+    BINDINGS = [
+        Binding("q", "quit", "Quit", show=False),
+    ]
 
     # ── Dual-theme CSS ─────────────────────────────────────────────────────
     # Light mode rules (no class). Dark overrides use App.-dark-mode prefix.
@@ -162,6 +168,10 @@ class TypingApp(App):
         # Apply persisted theme (dark by default)
         is_dark = config.get("theme", "dark") == "dark"
         self.theme = "textual-dark" if is_dark else "textual-light"
+
+    def compose(self) -> ComposeResult:
+        """Yield the global footer."""
+        yield Footer()
 
     def on_mount(self) -> None:
         if self._show_history:
