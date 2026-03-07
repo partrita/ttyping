@@ -1347,7 +1347,7 @@ class AboutScreen(Screen):
             "Built with Python & Textual.",
             "",
             "---",
-            "MIT License",
+            "Apache License 2.0",
         ]
         with Center():
             with Vertical(id="menu-container"):
