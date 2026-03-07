@@ -644,7 +644,7 @@ class HistoryScreen(Screen):
         table = DataTable(id="history-table")
         table.add_columns("Date", "WPM", "Acc", "Lang", "Time", "Words")
 
-        for r in reversed(results[-50:]):
+        for r in results[:-51:-1]:
             date_str = ""
             if "date" in r:
                 try:
