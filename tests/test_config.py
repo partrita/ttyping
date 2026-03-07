@@ -2,6 +2,7 @@ import json
 import os
 from pathlib import Path
 from ttyping.storage import load_config, save_config
+import ttyping.storage
 
 def test_save_load_config(tmp_path, monkeypatch):
     # Mock STORAGE_DIR and all file paths to use a temporary directory
@@ -12,6 +13,7 @@ def test_save_load_config(tmp_path, monkeypatch):
     monkeypatch.setattr("ttyping.storage.STORAGE_DIR", test_dir)
     monkeypatch.setattr("ttyping.storage.RESULTS_FILE", test_results_file)
     monkeypatch.setattr("ttyping.storage.CONFIG_FILE", test_config_file)
+    monkeypatch.setattr(ttyping.storage, "_CONFIG_CACHE", None)
 
     # Test initial load (should be empty dict)
     assert load_config() == {}
@@ -42,6 +44,7 @@ def test_load_config_invalid_json(tmp_path, monkeypatch):
     monkeypatch.setattr("ttyping.storage.STORAGE_DIR", test_dir)
     monkeypatch.setattr("ttyping.storage.RESULTS_FILE", test_results_file)
     monkeypatch.setattr("ttyping.storage.CONFIG_FILE", test_config_file)
+    monkeypatch.setattr(ttyping.storage, "_CONFIG_CACHE", None)
 
     test_dir.mkdir(parents=True, exist_ok=True)
     test_config_file.write_text("invalid json", encoding="utf-8")
