@@ -13,6 +13,7 @@ class TtypingSSHServer(asyncssh.SSHServer):
     def session_requested(self) -> TtypingSSHSession:
         return TtypingSSHSession()
 
+
 class TtypingSSHSession(asyncssh.SSHServerSession):
     def __init__(self) -> None:
         self._input: asyncio.Queue[str] = asyncio.Queue()
@@ -31,6 +32,7 @@ class TtypingSSHSession(asyncssh.SSHServerSession):
     ) -> None:
         # Textual handles terminal size changes if the app is run correctly
         pass
+
 
 async def start_server(host: str = "0.0.0.0", port: int = 8022) -> None:
     """Start the ttyping SSH server."""

@@ -110,12 +110,17 @@ class TypingScreen(Screen):
     )
 
     def __init__(
-        self, words: list[str], lang: str = "en", duration: int | None = None
+        self,
+        words: list[str],
+        lang: str = "en",
+        duration: int | None = None,
+        target_accuracy: float | None = None,
     ) -> None:
         super().__init__()
         self.words = words
         self.lang = lang
         self.duration = duration
+        self.target_accuracy = target_accuracy
         self.current_word_idx = 0
         self.current_input = ""
         self.word_correct: list[bool | None] = [None] * len(words)
@@ -150,7 +155,7 @@ class TypingScreen(Screen):
 
         # Track raw keystrokes and errors
         if len(value) > len(self.current_input):
-            added = value[len(self.current_input):]
+            added = value[len(self.current_input) :]
             self.total_keystrokes += len(added)
 
             target_word = self.words[self.current_word_idx]
@@ -201,6 +206,31 @@ class TypingScreen(Screen):
                 self._complete_word(inp.value)
                 inp.value = ""
 
+    def _get_current_stats(self) -> dict[str, Any]:
+        elapsed = time.time() - self.start_time if self.start_time else 0.01
+        minutes = elapsed / 60
+        if minutes <= 0:
+            minutes = 0.001
+
+        gross_wpm = (self.total_keystrokes / 5) / minutes
+        net_wpm = max(0, gross_wpm - (self.uncorrected_errors / minutes))
+        accuracy = (
+            max(
+                0,
+                (self.total_keystrokes - self.total_errors)
+                / max(self.total_keystrokes, 1),
+            )
+            * 100
+        )
+        return {
+            "wpm": round(net_wpm, 1),
+            "gross_wpm": round(gross_wpm, 1),
+            "accuracy": round(accuracy, 1),
+            "time": round(elapsed, 1),
+            "keystrokes": self.total_keystrokes,
+            "errors": self.total_errors,
+        }
+
     # ── word completion ────────────────────────────────────────────────
 
     def _complete_word(self, typed: str) -> None:
@@ -214,6 +244,15 @@ class TypingScreen(Screen):
 
         self.current_word_idx += 1
         self.current_input = ""
+
+        if self.target_accuracy is not None:
+            stats = self._get_current_stats()
+            if stats["accuracy"] < self.target_accuracy:
+                self._finished = True
+                if self._timer_handle:
+                    self._timer_handle.stop()
+                cast("TypingApp", self.app).reset_session_attempt(stats)
+                return
 
         if self.current_word_idx >= len(self.words):
             self._end_test()
@@ -240,8 +279,11 @@ class TypingScreen(Screen):
         gross_wpm = (self.total_keystrokes / 5) / minutes
         net_wpm = max(0, gross_wpm - (self.uncorrected_errors / minutes))
         accuracy = (
-            max(0, (self.total_keystrokes - self.total_errors)
-            / max(self.total_keystrokes, 1))
+            max(
+                0,
+                (self.total_keystrokes - self.total_errors)
+                / max(self.total_keystrokes, 1),
+            )
             * 100
         )
         correct_words = self.current_word_idx - self.uncorrected_errors
@@ -258,6 +300,8 @@ class TypingScreen(Screen):
             "lang": self.lang,
             "words": self.current_word_idx,  # Number of words attempted
             "correct": correct_words,
+            "keystrokes": self.total_keystrokes,
+            "errors": self.total_errors,
             "top_char_errors": top_char_errors,
             "top_word_errors": top_word_errors,
         }
@@ -266,13 +310,36 @@ class TypingScreen(Screen):
         cast("TypingApp", self.app).show_result(result)
 
     # ── rendering ──────────────────────────────────────────────────────
-    def _get_word_text(self, i: int) -> Text:
-        """Get the styled Text for a word at the given index."""
-        word = self.words[i]
-        t = Text()
-        if i < self.current_word_idx:
-            if self.word_correct[i]:
-                t.append(word, style=f"dim {COL_CORRECT}")
+
+    def _render_display(self) -> None:
+        # Use a simple line-wrapping approach to show 3 lines:
+        # 1. previous line
+        # 2. current line (containing active word)
+        # 3. next line
+        container_width = 72  # matches #typing-container width minus padding
+
+        all_words_text = []
+        for i, word in enumerate(self.words):
+            t = Text()
+            if i < self.current_word_idx:
+                if self.word_correct[i]:
+                    t.append(word, style=f"dim {COL_CORRECT}")
+                else:
+                    t.append(word, style=f"{COL_ERROR} strike")
+            elif i == self.current_word_idx:
+                typed = self.current_input
+                for j, ch in enumerate(word):
+                    if j < len(typed):
+                        if typed[j] == ch:
+                            t.append(ch, style=f"bold {COL_CORRECT}")
+                        else:
+                            t.append(ch, style=f"bold {COL_ERROR}")
+                    elif j == len(typed):
+                        t.append(ch, style=f"underline {COL_TEXT}")
+                    else:
+                        t.append(ch, style=COL_TEXT)  # Focused word is more visible
+                if len(typed) > len(word):
+                    t.append(typed[len(word) :], style=f"bold {COL_ERROR}")
             else:
                 t.append(word, style=f"{COL_ERROR} strike")
         elif i == self.current_word_idx:
@@ -359,8 +426,11 @@ class TypingScreen(Screen):
         gross_wpm = (self.total_keystrokes / 5) / minutes
         net_wpm = max(0, gross_wpm - (self.uncorrected_errors / minutes))
         accuracy = (
-            max(0, (self.total_keystrokes - self.total_errors)
-            / max(self.total_keystrokes, 1))
+            max(
+                0,
+                (self.total_keystrokes - self.total_errors)
+                / max(self.total_keystrokes, 1),
+            )
             * 100
         )
 
@@ -451,6 +521,13 @@ class ResultScreen(Screen):
         content-align: center middle;
     }
 
+    #session-table {
+        width: 100%;
+        height: auto;
+        max-height: 10;
+        margin-top: 1;
+    }
+
     #result-hints {
         width: 100%;
         text-align: center;
@@ -462,9 +539,14 @@ class ResultScreen(Screen):
     """
     )
 
-    def __init__(self, result: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        result: dict[str, Any],
+        session_attempts: list[dict[str, Any]] | None = None,
+    ) -> None:
         super().__init__()
         self.result = result
+        self.session_attempts = session_attempts or []
 
     def compose(self) -> ComposeResult:
         r = self.result
@@ -498,6 +580,26 @@ class ResultScreen(Screen):
                         self._render_bar_graph(r["top_char_errors"]),
                         id="top-errors-graph",
                     )
+
+                if self.session_attempts:
+                    yield Static("session summary", id="top-errors-title")
+                    table = DataTable(id="session-table")
+                    table.add_columns("Try", "Acc", "KPM", "Err")
+                    for i, att in enumerate(self.session_attempts, 1):
+                        table.add_row(
+                            str(i),
+                            f"{att['accuracy']:.1f}%",
+                            str(att["keystrokes"]),
+                            str(att["errors"]),
+                        )
+                    # Add current successful attempt
+                    table.add_row(
+                        str(len(self.session_attempts) + 1),
+                        f"{r['accuracy']:.1f}%",
+                        str(r.get("keystrokes", "-")),
+                        str(r.get("errors", "-")),
+                    )
+                    yield table
 
                 yield Static(
                     "tab retry · h history · esc quit",
@@ -670,15 +772,15 @@ class HistoryScreen(Screen):
         else:
             self.app.exit()
 
+
 # ── MenuScreen ─────────────────────────────────────────────────────────────
-
-
 
 
 class MenuScreen(Screen):
     """Initial menu to select test parameters."""
 
-    DEFAULT_CSS = """
+    DEFAULT_CSS = (
+        """
     MenuScreen, ENSubMenu, KOSubMenu {
         align: center middle;
     }
@@ -686,31 +788,42 @@ class MenuScreen(Screen):
     #menu-container {
         width: 40;
         height: auto;
-        border: round """ + COL_ACCENT + """;
+        border: round """
+        + COL_ACCENT
+        + """;
         padding: 1 2;
-        background: """ + COL_SUB_BG + """;
+        background: """
+        + COL_SUB_BG
+        + """;
     }
 
     #menu-title {
         width: 100%;
         text-align: center;
-        color: """ + COL_ACCENT + """;
+        color: """
+        + COL_ACCENT
+        + """;
         text-style: bold;
         margin-bottom: 1;
     }
 
     OptionList {
-        background: """ + COL_SUB_BG + """;
+        background: """
+        + COL_SUB_BG
+        + """;
         border: none;
     }
 
     #menu-hints {
         width: 100%;
         text-align: center;
-        color: """ + COL_DIM + """;
+        color: """
+        + COL_DIM
+        + """;
         margin-top: 1;
     }
     """
+    )
 
     def compose(self) -> ComposeResult:
         with Center():
@@ -721,7 +834,7 @@ class MenuScreen(Screen):
                     Option("Korean (한글)", id="ko"),
                     Option("View History", id="history"),
                     Option("Quit", id="quit"),
-                    id="menu-options"
+                    id="menu-options",
                 )
                 yield Static("enter select · esc quit", id="menu-hints")
 
@@ -730,7 +843,7 @@ class MenuScreen(Screen):
         app = cast("TypingApp", self.app)
 
         if opt_id == "quit":
-            app.exit_app()
+            app.exit()
         elif opt_id == "history":
             app.push_screen(HistoryScreen())
         elif opt_id == "en":
@@ -755,7 +868,7 @@ class ENSubMenu(Screen):
                     Option("QWERTY", id="en_qwerty"),
                     Option("DVORAK", id="en_dvorak"),
                     Option("Back", id="back"),
-                    id="menu-options"
+                    id="menu-options",
                 )
                 yield Static("enter select · esc back", id="menu-hints")
 
@@ -787,7 +900,7 @@ class KOSubMenu(Screen):
                     Option("두벌식 (2-set)", id="ko_2set"),
                     Option("세벌식 (3-set)", id="ko_3set"),
                     Option("Back", id="back"),
-                    id="menu-options"
+                    id="menu-options",
                 )
                 yield Static("enter select · esc back", id="menu-hints")
 
@@ -905,7 +1018,7 @@ class WordCountMenu(Screen):
                     Option("50 words", id="50"),
                     Option("100 words", id="100"),
                     Option("Back", id="back"),
-                    id="menu-options"
+                    id="menu-options",
                 )
                 yield Static("enter select · esc back", id="menu-hints")
 
@@ -917,4 +1030,3 @@ class WordCountMenu(Screen):
             app.pop_screen()
         else:
             app.start_custom_test(self.layout_id, int(str(opt_id)), None)
-
