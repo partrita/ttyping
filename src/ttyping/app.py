@@ -63,18 +63,8 @@ class TypingApp(App):
             }
         )
 
-        if self._current_session_words is None:
-            self._current_session_words = self._get_words()
-            self._session_attempts = []
-
-        self.push_screen(
-            TypingScreen(
-                self._current_session_words,
-                lang=self._lang,
-                duration=self._duration,
-                target_accuracy=self._target_accuracy,
-            )
-        )
+        words = self._get_words()
+        self.push_screen(TypingScreen(words, lang=self._lang, duration=self._duration))
 
     def _get_words(self) -> list[str]:
         count = self._word_count
@@ -104,15 +94,4 @@ class TypingApp(App):
         self._word_count = words
         self._duration = duration
         self._file_path = None
-        self._start_typing()
-
-    def exit_app(self) -> None:
-        """Exit the application."""
-        self.exit()
-
-    def reset_session_attempt(self, attempt_data: dict[str, Any]) -> None:
-        """Record a failed attempt and restart the same session."""
-        self._session_attempts.append(attempt_data)
-        while len(self.screen_stack) > 1:
-            self.pop_screen()
         self._start_typing()
