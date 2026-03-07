@@ -52,7 +52,8 @@ ttyping
 |-----|--------|
 | **e, k, w, h, o, q** | Main Menu shortcuts (English, Korean, Weak, History, Options, Quit) |
 | **Tab** | Restart the test |
-| **Esc** | Quit or Go Back |
+| **Esc** | Go back to previous menu |
+| **Ctrl+C** | Quit the application |
 | **Space** | Proceed to the next word |
 | **Enter** | Select menu option or complete word |
 

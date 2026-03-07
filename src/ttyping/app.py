@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.widgets import Footer
 
 from ttyping.screens import HistoryScreen, TypingScreen
+from ttyping.storage import TypingResult
 from ttyping.words import get_weak_drill, get_words, words_from_file
 
 
@@ -162,7 +161,7 @@ class TypingApp(App):
             else (float(saved_acc) if saved_acc is not None else None)
         )
         self._show_history: bool = show_history
-        self._session_attempts: list[dict[str, Any]] = []
+        self._session_attempts: list[TypingResult] = []
         self._current_session_words: list[str] | None = None
 
         # Apply persisted theme (dark by default)
@@ -229,22 +228,30 @@ class TypingApp(App):
 
     def restart(self) -> None:
         """Pop current screens and start a new typing test with fresh words."""
-        while len(self.screen_stack) > 1:
+        while len(self.screen_stack) > 1 and self.screen.__class__.__name__ in (
+            "TypingScreen",
+            "ResultScreen",
+        ):
             self.pop_screen()
         self._start_typing(keep_words=False)
 
-    def reset_session_attempt(self, stats: dict[str, Any]) -> None:
+    def reset_session_attempt(self, stats: TypingResult) -> None:
         """Record a failed attempt (accuracy drop) and restart with SAME words."""
         self._session_attempts.append(stats)
-        while len(self.screen_stack) > 1:
+        while len(self.screen_stack) > 1 and self.screen.__class__.__name__ in (
+            "TypingScreen",
+            "ResultScreen",
+        ):
             self.pop_screen()
         self._start_typing(keep_words=True)
 
-    def show_result(self, result: dict[str, Any]) -> None:
-        """Push the result screen after a test."""
+    def show_result(self, result: TypingResult) -> None:
+        """Replace the typing screen with the result screen after a test."""
         from ttyping.screens import ResultScreen
 
-        self.push_screen(ResultScreen(result, session_attempts=self._session_attempts))
+        self.switch_screen(
+            ResultScreen(result, session_attempts=self._session_attempts)
+        )
 
     def start_custom_test(self, lang: str, words: int, duration: int | None) -> None:
         """Start a test with custom parameters and reset session state."""

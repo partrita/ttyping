@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,45 @@ CONFIG_FILE = STORAGE_DIR / "config.json"
 
 _STORAGE_ENSURED: bool = False
 _CONFIG_CACHE: dict[str, Any] | None = None
+
+
+@dataclass
+class TypingResult:
+    """A single typing test result."""
+
+    wpm: float
+    accuracy: float
+    time: float
+    lang: str
+    words: int
+    correct: int
+    keystrokes: int
+    errors: int
+    gross_wpm: float = 0.0
+    top_char_errors: list[tuple[str, int]] = field(default_factory=list)
+    date: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert result to a dictionary for JSON storage."""
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TypingResult:
+        """Create a result from a dictionary."""
+        # Handle cases where some fields might be missing in older results
+        return cls(
+            wpm=float(data.get("wpm", 0)),
+            accuracy=float(data.get("accuracy", 0)),
+            time=float(data.get("time", 0)),
+            lang=str(data.get("lang", "en")),
+            words=int(data.get("words", 0)),
+            correct=int(data.get("correct", 0)),
+            keystrokes=int(data.get("keystrokes", 0)),
+            errors=int(data.get("errors", 0)),
+            gross_wpm=float(data.get("gross_wpm", 0)),
+            top_char_errors=data.get("top_char_errors", []),
+            date=data.get("date"),
+        )
 
 
 def _ensure_storage() -> None:
@@ -48,18 +88,21 @@ def _ensure_storage() -> None:
     _STORAGE_ENSURED = True
 
 
-def save_result(result: dict[str, Any]) -> None:
+def save_result(result: TypingResult) -> None:
     """Append a result to the local storage."""
     _ensure_storage()
-    results: list[dict[str, Any]] = load_results()
-    result["date"] = datetime.now(timezone.utc).isoformat()
+    results = load_results()
+    if not result.date:
+        result.date = datetime.now(timezone.utc).isoformat()
     results.append(result)
+
+    data = [r.to_dict() for r in results]
     RESULTS_FILE.write_text(
-        json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8"
+        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 
 
-def load_results() -> list[dict[str, Any]]:
+def load_results() -> list[TypingResult]:
     """Load all results from local storage."""
     _ensure_storage()
     try:
@@ -67,8 +110,8 @@ def load_results() -> list[dict[str, Any]]:
         data = json.loads(text)
         if not isinstance(data, list):
             return []
-        return data
-    except json.JSONDecodeError:
+        return [TypingResult.from_dict(r) for r in data if isinstance(r, dict)]
+    except (json.JSONDecodeError, FileNotFoundError):
         return []
 
 
@@ -83,8 +126,9 @@ def delete_result_by_index(index: int) -> None:
     results = load_results()
     if 0 <= index < len(results):
         results.pop(index)
+        data = [r.to_dict() for r in results]
         RESULTS_FILE.write_text(
-            json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8"
+            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
         )
 
 
@@ -126,10 +170,6 @@ def load_error_stats() -> dict[str, int]:
     results = load_results()
     totals: dict[str, int] = {}
     for result in results:
-        char_errors = result.get("top_char_errors", [])
-        for item in char_errors:
-            if isinstance(item, (list, tuple)) and len(item) == 2:
-                char, count = item[0], item[1]
-                if isinstance(char, str) and isinstance(count, int):
-                    totals[char] = totals.get(char, 0) + count
+        for char, count in result.top_char_errors:
+            totals[char] = totals.get(char, 0) + count
     return totals

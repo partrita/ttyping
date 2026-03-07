@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from ttyping import storage
+from ttyping.storage import TypingResult
 
 
 @pytest.fixture
@@ -73,7 +74,16 @@ def test_ensure_storage_fixes_permissions(
 def test_save_result(mock_storage: tuple[Path, Path, Path]) -> None:
     _, results_file, _ = mock_storage
 
-    test_result = {"wpm": 60, "accuracy": 95}
+    test_result = TypingResult(
+        wpm=60,
+        accuracy=95,
+        time=10,
+        lang="en",
+        words=10,
+        correct=9,
+        keystrokes=50,
+        errors=5,
+    )
     storage.save_result(test_result)
 
     data = json.loads(results_file.read_text())
@@ -86,8 +96,26 @@ def test_save_result(mock_storage: tuple[Path, Path, Path]) -> None:
 def test_save_multiple_results(mock_storage: tuple[Path, Path, Path]) -> None:
     _, results_file, _ = mock_storage
 
-    result1 = {"wpm": 60, "accuracy": 95}
-    result2 = {"wpm": 70, "accuracy": 98}
+    result1 = TypingResult(
+        wpm=60,
+        accuracy=95,
+        time=10,
+        lang="en",
+        words=10,
+        correct=9,
+        keystrokes=50,
+        errors=5,
+    )
+    result2 = TypingResult(
+        wpm=70,
+        accuracy=98,
+        time=9,
+        lang="en",
+        words=12,
+        correct=11,
+        keystrokes=60,
+        errors=2,
+    )
 
     storage.save_result(result1)
     storage.save_result(result2)
@@ -105,7 +133,16 @@ def test_save_result_appends_to_existing(mock_storage: tuple[Path, Path, Path]) 
     existing_data = [{"wpm": 50, "accuracy": 90, "date": "2023-01-01T00:00:00Z"}]
     results_file.write_text(json.dumps(existing_data))
 
-    new_result = {"wpm": 60, "accuracy": 95}
+    new_result = TypingResult(
+        wpm=60,
+        accuracy=95,
+        time=10,
+        lang="en",
+        words=10,
+        correct=9,
+        keystrokes=50,
+        errors=5,
+    )
     storage.save_result(new_result)
 
     data = json.loads(results_file.read_text())
@@ -120,7 +157,16 @@ def test_save_result_corrupt_file(mock_storage: tuple[Path, Path, Path]) -> None
 
     results_file.write_text("corrupt json")
 
-    new_result = {"wpm": 60, "accuracy": 95}
+    new_result = TypingResult(
+        wpm=60,
+        accuracy=95,
+        time=10,
+        lang="en",
+        words=10,
+        correct=9,
+        keystrokes=50,
+        errors=5,
+    )
     # save_result calls load_results, which handles JSONDecodeError
     # by returning []. So it should just overwrite the corrupt file.
     storage.save_result(new_result)
@@ -142,7 +188,9 @@ def test_load_results(mock_storage: tuple[Path, Path, Path]) -> None:
     results_file.write_text(json.dumps(data))
 
     loaded = storage.load_results()
-    assert loaded == data
+    assert len(loaded) == 1
+    assert loaded[0].wpm == 70
+    assert loaded[0].date == "2023-01-01T00:00:00Z"
 
 
 def test_load_results_invalid_json(mock_storage: tuple[Path, Path, Path]) -> None:

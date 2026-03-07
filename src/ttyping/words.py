@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 import unicodedata
+from functools import lru_cache
 from importlib import resources
 from pathlib import Path
 
@@ -181,12 +182,8 @@ def get_practice_drill(layout: str, set_name: str, count: int = 25) -> list[str]
         else:
             # Korean decomposition check
             for char in word:
-                decomp = unicodedata.normalize("NFD", char)
-                for c in decomp:
-                    # Map jamo to keyboard key
-                    k = JAMO_TO_KEY.get(c, c)
-                    if k not in char_set:
-                        return False
+                if any(k not in char_set for k in _get_jamos(char)):
+                    return False
             return True
 
     filtered = [w for w in all_words if is_match(w, chars)]
@@ -272,6 +269,13 @@ JAMO_TO_KEY = {
     "\u11c1": "ㅍ",
     "\u11c2": "ㅎ",
 }
+
+
+@lru_cache(maxsize=1024)
+def _get_jamos(char: str) -> str:
+    """Decompose a Korean character into keyboard jamos and cache it."""
+    decomp = unicodedata.normalize("NFD", char)
+    return "".join(JAMO_TO_KEY.get(c, c) for c in decomp)
 
 
 def words_from_file(path: str, count: int = 25) -> list[str]:
@@ -361,11 +365,8 @@ def get_weak_drill(layout: str, weak_chars: str, count: int = 25) -> list[str]:
         if is_english:
             return any(c.lower() in weak_chars for c in word)
         for char in word:
-            decomp = unicodedata.normalize("NFD", char)
-            for c in decomp:
-                k = JAMO_TO_KEY.get(c, c)
-                if k in weak_chars:
-                    return True
+            if any(k in weak_chars for k in _get_jamos(char)):
+                return True
         return False
 
     filtered = [w for w in all_words if has_weak_char(w)]
