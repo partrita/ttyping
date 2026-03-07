@@ -1,9 +1,13 @@
 import os
 import shutil
 from pathlib import Path
+
+import pytest
+
 import ttyping.storage
 
-def test_storage_permissions(tmp_path, monkeypatch):
+
+def test_storage_permissions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # Setup temporary storage paths
     test_storage_dir = tmp_path / ".ttyping"
     test_results_file = test_storage_dir / "results.json"
@@ -46,7 +50,7 @@ def test_storage_permissions(tmp_path, monkeypatch):
     finally:
         os.umask(old_umask)
 
-def test_storage_ensured_flag(tmp_path, monkeypatch):
+def test_storage_ensured_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     test_storage_dir = tmp_path / ".ttyping"
     test_results_file = test_storage_dir / "results.json"
     test_config_file = test_storage_dir / "config.json"

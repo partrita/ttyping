@@ -49,9 +49,9 @@ def test_words_from_file_not_a_file(tmp_path: Path) -> None:
 
 def test_words_from_file_too_large(tmp_path: Path) -> None:
     d = tmp_path / "large.txt"
-    # Create a file slightly larger than 1MB
+    # Create a file slightly larger than 10MB
     with open(d, "wb") as f:
-        f.write(b"a" * 1_000_001)
+        f.write(b"a" * 10_000_001)
 
     with pytest.raises(ValueError, match="is too large"):
         words_from_file(str(d))

@@ -1,13 +1,15 @@
 import json
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+
 from ttyping import storage
 
 
 @pytest.fixture
-def mock_storage(tmp_path: Path):
+def mock_storage(tmp_path: Path) -> Generator[tuple[Path, Path, Path], None, None]:
     storage_dir = tmp_path / ".ttyping"
     results_file = storage_dir / "results.json"
     config_file = storage_dir / "config.json"
@@ -19,7 +21,7 @@ def mock_storage(tmp_path: Path):
         yield storage_dir, results_file, config_file
 
 
-def test_ensure_storage_creates_new(mock_storage):
+def test_ensure_storage_creates_new(mock_storage: tuple[Path, Path, Path]) -> None:
     storage_dir, results_file, config_file = mock_storage
 
     storage._ensure_storage()
@@ -40,7 +42,9 @@ def test_ensure_storage_creates_new(mock_storage):
     assert config_file.read_text() == "{}"
 
 
-def test_ensure_storage_fixes_permissions(mock_storage):
+def test_ensure_storage_fixes_permissions(
+    mock_storage: tuple[Path, Path, Path]
+) -> None:
     storage_dir, results_file, config_file = mock_storage
 
     # Pre-create with loose permissions
@@ -64,7 +68,7 @@ def test_ensure_storage_fixes_permissions(mock_storage):
     assert (config_file.stat().st_mode & 0o777) == 0o600
 
 
-def test_save_result(mock_storage):
+def test_save_result(mock_storage: tuple[Path, Path, Path]) -> None:
     _, results_file, _ = mock_storage
 
     test_result = {"wpm": 60, "accuracy": 95}
@@ -77,8 +81,8 @@ def test_save_result(mock_storage):
     assert "date" in data[0]
 
 
-def test_save_multiple_results(mock_storage):
-    _, results_file = mock_storage
+def test_save_multiple_results(mock_storage: tuple[Path, Path, Path]) -> None:
+    _, results_file, _ = mock_storage
 
     result1 = {"wpm": 60, "accuracy": 95}
     result2 = {"wpm": 70, "accuracy": 98}
@@ -92,8 +96,8 @@ def test_save_multiple_results(mock_storage):
     assert data[1]["wpm"] == 70
 
 
-def test_save_result_appends_to_existing(mock_storage):
-    storage_dir, results_file = mock_storage
+def test_save_result_appends_to_existing(mock_storage: tuple[Path, Path, Path]) -> None:
+    storage_dir, results_file, _ = mock_storage
     storage_dir.mkdir(parents=True, exist_ok=True)
 
     existing_data = [{"wpm": 50, "accuracy": 90, "date": "2023-01-01T00:00:00Z"}]
@@ -108,15 +112,15 @@ def test_save_result_appends_to_existing(mock_storage):
     assert data[1]["wpm"] == 60
 
 
-def test_save_result_corrupt_file(mock_storage):
-    storage_dir, results_file = mock_storage
+def test_save_result_corrupt_file(mock_storage: tuple[Path, Path, Path]) -> None:
+    storage_dir, results_file, _ = mock_storage
     storage_dir.mkdir(parents=True, exist_ok=True)
 
     results_file.write_text("corrupt json")
 
     new_result = {"wpm": 60, "accuracy": 95}
-    # save_result calls load_results, which handles JSONDecodeError by returning []
-    # So it should just overwrite the corrupt file with a new list containing one result.
+    # save_result calls load_results, which handles JSONDecodeError
+    # by returning []. So it should just overwrite the corrupt file.
     storage.save_result(new_result)
 
     data = json.loads(results_file.read_text())
@@ -124,7 +128,7 @@ def test_save_result_corrupt_file(mock_storage):
     assert data[0]["wpm"] == 60
 
 
-def test_load_results(mock_storage):
+def test_load_results(mock_storage: tuple[Path, Path, Path]) -> None:
     _, results_file, _ = mock_storage
 
     # Initially should be empty list (via _ensure_storage called in load_results)
@@ -139,7 +143,7 @@ def test_load_results(mock_storage):
     assert loaded == data
 
 
-def test_load_results_invalid_json(mock_storage):
+def test_load_results_invalid_json(mock_storage: tuple[Path, Path, Path]) -> None:
     storage_dir, results_file, _ = mock_storage
 
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -148,7 +152,7 @@ def test_load_results_invalid_json(mock_storage):
     # Should return empty list on decode error
     assert storage.load_results() == []
 
-def test_load_results_wrong_type(mock_storage):
+def test_load_results_wrong_type(mock_storage: tuple[Path, Path, Path]) -> None:
     storage_dir, results_file, _ = mock_storage
 
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -156,3 +160,47 @@ def test_load_results_wrong_type(mock_storage):
     results_file.write_text('{"not": "a list"}')
 
     assert storage.load_results() == []
+
+
+def test_load_error_stats_empty(mock_storage: tuple[Path, Path, Path]) -> None:
+    """load_error_stats returns empty dict when no results."""
+    assert storage.load_error_stats() == {}
+
+
+def test_load_error_stats_aggregates(
+    mock_storage: tuple[Path, Path, Path],
+) -> None:
+    """load_error_stats correctly sums char errors across runs."""
+    storage_dir, results_file, _ = mock_storage
+    storage_dir.mkdir(parents=True, exist_ok=True)
+
+    data = [
+        {"top_char_errors": [["a", 3], ["s", 1]]},
+        {"top_char_errors": [["a", 2], ["d", 4]]},
+        {"top_char_errors": []},
+    ]
+    results_file.write_text(json.dumps(data))
+
+    stats = storage.load_error_stats()
+    assert stats["a"] == 5
+    assert stats["s"] == 1
+    assert stats["d"] == 4
+
+
+def test_chars_to_finger_en_qwerty() -> None:
+    """chars_to_finger maps keys to correct fingers for QWERTY."""
+    from ttyping.words import chars_to_finger
+
+    result = chars_to_finger("en_qwerty", "asr")
+    # 'a' and 's' belong to known fingers
+    assert any("a" in chars for chars in result.values())
+    assert any("s" in chars for chars in result.values())
+
+
+def test_get_weak_drill_returns_words() -> None:
+    """get_weak_drill returns a list of the requested length."""
+    from ttyping.words import get_weak_drill
+
+    words = get_weak_drill("en_qwerty", "asdf", count=10)
+    assert len(words) == 10
+    assert all(isinstance(w, str) and len(w) > 0 for w in words)

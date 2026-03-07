@@ -61,17 +61,26 @@ def main() -> None:
             asyncio.run(start_server())
         except KeyboardInterrupt:
             pass
+        except Exception as e:
+            import sys
+            print(f"Sentinel: Server error encountered: {e}", file=sys.stderr)
+            sys.exit(1)
         return
 
-    app = TypingApp(
-        lang=args.lang,
-        file_path=args.file,
-        word_count=args.words,
-        duration=args.time,
-        target_accuracy=args.target_accuracy,
-        show_history=args.command == "history",
-    )
-    app.run()
+    try:
+        app = TypingApp(
+            lang=args.lang,
+            file_path=args.file,
+            word_count=args.words,
+            duration=args.time,
+            target_accuracy=args.target_accuracy,
+            show_history=args.command == "history",
+        )
+        app.run()
+    except Exception as e:
+        import sys
+        print(f"Sentinel: Application error encountered: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

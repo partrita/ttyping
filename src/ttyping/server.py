@@ -17,6 +17,7 @@ class TtypingSSHServer(asyncssh.SSHServer):
 class TtypingSSHSession(asyncssh.SSHServerSession):
     def __init__(self) -> None:
         self._input: asyncio.Queue[str] = asyncio.Queue()
+        self._chan: asyncssh.SSHServerChannel | None = None
 
     def connection_made(self, chan: asyncssh.SSHServerChannel) -> None:
         self._chan = chan

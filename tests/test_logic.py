@@ -1,5 +1,5 @@
-import pytest
 from ttyping.words import get_words
+
 
 def test_get_words_extended() -> None:
     words = get_words("en_dvorak", 10)
@@ -12,11 +12,12 @@ def test_get_words_extended() -> None:
     from ttyping.words import KO_3SET
     assert all(w in KO_3SET for w in words)
 
-def test_wpm_calculation_logic():
+def test_wpm_calculation_logic() -> None:
     # Mocking basic calculation logic that was added to TypingScreen
-    def calculate(keystrokes, uncorrected_errors, seconds):
+    def calculate(keystrokes: int, uncorrected_errors: int, seconds: float) -> float:
         minutes = seconds / 60
-        if minutes <= 0: minutes = 0.001
+        if minutes <= 0:
+            minutes = 0.001
         gross_wpm = (keystrokes / 5) / minutes
         net_wpm = max(0, gross_wpm - (uncorrected_errors / minutes))
         return round(net_wpm, 1)
@@ -28,8 +29,8 @@ def test_wpm_calculation_logic():
     # 80 gross WPM in 2 mins = 80 * 5 * 2 = 800 keystrokes
     assert calculate(800, 8, 120) == 76.0
 
-def test_accuracy_calculation_logic():
-    def calculate_acc(keystrokes, total_errors):
+def test_accuracy_calculation_logic() -> None:
+    def calculate_acc(keystrokes: int, total_errors: int) -> float:
         return max(0, (keystrokes - total_errors) / max(keystrokes, 1)) * 100
 
     assert calculate_acc(100, 10) == 90.0
