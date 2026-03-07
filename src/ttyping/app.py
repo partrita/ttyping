@@ -27,6 +27,7 @@ class TypingApp(App):
         file_path: str | None = None,
         word_count: int | None = None,
         duration: int | None = None,
+        target_accuracy: float | None = None,
         show_history: bool = False,
     ) -> None:
         super().__init__()
@@ -38,7 +39,10 @@ class TypingApp(App):
         self._file_path = file_path or config.get("file_path")
         self._word_count = word_count or config.get("word_count", 25)
         self._duration = duration or config.get("duration")
+        self._target_accuracy = target_accuracy
         self._show_history = show_history
+        self._session_attempts: list[dict[str, Any]] = []
+        self._current_session_words: list[str] | None = None
 
     def on_mount(self) -> None:
         if self._show_history:
@@ -59,8 +63,18 @@ class TypingApp(App):
             }
         )
 
-        words = self._get_words()
-        self.push_screen(TypingScreen(words, lang=self._lang, duration=self._duration))
+        if self._current_session_words is None:
+            self._current_session_words = self._get_words()
+            self._session_attempts = []
+
+        self.push_screen(
+            TypingScreen(
+                self._current_session_words,
+                lang=self._lang,
+                duration=self._duration,
+                target_accuracy=self._target_accuracy,
+            )
+        )
 
     def _get_words(self) -> list[str]:
         count = self._word_count
@@ -73,6 +87,7 @@ class TypingApp(App):
 
     def restart(self) -> None:
         """Pop current screens and start a new typing test."""
+        self._current_session_words = None
         while len(self.screen_stack) > 1:
             self.pop_screen()
         self._start_typing()
@@ -81,7 +96,7 @@ class TypingApp(App):
         """Push the result screen after a test."""
         from ttyping.screens import ResultScreen
 
-        self.push_screen(ResultScreen(result))
+        self.push_screen(ResultScreen(result, session_attempts=self._session_attempts))
 
     def start_custom_test(self, lang: str, words: int, duration: int | None) -> None:
         """Start a test with custom parameters and clear file_path."""
@@ -94,3 +109,10 @@ class TypingApp(App):
     def exit_app(self) -> None:
         """Exit the application."""
         self.exit()
+
+    def reset_session_attempt(self, attempt_data: dict[str, Any]) -> None:
+        """Record a failed attempt and restart the same session."""
+        self._session_attempts.append(attempt_data)
+        while len(self.screen_stack) > 1:
+            self.pop_screen()
+        self._start_typing()
