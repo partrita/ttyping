@@ -62,7 +62,6 @@ def save_result(result: dict[str, Any]) -> None:
 def load_results() -> list[dict[str, Any]]:
     """Load all results from local storage."""
     _ensure_storage()
-    text = RESULTS_FILE.read_text(encoding="utf-8")
     try:
         data = json.loads(text)
         if not isinstance(data, list):

@@ -696,6 +696,14 @@ class HistoryScreen(Screen):
         + COL_ACCENT
         + """;
         text-style: bold;
+    }
+
+    #history-stats {
+        width: 100%;
+        text-align: center;
+        color: """
+        + COL_DIM
+        + """;
         margin-bottom: 1;
     }
 
@@ -738,6 +746,11 @@ class HistoryScreen(Screen):
                 if not results:
                     yield Static("No results yet — go type!", id="history-empty")
                 else:
+                    avg_wpm = sum(r.get("wpm", 0) for r in results) / len(results)
+                    yield Static(
+                        f"Tests: {len(results)} · Avg WPM: {avg_wpm:.1f}",
+                        id="history-stats",
+                    )
                     yield self._create_history_table(results)
 
                 yield Static("esc back", id="history-hints")
