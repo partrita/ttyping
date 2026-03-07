@@ -982,7 +982,10 @@ class PracticeMenu(Screen):
         with Center():
             with Vertical(id="menu-container"):
                 yield Static(title, id="menu-title")
-                yield OptionList(*options, Option("Back", id="back"), id="menu-options")
+                yield OptionList(
+                    *options, Option("Back", id="back"),
+                    id="menu-options", name="Practice Set Selection"
+                )
                 yield Static("enter select · esc back", id="menu-hints")
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:

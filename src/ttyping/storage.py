@@ -64,7 +64,10 @@ def load_results() -> list[dict[str, Any]]:
     _ensure_storage()
     text = RESULTS_FILE.read_text(encoding="utf-8")
     try:
-        return json.loads(text)
+        data = json.loads(text)
+        if not isinstance(data, list):
+            return []
+        return data
     except json.JSONDecodeError:
         return []
 

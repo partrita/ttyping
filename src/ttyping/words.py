@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import unicodedata
 from importlib import resources
 from pathlib import Path
 

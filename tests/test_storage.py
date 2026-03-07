@@ -32,7 +32,6 @@ def test_ensure_storage_creates_new(mock_storage):
     assert results_file.exists()
     assert results_file.is_file()
     assert (results_file.stat().st_mode & 0o777) == 0o600
-
     assert results_file.read_text() == "[]"
 
     assert config_file.exists()
@@ -50,6 +49,9 @@ def test_ensure_storage_fixes_permissions(mock_storage):
     results_file.touch()
     results_file.chmod(0o644)
     results_file.write_text("[]")
+    config_file.touch()
+    config_file.chmod(0o644)
+    config_file.write_text("{}")
 
     config_file.touch()
     config_file.chmod(0o644)
@@ -144,4 +146,13 @@ def test_load_results_invalid_json(mock_storage):
     results_file.write_text("invalid json")
 
     # Should return empty list on decode error
+    assert storage.load_results() == []
+
+def test_load_results_wrong_type(mock_storage):
+    storage_dir, results_file, _ = mock_storage
+
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    # Valid JSON but not a list
+    results_file.write_text('{"not": "a list"}')
+
     assert storage.load_results() == []
