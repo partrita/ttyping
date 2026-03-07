@@ -1,11 +1,14 @@
 import json
 import os
 from pathlib import Path
+
+import pytest
+
 import ttyping.storage
 from ttyping.storage import load_config, save_config
-import ttyping.storage
 
-def test_save_load_config(tmp_path, monkeypatch):
+
+def test_save_load_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     test_dir = tmp_path / ".ttyping"
     test_results_file = test_dir / "results.json"
     test_config_file = test_dir / "config.json"
@@ -21,7 +24,7 @@ def test_save_load_config(tmp_path, monkeypatch):
     save_config(config_data)
 
     assert test_config_file.exists()
-    with open(test_config_file, "r") as f:
+    with open(test_config_file) as f:
         saved_data = json.load(f)
     assert saved_data == config_data
 
@@ -31,7 +34,9 @@ def test_save_load_config(tmp_path, monkeypatch):
     loaded_data = load_config()
     assert loaded_data == config_data
 
-def test_load_config_invalid_json(tmp_path, monkeypatch):
+def test_load_config_invalid_json(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     test_dir = tmp_path / ".ttyping"
     test_results_file = test_dir / "results.json"
     test_config_file = test_dir / "config.json"
@@ -46,7 +51,9 @@ def test_load_config_invalid_json(tmp_path, monkeypatch):
 
     assert load_config() == {}
 
-def test_load_config_wrong_type(tmp_path, monkeypatch):
+def test_load_config_wrong_type(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     test_dir = tmp_path / ".ttyping"
     test_results_file = test_dir / "results.json"
     test_config_file = test_dir / "config.json"

@@ -1,9 +1,12 @@
-import pytest
-from ttyping.app import TypingApp
-from ttyping.screens import TypingScreen
 import time
+from typing import Any
 
-def test_accuracy_calculation_method():
+import pytest
+
+from ttyping.screens import TypingScreen
+
+
+def test_accuracy_calculation_method() -> None:
     # Setup a TypingScreen with dummy data
     screen = TypingScreen(words=["apple", "banana"], target_accuracy=90.0)
     screen.start_time = time.time() - 60 # 1 minute ago
@@ -20,12 +23,12 @@ def test_accuracy_calculation_method():
     # WPM: (100/5)/1 = 20 gross, 20 - 2 = 18 net
     assert stats["wpm"] == 18.0
 
-def test_accuracy_drop_trigger(monkeypatch):
+def test_accuracy_drop_trigger(monkeypatch: pytest.MonkeyPatch) -> None:
     class MockApp:
-        def __init__(self):
+        def __init__(self) -> None:
             self.reset_called = False
             self.screen_stack = [1]
-        def reset_session_attempt(self, stats):
+        def reset_session_attempt(self, stats: dict[str, Any]) -> None:
             self.reset_called = True
 
     app = MockApp()
@@ -44,15 +47,15 @@ def test_accuracy_drop_trigger(monkeypatch):
     assert app.reset_called is True
     assert screen._finished is True
 
-def test_accuracy_pass_no_trigger(monkeypatch):
+def test_accuracy_pass_no_trigger(monkeypatch: pytest.MonkeyPatch) -> None:
     class MockApp:
-        def __init__(self):
+        def __init__(self) -> None:
             self.reset_called = False
             self.screen_stack = [1, 2]
-        def reset_session_attempt(self, stats):
+        def reset_session_attempt(self, stats: dict[str, Any]) -> None:
             self.reset_called = True
-        def _end_test(self): pass
-        def show_result(self, res): pass
+        def _end_test(self) -> None: pass
+        def show_result(self, res: dict[str, Any]) -> None: pass
 
     app = MockApp()
     screen = TypingScreen(words=["apple"], target_accuracy=80.0)

@@ -12,7 +12,7 @@ STORAGE_DIR = Path.home() / ".ttyping"
 RESULTS_FILE = STORAGE_DIR / "results.json"
 CONFIG_FILE = STORAGE_DIR / "config.json"
 
-_STORAGE_ENSURED = False
+_STORAGE_ENSURED: bool = False
 _CONFIG_CACHE: dict[str, Any] | None = None
 
 
@@ -63,12 +63,29 @@ def load_results() -> list[dict[str, Any]]:
     """Load all results from local storage."""
     _ensure_storage()
     try:
+        text = RESULTS_FILE.read_text(encoding="utf-8")
         data = json.loads(text)
         if not isinstance(data, list):
             return []
         return data
     except json.JSONDecodeError:
         return []
+
+
+def clear_results() -> None:
+    """Delete all stored typing results."""
+    _ensure_storage()
+    RESULTS_FILE.write_text("[]", encoding="utf-8")
+
+
+def delete_result_by_index(index: int) -> None:
+    """Delete a single result entry by its index in the stored list."""
+    results = load_results()
+    if 0 <= index < len(results):
+        results.pop(index)
+        RESULTS_FILE.write_text(
+            json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
 
 def save_config(config: dict[str, Any]) -> None:
@@ -90,8 +107,29 @@ def load_config() -> dict[str, Any]:
     _ensure_storage()
     try:
         text = CONFIG_FILE.read_text(encoding="utf-8")
-        _CONFIG_CACHE = json.loads(text)
-        return _CONFIG_CACHE or {}
+        data = json.loads(text)
+        if not isinstance(data, dict):
+            _CONFIG_CACHE = {}
+            return {}
+        _CONFIG_CACHE = data
+        return _CONFIG_CACHE
     except (json.JSONDecodeError, FileNotFoundError):
         _CONFIG_CACHE = {}
         return {}
+
+
+def load_error_stats() -> dict[str, int]:
+    """Aggregate cumulative character error counts from all saved results.
+
+    Returns a dict mapping char -> total error count across all sessions.
+    """
+    results = load_results()
+    totals: dict[str, int] = {}
+    for result in results:
+        char_errors = result.get("top_char_errors", [])
+        for item in char_errors:
+            if isinstance(item, (list, tuple)) and len(item) == 2:
+                char, count = item[0], item[1]
+                if isinstance(char, str) and isinstance(count, int):
+                    totals[char] = totals.get(char, 0) + count
+    return totals
