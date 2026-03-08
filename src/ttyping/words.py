@@ -161,8 +161,16 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
     return random.choices(source, k=count)
 
 
-def get_practice_drill(layout: str, set_name: str, count: int = 25) -> list[str]:
-    """Generate a typing drill for a specific practice set."""
+def get_practice_drill(
+    layout: str, set_name: str, count: int = 25, home_return: bool = True
+) -> list[str]:
+    """Generate a typing drill for a specific practice set.
+
+    If *home_return* is True and *set_name* is a finger-level key, each
+    practice character in the generated words will be followed by that
+    finger's home row key, reinforcing the habit of returning to home
+    position between keystrokes.
+    """
     chars = PRACTICE_SETS[layout][set_name]
 
     # Try to find real words first
@@ -192,11 +200,26 @@ def get_practice_drill(layout: str, set_name: str, count: int = 25) -> list[str]
     if len(filtered) >= count // 2 and len(filtered) > 5:
         return random.choices(filtered, k=count)
 
-    # Otherwise, mix in random character combinations (nonsense words)
+    # Otherwise, generate random character combinations (nonsense words)
+    # For finger-level sets, interleave each char with the finger's home row key
+    # so the user practices returning to home position between keystrokes.
+    home_key: str | None = None
+    if home_return and set_name in FINGER_LABELS:
+        home_key = FINGER_HOME_KEY.get(layout, {}).get(set_name)
+
     drills = []
     for _ in range(count):
         word_len = random.randint(3, 6)
-        drills.append("".join(random.choices(chars, k=word_len)))
+        if home_key and home_key not in chars:
+            # Interleave: each practice char followed by the home row key
+            practice_chars = random.choices(chars, k=word_len)
+            parts = []
+            for ch in practice_chars:
+                parts.append(ch)
+                parts.append(home_key)
+            drills.append("".join(parts))
+        else:
+            drills.append("".join(random.choices(chars, k=word_len)))
     return drills
 
 
@@ -325,6 +348,62 @@ FINGER_LABELS_KO: dict[str, str] = {
     "right_middle": "오른손 중지",
     "right_ring": "오른손 약지",
     "right_pinky": "오른손 새끼",
+}
+
+
+# Home row key for each finger per layout.
+# This is the resting key the finger returns to between keystrokes.
+FINGER_HOME_KEY: dict[str, dict[str, str]] = {
+    "en_qwerty": {
+        "left_pinky": "a",
+        "left_ring": "s",
+        "left_middle": "d",
+        "left_index": "f",
+        "right_index": "j",
+        "right_middle": "k",
+        "right_ring": "l",
+        "right_pinky": ";",
+    },
+    "en_dvorak": {
+        "left_pinky": "a",
+        "left_ring": "o",
+        "left_middle": "e",
+        "left_index": "u",
+        "right_index": "h",
+        "right_middle": "t",
+        "right_ring": "n",
+        "right_pinky": "s",
+    },
+    "en_colemak": {
+        "left_pinky": "a",
+        "left_ring": "r",
+        "left_middle": "s",
+        "left_index": "t",
+        "right_index": "n",
+        "right_middle": "e",
+        "right_ring": "i",
+        "right_pinky": "o",
+    },
+    "ko_2set": {
+        "left_pinky": "ㅁ",
+        "left_ring": "ㄴ",
+        "left_middle": "ㅇ",
+        "left_index": "ㄹ",
+        "right_index": "ㅗ",
+        "right_middle": "ㅏ",
+        "right_ring": "ㅣ",
+        "right_pinky": "ㅎ",
+    },
+    "ko_3set": {
+        "left_pinky": "ㅁ",
+        "left_ring": "ㄴ",
+        "left_middle": "ㅇ",
+        "left_index": "ㄹ",
+        "right_index": "ㅏ",
+        "right_middle": "ㅓ",
+        "right_ring": "ㅗ",
+        "right_pinky": "ㅣ",
+    },
 }
 
 

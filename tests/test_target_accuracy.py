@@ -29,24 +29,16 @@ def test_accuracy_drop_trigger(monkeypatch: pytest.MonkeyPatch) -> None:
         def __init__(self) -> None:
             self.reset_called = False
             self.screen_stack = [1]
+            self.notified = False
 
         def reset_session_attempt(self, stats: dict[str, Any]) -> None:
             self.reset_called = True
 
+        def notify(self, *args: object, **kwargs: object) -> None:
+            self.notified = True
+
     app = MockApp()
     screen = TypingScreen(words=["apple", "banana"], target_accuracy=95.0)
-
-    # Mock query_one to return a mock widget for #accuracy-warning
-    class MockWidget:
-        def __init__(self) -> None:
-            self.styles = type("Styles", (), {"display": "none"})()
-
-    warning_widget = MockWidget()
-    monkeypatch.setattr(
-        screen,
-        "query_one",
-        lambda sel: warning_widget if sel == "#accuracy-warning" else None,
-    )
 
     # Patch the property 'app'
     monkeypatch.setattr(TypingScreen, "app", app)
@@ -64,7 +56,7 @@ def test_accuracy_drop_trigger(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert app.reset_called is True
     assert screen._finished is True
-    assert warning_widget.styles.display == "block"
+    assert app.notified is True
 
 
 def test_accuracy_pass_no_trigger(monkeypatch: pytest.MonkeyPatch) -> None:

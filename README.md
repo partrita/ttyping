@@ -6,12 +6,11 @@ A minimal, monkeytype-inspired terminal typing test for English and Korean, buil
 
 ## ✨ Features
 
-- **Multi-language Support**: Practice English (QWERTY, Dvorak) and Korean (2-set, 3-set).
+- **Multi-language Support**: Practice English (QWERTY, Dvorak, Colemak) and Korean (2-set, 3-set).
 - **Custom Content**: Type from internal word lists, sentences, or your own text files.
 - **Finger Practice**: Target specific finger groups to improve muscle memory.
 - **Accuracy Focused**: Optional target accuracy mode that restarts on mistakes.
 - **Local History**: Keep track of your speed (WPM) and accuracy over time.
-- **Premium Aesthetics**: Clean UI with a monkeytype-inspired color palette.
 
 ## 🚀 Installation
 
@@ -39,7 +38,6 @@ ttyping
 
 | Argument | shorthand | Description |
 |----------|-----------|-------------|
-| `--lang [lang]` | | Set language/layout (`en_qwerty`, `ko_2set`, etc.) |
 | `--file [path]` | | Practice using a custom text file |
 | `--words [n]` | | Set number of words (max 1000) |
 | `--time [s]` | `-t` | Set test duration in seconds (overrides words) |

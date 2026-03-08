@@ -13,7 +13,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Center, Vertical
 from textual.screen import Screen
-from textual.widgets import DataTable, Input, OptionList, Static
+from textual.widgets import DataTable, Footer, Input, OptionList, Static
 from textual.widgets.option_list import Option
 
 from ttyping.storage import (
@@ -45,9 +45,9 @@ COL_SUB_BG = "#2c2e31"
 class TypingScreen(Screen):
     """Main typing test screen."""
 
-    BINDINGS: list[Binding] = [
-        Binding("tab", "restart", "Restart", priority=True),
-        Binding("escape", "go_back", "Back", priority=True),
+    BINDINGS = [
+        Binding(key="tab", action="restart", description="Restart", priority=True),
+        Binding(key="escape", action="go_back", description="Back", priority=True),
     ]
 
     DEFAULT_CSS = """
@@ -83,15 +83,6 @@ class TypingScreen(Screen):
         margin-top: 1;
         padding: 0 1;
     }
-
-    #accuracy-warning {
-        width: 100%;
-        text-align: center;
-        color: #ca4754;
-        text-style: bold;
-        display: none;
-        margin-top: 1;
-    }
     """
 
     def __init__(
@@ -123,10 +114,10 @@ class TypingScreen(Screen):
         with Center():
             with Vertical(id="typing-container"):
                 yield Static("", id="stats")
-                yield Static("Accuracy Too Low! Restarting...", id="accuracy-warning")
                 yield Static("", id="text-display")
                 yield Input(id="input-area", password=False)
-                yield Static("Tab: restart  ·  Esc: back  ·  Ctrl+q: quit", id="hints")
+
+        yield Footer()
 
     def on_mount(self) -> None:
         self._render_display()
@@ -238,8 +229,17 @@ class TypingScreen(Screen):
                 if self._timer_handle:
                     self._timer_handle.stop()
 
-                # Show warning and delay restart
-                self.query_one("#accuracy-warning").styles.display = "block"
+                # Notify and delay restart
+                msg = (
+                    f"Accuracy {stats['accuracy']:.0f}% below target "
+                    f"{self.target_accuracy:.0f}% — restarting"
+                )
+                self.app.notify(
+                    msg,
+                    title="Too Low!",
+                    severity="warning",
+                    timeout=3,
+                )
 
                 result = TypingResult(
                     wpm=stats["wpm"],
@@ -466,12 +466,12 @@ class TypingScreen(Screen):
 class ResultScreen(Screen):
     """Post-test results."""
 
-    BINDINGS: list[Binding] = [
-        Binding("tab", "retry", "Retry", priority=True),
-        Binding("h", "history", "History"),
-        Binding("escape", "go_back", "Back"),
+    BINDINGS = [
+        Binding(key="tab", action="retry", description="Retry", priority=True),
+        Binding(key="h", action="history", description="History", show=False),
+        Binding(key="escape", action="go_back", description="Back"),
         # Korean IME support (2-set)
-        Binding("ㅗ", "history", show=False),
+        Binding(key="ㅗ", action="history", show=False),
     ]
 
     DEFAULT_CSS = """
@@ -534,25 +534,21 @@ class ResultScreen(Screen):
                 wpm_text.append(f"{r.wpm:.0f}", style=f"bold {COL_ACCENT}")
                 wpm_text.append(" wpm", style=COL_DIM)
                 yield Static(wpm_text, classes="result-big")
-
                 acc_text = Text()
                 acc_text.append(f"{r.accuracy:.1f}%", style=f"bold {COL_TEXT}")
                 acc_text.append(" accuracy", style=COL_DIM)
                 yield Static(acc_text, classes="result-big")
-
                 detail = Text()
                 detail.append(f"{r.time:.1f}s", style=COL_TEXT)
                 detail.append(f"  ·  {r.correct}/{r.words} words", style=COL_DIM)
                 detail.append(f"  ·  {r.lang}", style=COL_DIM)
                 yield Static(detail, classes="result-detail")
-
                 if r.top_char_errors:
                     yield Static("top missed characters", classes="result-title")
                     yield Static(
                         self._render_bar_graph(r.top_char_errors),
                         id="top-errors-graph",
                     )
-
                 if self.session_attempts:
                     yield Static("session summary", classes="result-title")
                     table = DataTable(id="session-table")
@@ -572,6 +568,8 @@ class ResultScreen(Screen):
                         str(r.errors),
                     )
                     yield table
+
+        yield Footer()
 
     def _render_bar_graph(self, data: list[tuple[str, int]]) -> Text:
         from rich.cells import cell_len
@@ -692,13 +690,13 @@ class ConfirmDeleteScreen(Screen):
     """
     )
 
-    BINDINGS: list[Binding] = [
-        Binding("y", "confirm", "Yes"),
-        Binding("n", "cancel", "No"),
-        Binding("escape", "cancel", "Cancel"),
+    BINDINGS = [
+        Binding(key="y", action="confirm", description="Yes"),
+        Binding(key="n", action="cancel", description="No"),
+        Binding(key="escape", action="cancel", description="Cancel"),
         # Korean IME support (2-set)
-        Binding("ㅛ", "confirm", show=False),
-        Binding("ㅜ", "cancel", show=False),
+        Binding(key="ㅛ", action="confirm", show=False),
+        Binding(key="ㅜ", action="cancel", show=False),
     ]
 
     def compose(self) -> ComposeResult:
@@ -710,7 +708,8 @@ class ConfirmDeleteScreen(Screen):
                     " and error statistics.",
                     id="confirm-body",
                 )
-                yield Static(" [Y] Yes   [N] No ", id="confirm-hints")
+
+        yield Footer()
 
     def action_confirm(self) -> None:
         clear_results()
@@ -728,12 +727,17 @@ class ConfirmDeleteScreen(Screen):
 class HistoryScreen(Screen):
     """Past typing results."""
 
-    BINDINGS: list[Binding] = [
-        Binding("escape", "go_back", "Back"),
-        Binding("d", "delete_selected", "Delete Selected", priority=True),
-        Binding("D", "delete_all", "Delete All", priority=True),
+    BINDINGS = [
+        Binding(key="escape", action="go_back", description="Back"),
+        Binding(
+            key="d",
+            action="delete_selected",
+            description="Delete Selected",
+            priority=True,
+        ),
+        Binding(key="D", action="delete_all", description="Delete All", priority=True),
         # Korean IME support (2-set)
-        Binding("ㅇ", "delete_selected", show=False),
+        Binding(key="ㅇ", action="delete_selected", show=False),
     ]
 
     def __init__(self) -> None:
@@ -786,11 +790,9 @@ class HistoryScreen(Screen):
         display_count = min(n, 50)
         # storage indices newest-first
         self._row_to_storage_idx = list(range(n - 1, n - 1 - display_count, -1))
-
         with Center():
             with Vertical(id="history-container"):
                 yield Static("History", id="history-title")
-
                 if not results:
                     yield Static("No results yet — go type!", id="history-empty")
                 else:
@@ -799,11 +801,9 @@ class HistoryScreen(Screen):
                         f"Tests: {n} · Avg WPM: {avg_wpm:.1f}",
                         id="history-stats",
                     )
-                    yield Static(
-                        "Press 'd' to delete selected, 'D' to delete all",
-                        classes="history-hint",
-                    )
                     yield self._create_history_table(results, self._row_to_storage_idx)
+
+        yield Footer()
 
     def _create_history_table(
         self,
@@ -898,21 +898,20 @@ class MenuScreen(Screen):
     }
     """
 
-    BINDINGS: list[Binding] = [
-        Binding("e", "select_en", "English"),
-        Binding("k", "select_ko", "Korean"),
-        Binding("w", "select_weak", "Weak Analysis"),
-        Binding("h", "select_history", "History"),
-        Binding("o", "select_options", "Options"),
-        Binding("q", "quit_app", "Quit"),
-        Binding("escape", "quit_app", "Quit"),
+    BINDINGS = [
+        Binding(key="enter", action="select", description="Select"),
+        Binding(key="e", action="select_en", description="English", show=False),
+        Binding(key="k", action="select_ko", description="Korean", show=False),
+        Binding(key="w", action="select_weak", description="Weak Analysis", show=False),
+        Binding(key="h", action="select_history", description="History", show=False),
+        Binding(key="o", action="select_options", description="Options", show=False),
+        Binding(key="escape", action="quit_app", description="Quit"),
         # Korean IME support (2-set)
-        Binding("ㄷ", "select_en", show=False),
-        Binding("ㅏ", "select_ko", show=False),
-        Binding("ㅈ", "select_weak", show=False),
-        Binding("ㅗ", "select_history", show=False),
-        Binding("ㅐ", "select_options", show=False),
-        Binding("ㅂ", "quit_app", show=False),
+        Binding(key="ㄷ", action="select_en", show=False),
+        Binding(key="ㅏ", action="select_ko", show=False),
+        Binding(key="ㅈ", action="select_weak", show=False),
+        Binding(key="ㅗ", action="select_history", show=False),
+        Binding(key="ㅐ", action="select_options", show=False),
     ]
 
     def compose(self) -> ComposeResult:
@@ -928,10 +927,19 @@ class MenuScreen(Screen):
                     Option("Quit", id="quit"),
                     id="menu-options",
                 )
-                yield Static("enter to select · Ctrl+q: quit", id="menu-hints")
+
+        yield Footer()
 
     def on_resume(self) -> None:
         pass  # no dynamic labels needed
+
+    def action_select(self) -> None:
+        """Trigger selection on the OptionList."""
+        try:
+            ol = self.query_one("#menu-options", OptionList)
+            ol.action_select()
+        except Exception:
+            pass
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
@@ -975,7 +983,8 @@ class ENSubMenu(Screen):
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
 
     BINDINGS = [
-        Binding("escape", "go_back", "Back"),
+        Binding(key="enter", action="select", description="Select"),
+        Binding(key="escape", action="go_back", description="Back"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -989,6 +998,16 @@ class ENSubMenu(Screen):
                     Option("Back", id="back"),
                     id="menu-options",
                 )
+
+        yield Footer()
+
+    def action_select(self) -> None:
+        """Trigger selection on the OptionList."""
+        try:
+            ol = self.query_one("#menu-options", OptionList)
+            ol.action_select()
+        except (KeyError, Exception):
+            pass
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
@@ -1013,7 +1032,8 @@ class KOSubMenu(Screen):
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
 
     BINDINGS = [
-        Binding("escape", "go_back", "Back"),
+        Binding(key="enter", action="select", description="Select"),
+        Binding(key="escape", action="go_back", description="Back"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -1026,6 +1046,16 @@ class KOSubMenu(Screen):
                     Option("Back", id="back"),
                     id="menu-options",
                 )
+
+        yield Footer()
+
+    def action_select(self) -> None:
+        """Trigger selection on the OptionList."""
+        try:
+            ol = self.query_one("#menu-options", OptionList)
+            ol.action_select()
+        except (KeyError, Exception):
+            pass
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
@@ -1046,6 +1076,10 @@ class PracticeMenu(Screen):
     """Menu for selecting specific practice sets (hands, rows, etc.)."""
 
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+    BINDINGS = [
+        Binding(key="enter", action="select", description="Select"),
+        Binding(key="escape", action="go_back", description="Back"),
+    ]
 
     def __init__(self, layout_id: str) -> None:
         super().__init__()
@@ -1160,7 +1194,6 @@ class PracticeMenu(Screen):
             ]
         else:
             options = [Option("25 words", id="full:25")]
-
         with Center():
             with Vertical(id="menu-container"):
                 yield Static(title, id="menu-title")
@@ -1171,6 +1204,16 @@ class PracticeMenu(Screen):
                     name="Practice Set Selection",
                 )
 
+        yield Footer()
+
+    def action_select(self) -> None:
+        """Trigger selection on the OptionList."""
+        try:
+            ol = self.query_one("#menu-options", OptionList)
+            ol.action_select()
+        except (KeyError, Exception):
+            pass
+
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = str(event.option_id)
         app = cast("TypingApp", self.app)
@@ -1178,18 +1221,16 @@ class PracticeMenu(Screen):
         if opt_id == "back":
             app.pop_screen()
         elif opt_id == "full:words":
-            app.start_custom_test(self.layout_id, 50, None)
+            app.start_custom_test(self.layout_id, app._word_count, app._duration)
         elif opt_id == "full:sentences":
             lang = "ko_sentences" if "ko" in self.layout_id else "en_sentences"
-            app.start_custom_test(lang, 25, None)
+            app.start_custom_test(lang, app._word_count, app._duration)
         elif opt_id.startswith("practice:"):
             set_name = opt_id.split(":")[1]
             # Use a prefix to tell get_words to use practice set
-            app.start_custom_test(f"{self.layout_id}:{set_name}", 25, None)
-
-    BINDINGS = [
-        Binding("escape", "go_back", "Back"),
-    ]
+            app.start_custom_test(
+                f"{self.layout_id}:{set_name}", app._word_count, app._duration
+            )
 
     def action_go_back(self) -> None:
         self.app.pop_screen()
@@ -1201,7 +1242,8 @@ class WordCountMenu(Screen):
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
 
     BINDINGS = [
-        Binding("escape", "go_back", "Back"),
+        Binding(key="enter", action="select", description="Select"),
+        Binding(key="escape", action="go_back", description="Back"),
     ]
 
     def __init__(self, layout_id: str) -> None:
@@ -1219,6 +1261,16 @@ class WordCountMenu(Screen):
                     id="menu-options",
                 )
 
+        yield Footer()
+
+    def action_select(self) -> None:
+        """Trigger selection on the OptionList."""
+        try:
+            ol = self.query_one("#menu-options", OptionList)
+            ol.action_select()
+        except (KeyError, Exception):
+            pass
+
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = str(event.option_id)
         app = cast("TypingApp", self.app)
@@ -1226,10 +1278,10 @@ class WordCountMenu(Screen):
         if opt_id == "back":
             app.pop_screen()
         elif opt_id.endswith(":words"):
-            app.start_custom_test(self.layout_id, 50, None)
+            app.start_custom_test(self.layout_id, app._word_count, app._duration)
         elif opt_id.endswith(":sentences"):
             lang = "ko_sentences" if "ko" in self.layout_id else "en_sentences"
-            app.start_custom_test(lang, 25, None)
+            app.start_custom_test(lang, app._word_count, app._duration)
 
     def action_go_back(self) -> None:
         if len(self.app.screen_stack) > 1:
@@ -1238,6 +1290,10 @@ class WordCountMenu(Screen):
 
 class AccuracyMenu(Screen):
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+    BINDINGS = [
+        Binding(key="enter", action="select", description="Select"),
+        Binding(key="escape", action="go_back", description="Back"),
+    ]
 
     def compose(self) -> ComposeResult:
         app = cast("TypingApp", self.app)
@@ -1246,7 +1302,6 @@ class AccuracyMenu(Screen):
             current_label = "None (Free Practice)"
         else:
             current_label = f"{int(current)}%"
-
         with Center():
             with Vertical(id="menu-container"):
                 yield Static("Target Accuracy", id="menu-title")
@@ -1262,6 +1317,16 @@ class AccuracyMenu(Screen):
                     Option("100% (No Mistakes)", id="100"),
                     id="menu-options",
                 )
+
+        yield Footer()
+
+    def action_select(self) -> None:
+        """Trigger selection on the OptionList."""
+        try:
+            ol = self.query_one("#menu-options", OptionList)
+            ol.action_select()
+        except (KeyError, Exception):
+            pass
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         from ttyping.storage import load_config, save_config
@@ -1279,13 +1344,18 @@ class AccuracyMenu(Screen):
         cfg["target_accuracy"] = app._target_accuracy
         save_config(cfg)
 
+        label = (
+            "None" if app._target_accuracy is None else f"{int(app._target_accuracy)}%"
+        )
+        app.notify(f"Accuracy set to {label}", title="Saved", timeout=2)
         app.pop_screen()
 
     def action_quit_app(self) -> None:
         self.app.exit()
 
-    BINDINGS: list[Binding] = [
-        Binding("escape", "go_back", "Back"),
+    BINDINGS = [
+        Binding(key="enter", action="select", description="Select"),
+        Binding(key="escape", action="go_back", description="Back"),
     ]
 
     def action_go_back(self) -> None:
@@ -1293,48 +1363,60 @@ class AccuracyMenu(Screen):
 
 
 class OptionsScreen(Screen):
-    """Options submenu: Accuracy, Theme, About."""
+    """Options submenu: Words, Time, Accuracy, Theme, About."""
 
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
 
-    BINDINGS: list[Binding] = [
-        Binding("escape", "go_back", "Back"),
+    BINDINGS = [
+        Binding(key="enter", action="select", description="Select"),
+        Binding(key="escape", action="go_back", description="Back"),
     ]
 
-    def compose(self) -> ComposeResult:
+    def _get_labels(self) -> tuple[str, str, str, str]:
         app = cast("TypingApp", self.app)
-        theme_label = "Dark" if app.theme == "textual-dark" else "Light"
+        words_label = str(app._word_count)
+        time_label = "Off" if app._duration is None else f"{app._duration}s"
         acc = app._target_accuracy
         acc_label = "None" if acc is None else f"{int(acc)}%"
+        theme_label = "Dark" if app.theme == "textual-dark" else "Light"
+        return words_label, time_label, acc_label, theme_label
+
+    def compose(self) -> ComposeResult:
+        words_label, time_label, acc_label, theme_label = self._get_labels()
         with Center():
             with Vertical(id="menu-container"):
                 yield Static("Options", id="menu-title")
                 yield OptionList(
+                    Option(f"Words: {words_label}", id="words"),
+                    Option(f"Time: {time_label}", id="time"),
                     Option(f"Accuracy: {acc_label}", id="accuracy"),
                     Option(f"Theme: {theme_label}", id="theme"),
                     Option("About", id="about"),
                     id="menu-options",
                 )
 
+        yield Footer()
+
     def on_resume(self) -> None:
         """Refresh labels when returning from a nested screen."""
-        app = cast("TypingApp", self.app)
-        theme_label = "Dark" if app.theme == "textual-dark" else "Light"
-        acc = app._target_accuracy
-        acc_label = "None" if acc is None else f"{int(acc)}%"
+        self.refresh(recompose=True)
+
+    def action_select(self) -> None:
+        """Trigger selection on the OptionList."""
         try:
             ol = self.query_one("#menu-options", OptionList)
-            ol.clear_options()
-            ol.add_option(Option(f"Accuracy: {acc_label}", id="accuracy"))
-            ol.add_option(Option(f"Theme: {theme_label}", id="theme"))
-            ol.add_option(Option("About", id="about"))
-        except Exception:
+            ol.action_select()
+        except (KeyError, Exception):
             pass
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = str(event.option_id)
         app = cast("TypingApp", self.app)
-        if opt_id == "accuracy":
+        if opt_id == "words":
+            app.push_screen(WordCountInputScreen())
+        elif opt_id == "time":
+            app.push_screen(TimeLimitInputScreen())
+        elif opt_id == "accuracy":
             app.push_screen(AccuracyMenu())
         elif opt_id == "theme":
             app.push_screen(ThemeScreen())
@@ -1350,8 +1432,9 @@ class ThemeScreen(Screen):
 
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
 
-    BINDINGS: list[Binding] = [
-        Binding("escape", "go_back", "Back"),
+    BINDINGS = [
+        Binding(key="enter", action="select", description="Select"),
+        Binding(key="escape", action="go_back", description="Back"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -1367,6 +1450,16 @@ class ThemeScreen(Screen):
                     id="menu-options",
                 )
 
+        yield Footer()
+
+    def action_select(self) -> None:
+        """Trigger selection on the OptionList."""
+        try:
+            ol = self.query_one("#menu-options", OptionList)
+            ol.action_select()
+        except (KeyError, Exception):
+            pass
+
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         from ttyping.storage import load_config, save_config
 
@@ -1378,6 +1471,8 @@ class ThemeScreen(Screen):
         cfg["theme"] = opt_id
         save_config(cfg)
 
+        theme_label = "Dark" if opt_id == "dark" else "Light"
+        app.notify(f"Theme set to {theme_label}", title="Saved", timeout=2)
         app.pop_screen()
 
     def action_go_back(self) -> None:
@@ -1389,9 +1484,9 @@ class AboutScreen(Screen):
 
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
 
-    BINDINGS: list[Binding] = [
-        Binding("escape", "go_back", "Back"),
-        Binding("enter", "go_back", "Back"),
+    BINDINGS = [
+        Binding(key="escape", action="go_back", description="Back"),
+        Binding(key="enter", action="go_back", description="Back"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -1412,6 +1507,112 @@ class AboutScreen(Screen):
             with Vertical(id="menu-container"):
                 yield Static("About ttyping", id="menu-title")
                 yield Static("\n".join(about_text), classes="about-text")
+
+        yield Footer()
+
+    def action_go_back(self) -> None:
+        self.app.pop_screen()
+
+
+class WordCountInputScreen(Screen):
+    """Input screen to set the default word count."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+
+    BINDINGS = [
+        Binding(key="enter", action="submit", description="Save"),
+        Binding(key="escape", action="go_back", description="Cancel"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        app = cast("TypingApp", self.app)
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static("Set Word Count", id="menu-title")
+                yield Input(
+                    value=str(app._word_count),
+                    placeholder="Number of words (e.g. 25)",
+                    id="words-input",
+                )
+
+        yield Footer()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        from ttyping.storage import load_config, save_config
+
+        value = event.value.strip()
+        try:
+            count = int(value)
+            if not 1 <= count <= 200:
+                raise ValueError
+        except ValueError:
+            self.query_one(
+                "#words-input", Input
+            ).border_title = "⚠ Enter a number from 1 to 200"
+            return
+
+        app = cast("TypingApp", self.app)
+        app._word_count = count
+        cfg = load_config()
+        cfg["word_count"] = count
+        save_config(cfg)
+        app.notify(f"Words set to {count}", title="Saved", timeout=2)
+        app.pop_screen()
+
+    def action_go_back(self) -> None:
+        self.app.pop_screen()
+
+
+class TimeLimitInputScreen(Screen):
+    """Input screen to set the default time limit in seconds."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+
+    BINDINGS = [
+        Binding(key="enter", action="submit", description="Save"),
+        Binding(key="escape", action="go_back", description="Cancel"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        app = cast("TypingApp", self.app)
+        current = str(app._duration) if app._duration else ""
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static("Set Time Limit", id="menu-title")
+                yield Input(
+                    value=current,
+                    placeholder="Seconds (leave blank for no limit)",
+                    id="time-input",
+                )
+
+        yield Footer()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        from ttyping.storage import load_config, save_config
+
+        value = event.value.strip()
+
+        if not value:
+            duration: int | None = None
+        else:
+            try:
+                duration = int(value)
+                if not 1 <= duration <= 3600:
+                    raise ValueError
+            except ValueError:
+                self.query_one(
+                    "#time-input", Input
+                ).border_title = "⚠ Enter a number from 1 to 3600"
+                return
+
+        app = cast("TypingApp", self.app)
+        app._duration = duration
+        cfg = load_config()
+        cfg["duration"] = duration
+        save_config(cfg)
+        msg = "Time limit cleared" if duration is None else f"Time set to {duration}s"
+        app.notify(msg, title="Saved", timeout=2)
+        app.pop_screen()
 
     def action_go_back(self) -> None:
         self.app.pop_screen()
@@ -1465,9 +1666,18 @@ class WeaknessScreen(Screen):
     }
     """
 
-    BINDINGS: list[Binding] = [
-        Binding("escape", "go_back", "Back"),
+    BINDINGS = [
+        Binding(key="enter", action="select", description="Select"),
+        Binding(key="escape", action="go_back", description="Back"),
     ]
+
+    def action_select(self) -> None:
+        """Trigger selection on the OptionList."""
+        try:
+            ol = self.query_one("#weakness-options", OptionList)
+            ol.action_select()
+        except (KeyError, Exception):
+            pass
 
     def compose(self) -> ComposeResult:
         from ttyping.words import (
@@ -1481,7 +1691,6 @@ class WeaknessScreen(Screen):
         layout = app._lang
         is_ko = layout.startswith("ko")
         labels = FINGER_LABELS_KO if is_ko else FINGER_LABELS
-
         with Center():
             with Vertical(id="weakness-container"):
                 yield Static("Weakness Analysis", id="weakness-title")
@@ -1490,64 +1699,62 @@ class WeaknessScreen(Screen):
                         "Complete more typing tests to build analysis.",
                         classes="weakness-section",
                     )
-                    return
+                else:
+                    # Top 10 chars by cumulative error count
+                    sorted_chars = sorted(
+                        stats.items(), key=lambda x: x[1], reverse=True
+                    )[:10]
+                    top_chars_str = "".join(c for c, _ in sorted_chars)
 
-                # Top 10 chars by cumulative error count
-                sorted_chars = sorted(stats.items(), key=lambda x: x[1], reverse=True)[
-                    :10
-                ]
-                top_chars_str = "".join(c for c, _ in sorted_chars)
+                    # Map to fingers
+                    finger_map = chars_to_finger(layout, top_chars_str)
+                    finger_totals: dict[str, int] = {
+                        f: sum(stats.get(c, 0) for c in cs)
+                        for f, cs in finger_map.items()
+                    }
 
-                # Map to fingers
-                finger_map = chars_to_finger(layout, top_chars_str)
-                finger_totals: dict[str, int] = {
-                    f: sum(stats.get(c, 0) for c in cs) for f, cs in finger_map.items()
-                }
+                    sorted_fingers = sorted(
+                        finger_totals.items(),
+                        key=lambda x: x[1],
+                        reverse=True,
+                    )
 
-                sorted_fingers = sorted(
-                    finger_totals.items(),
-                    key=lambda x: x[1],
-                    reverse=True,
-                )
-
-                # Action options (Practice Menu)
-                options: list[Option] = [
-                    Option("Practice All Weak Keys ▶", id="drill:all"),
-                ]
-                for finger, total in sorted_fingers[:3]:
-                    finger_chars = "".join(finger_map.get(finger, []))
-                    if finger_chars:
-                        label = labels.get(finger, finger)
-                        options.append(
-                            Option(
-                                f"Practice {label} ({total} err) ▶",
-                                id=f"drill:{finger}",
+                    # Action options (Practice Menu)
+                    options: list[Option] = [
+                        Option("Practice All Weak Keys ▶", id="drill:all"),
+                    ]
+                    for finger, total in sorted_fingers[:3]:
+                        finger_chars = "".join(finger_map.get(finger, []))
+                        if finger_chars:
+                            label = labels.get(finger, finger)
+                            options.append(
+                                Option(
+                                    f"Practice {label} ({total} err) ▶",
+                                    id=f"drill:{finger}",
+                                )
                             )
-                        )
-                options.append(Option("← Back", id="back"))
+                    options.append(Option("← Back", id="back"))
 
-                yield OptionList(*options, id="weakness-options")
-                yield Static(
-                    "enter: select  ·  Esc: back  ·  Ctrl+q: quit", id="weakness-hints"
-                )
+                    yield OptionList(*options, id="weakness-options")
 
-                # Finger breakdown table
-                yield Static("▸ Errors by Finger", classes="weakness-section")
-                table: DataTable[str] = DataTable(id="weakness-table")
-                table.add_columns("Finger", "Weak Keys", "Errors")
-                for finger, total in sorted_fingers:
-                    chars_list = finger_map.get(finger, [])
-                    chars_display = " ".join(chars_list[:8])
-                    label = labels.get(finger, finger)
-                    table.add_row(label, chars_display, str(total))
-                yield table
+                    # Finger breakdown table
+                    yield Static("▸ Errors by Finger", classes="weakness-section")
+                    table: DataTable[str] = DataTable(id="weakness-table")
+                    table.add_columns("Finger", "Weak Keys", "Errors")
+                    for finger, total in sorted_fingers:
+                        chars_list = finger_map.get(finger, [])
+                        chars_display = " ".join(chars_list[:8])
+                        label = labels.get(finger, finger)
+                        table.add_row(label, chars_display, str(total))
+                    yield table
 
-                # Top missed chars bar chart
-                yield Static("▸ Top Missed Keys", classes="weakness-section")
-                yield Static(
-                    self._render_char_bars(sorted_chars[:6]),
-                    id="weakness-graph",
-                )
+                    # Top missed chars bar chart
+                    yield Static("▸ Top Missed Keys", classes="weakness-section")
+                    yield Static(
+                        self._render_char_bars(sorted_chars[:6]),
+                        id="weakness-graph",
+                    )
+        yield Footer()
 
     def _render_char_bars(self, data: list[tuple[str, int]]) -> Text:
         from rich.cells import cell_len

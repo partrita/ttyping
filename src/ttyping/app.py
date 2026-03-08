@@ -17,7 +17,7 @@ class TypingApp(App):
     TITLE = "ttyping"
 
     BINDINGS = [
-        Binding("q", "quit", "Quit", show=False),
+        Binding(key="ctrl+q", action="quit", description="Quit", show=True),
     ]
 
     # ── Dual-theme CSS ─────────────────────────────────────────────────────
@@ -83,8 +83,7 @@ class TypingApp(App):
     #menu-title { color: #c8a010; }
     App.-dark-mode #menu-title { color: #e2b714; }
 
-    #menu-hints  { color: #7a7b7e; }
-    App.-dark-mode #menu-hints { color: #909294; }
+    #menu-hints  { display: none; }
 
     #menu-options { background: #e0e1e5; }
     App.-dark-mode #menu-options { background: #2c2e31; }
