@@ -992,7 +992,7 @@ class ENSubMenu(Screen):
             with Vertical(id="menu-container"):
                 yield Static("English Typing", id="menu-title")
                 yield OptionList(
-                    Option("QWERTY", id="en_qwerty"),
+                    Option("Qwerty", id="en_qwerty"),
                     Option("Dvorak", id="en_dvorak"),
                     Option("Colemak", id="en_colemak"),
                     Option("Back", id="back"),
@@ -1092,6 +1092,7 @@ class PracticeMenu(Screen):
             options = [
                 Option("Words", id="full:words"),
                 Option("Sentences", id="full:sentences"),
+                Option("Lorem Ipsum", id="full:lorem_ipsum"),
                 Option("Home Row", id="practice:home_row"),
                 Option("Top Row", id="practice:top_row"),
                 Option("Bottom Row", id="practice:bottom_row"),
@@ -1113,6 +1114,7 @@ class PracticeMenu(Screen):
             options = [
                 Option("Words", id="full:words"),
                 Option("Sentences", id="full:sentences"),
+                Option("Lorem Ipsum", id="full:lorem_ipsum"),
                 Option("Home Row", id="practice:home_row"),
                 Option("Top Row", id="practice:top_row"),
                 Option("Bottom Row", id="practice:bottom_row"),
@@ -1134,6 +1136,7 @@ class PracticeMenu(Screen):
             options = [
                 Option("Words", id="full:words"),
                 Option("Sentences", id="full:sentences"),
+                Option("Lorem Ipsum", id="full:lorem_ipsum"),
                 Option("Home Row", id="practice:home_row"),
                 Option("Top Row", id="practice:top_row"),
                 Option("Bottom Row", id="practice:bottom_row"),
@@ -1155,6 +1158,7 @@ class PracticeMenu(Screen):
             options = [
                 Option("단어", id="full:words"),
                 Option("짧은 글", id="full:sentences"),
+                Option("로렘 입숨", id="full:lorem_ipsum"),
                 Option("가운데 줄", id="practice:home_row"),
                 Option("윗 줄", id="practice:top_row"),
                 Option("아랫 줄", id="practice:bottom_row"),
@@ -1176,6 +1180,7 @@ class PracticeMenu(Screen):
             options = [
                 Option("단어", id="full:words"),
                 Option("짧은 글", id="full:sentences"),
+                Option("로렘 입숨", id="full:lorem_ipsum"),
                 Option("가운데 줄", id="practice:home_row"),
                 Option("윗 줄", id="practice:top_row"),
                 Option("아랫 줄", id="practice:bottom_row"),
@@ -1224,6 +1229,9 @@ class PracticeMenu(Screen):
             app.start_custom_test(self.layout_id, app._word_count, app._duration)
         elif opt_id == "full:sentences":
             lang = "ko_sentences" if "ko" in self.layout_id else "en_sentences"
+            app.start_custom_test(lang, app._word_count, app._duration)
+        elif opt_id == "full:lorem_ipsum":
+            lang = "ko_lorem_ipsum" if "ko" in self.layout_id else "en_lorem_ipsum"
             app.start_custom_test(lang, app._word_count, app._duration)
         elif opt_id.startswith("practice:"):
             set_name = opt_id.split(":")[1]
@@ -1533,9 +1541,15 @@ class WordCountInputScreen(Screen):
                     value=str(app._word_count),
                     placeholder="Number of words (e.g. 25)",
                     id="words-input",
+                    type="integer",
+                    max_length=3,
                 )
 
         yield Footer()
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Clear the error border when the user types."""
+        self.query_one("#words-input", Input).border_title = ""
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         from ttyping.storage import load_config, save_config
@@ -1583,9 +1597,15 @@ class TimeLimitInputScreen(Screen):
                     value=current,
                     placeholder="Seconds (leave blank for no limit)",
                     id="time-input",
+                    type="integer",
+                    max_length=4,
                 )
 
         yield Footer()
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Clear the error border when the user types."""
+        self.query_one("#time-input", Input).border_title = ""
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         from ttyping.storage import load_config, save_config
