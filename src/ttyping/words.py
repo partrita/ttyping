@@ -27,6 +27,8 @@ KO_2SET: list[str] = _load_resource_words("ko_2set.txt")
 KO_3SET: list[str] = _load_resource_words("ko_3set.txt")
 EN_SENTENCES: list[str] = _load_resource_words("en_sentences.txt")
 KO_SENTENCES: list[str] = _load_resource_words("ko_sentences.txt")
+EN_LOREM_IPSUM: list[str] = _load_resource_words("en_lorem_ipsum.txt")
+KO_LOREM_IPSUM: list[str] = _load_resource_words("ko_lorem_ipsum.txt")
 
 
 # Practice character sets for different layouts
@@ -128,12 +130,21 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
             "ko_sentences": KO_SENTENCES,
         }
         source = sources.get(lang, EN_SENTENCES)
-        # Random sample of sentences to meet the target duration / count.
         if not source:
             source = ["No sentences found."]
-        # Pick sentences so that the total word count roughly matches `count`
-        # Because word splits might be different, let's just pick `count` sentences
-        # For typical use, random.choices works fine
+        words: list[str] = []
+        for s in random.choices(source, k=count):
+            words.extend(s.split())
+        return words
+
+    if lang.endswith("_lorem_ipsum"):
+        sources: dict[str, list[str]] = {
+            "en_lorem_ipsum": EN_LOREM_IPSUM,
+            "ko_lorem_ipsum": KO_LOREM_IPSUM,
+        }
+        source = sources.get(lang, EN_LOREM_IPSUM)
+        if not source:
+            source = ["No lorem ipsum found."]
         words: list[str] = []
         for s in random.choices(source, k=count):
             words.extend(s.split())
