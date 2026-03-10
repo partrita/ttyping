@@ -6,7 +6,7 @@ A minimal, monkeytype-inspired terminal typing test for English and Korean, buil
 
 ## ✨ Features
 
-- **Multi-language Support**: Practice English (QWERTY, Dvorak, Colemak) and Korean (2-set, 3-set).
+- **Multi-language Support**: Practice English (Qwerty, Dvorak, Colemak) and Korean (2-set, 3-set).
 - **Custom Content**: Type from internal word lists, sentences, or your own text files.
 - **Finger Practice**: Target specific finger groups to improve muscle memory.
 - **Accuracy Focused**: Optional target accuracy mode that restarts on mistakes.

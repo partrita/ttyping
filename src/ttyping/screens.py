@@ -552,7 +552,7 @@ class ResultScreen(Screen):
                 if self.session_attempts:
                     yield Static("session summary", classes="result-title")
                     table = DataTable(id="session-table")
-                    table.add_columns("Try", "Acc", "KPM", "Err")
+                    table.add_columns("Try", "Acc", "WPM", "Err")
                     for i, att in enumerate(self.session_attempts, 1):
                         table.add_row(
                             str(i),
@@ -721,6 +721,83 @@ class ConfirmDeleteScreen(Screen):
         self.app.pop_screen()
 
 
+# ── LineChart ──────────────────────────────────────────────────────────────
+
+
+class LineChart(Static):
+    """A simple line chart using braille characters."""
+
+    DEFAULT_CSS = """
+    LineChart {
+        width: 100%;
+        height: 1;
+        content-align: center middle;
+    }
+    """
+
+    def __init__(self, data: list[float], color: str, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.chart_data = data
+        self.chart_color = color
+
+    def on_resize(self, event: events.Resize) -> None:
+        self._update_chart(event.size.width)
+
+    def on_mount(self) -> None:
+        self._update_chart(self.size.width if self.size.width > 0 else 40)
+
+    def _update_chart(self, width: int) -> None:
+        if width <= 0 or not self.chart_data:
+            self.update("")
+            return
+
+        data = self.chart_data
+        if len(data) == 1:
+            data = [data[0], data[0]]
+
+        # Sample 2 * width points for braille (2 dots wide per char)
+        points = 2 * width
+        sampled = []
+        for i in range(points):
+            idx = (i / (points - 1)) * (len(data) - 1)
+            idx_int = int(idx)
+            rem = idx - idx_int
+            if idx_int + 1 < len(data):
+                val = data[idx_int] * (1 - rem) + data[idx_int + 1] * rem
+            else:
+                val = data[idx_int]
+            sampled.append(val)
+
+        min_v = min(sampled)
+        max_v = max(sampled)
+        extent = max_v - min_v if max_v > min_v else 1
+
+        # Braille dot values for 4 rows
+        # From bottom to top to match cartesian plane
+        left_dots = [0x40, 0x04, 0x02, 0x01]
+        right_dots = [0x80, 0x20, 0x10, 0x08]
+
+        res = []
+        for i in range(width):
+            l_val = sampled[i * 2]
+            r_val = sampled[i * 2 + 1]
+            l_row = int((l_val - min_v) / extent * 3.99)
+            r_row = int((r_val - min_v) / extent * 3.99)
+
+            char_val = 0x2800 | left_dots[l_row] | right_dots[r_row]
+
+            # Connect the dots with a vertical line to make it continuous
+            start = min(l_row, r_row)
+            end = max(l_row, r_row)
+            for row in range(start, end + 1):
+                char_val |= left_dots[row]
+                char_val |= right_dots[row]
+
+            res.append(chr(char_val))
+
+        self.update(Text("".join(res), style=self.chart_color))
+
+
 # ── HistoryScreen ──────────────────────────────────────────────────────────
 
 
@@ -769,10 +846,24 @@ class HistoryScreen(Screen):
         margin-bottom: 0;
     }
 
+    .chart-container {
+        width: 100%;
+        height: auto;
+        margin-top: 1;
+        padding: 0 4;
+    }
+
+    .chart-title {
+        width: 100%;
+        text-align: center;
+        text-style: dim;
+    }
+
     #history-table {
         width: 100%;
         height: auto;
         max-height: 18;
+        margin-top: 2;
     }
 
     .history-hint {
@@ -801,6 +892,16 @@ class HistoryScreen(Screen):
                         f"Tests: {n} · Avg WPM: {avg_wpm:.1f}",
                         id="history-stats",
                     )
+                    
+                    recent_results = results[-display_count:]
+                    with Vertical(classes="chart-container"):
+                        yield Static("wpm trend", classes="chart-title")
+                        yield LineChart([r.wpm for r in recent_results], color=COL_ACCENT)
+                    
+                    with Vertical(classes="chart-container"):
+                        yield Static("accuracy trend", classes="chart-title")
+                        yield LineChart([r.accuracy for r in recent_results], color=COL_TEXT)
+
                     yield self._create_history_table(results, self._row_to_storage_idx)
 
         yield Footer()

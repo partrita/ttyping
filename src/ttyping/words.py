@@ -34,13 +34,13 @@ KO_LOREM_IPSUM: list[str] = _load_resource_words("ko_lorem_ipsum.txt")
 # Practice character sets for different layouts
 PRACTICE_SETS: dict[str, dict[str, str]] = {
     "en_qwerty": {
-        "home_row": "asdfghjkl",
-        "top_row": "qwertyuiop",
-        "bottom_row": "zxcvbnm",
-        "number_row": "1234567890",
-        "symbol_row": "!@#$%^&*()",
+        "home_row": "asdfghjkl;:'\"",
+        "top_row": "qwertyuiop[]{}",
+        "bottom_row": "zxcvbnm,./<>?",
+        "number_row": "1234567890-=",
+        "symbol_row": "!@#$%^&*()_+",
         "left_hand": "qwertasdfgzxcvb",
-        "right_hand": "yuiophjklmn",
+        "right_hand": "yuiophjklmn:;'\"[]{},./?<>",
         "left_index": "rtfgvb45$%",
         "right_index": "yuhjnm67^&",
         "left_middle": "edc3#",
