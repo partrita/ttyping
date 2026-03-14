@@ -975,7 +975,6 @@ class HistoryScreen(Screen):
 # ── MenuScreen ─────────────────────────────────────────────────────────────
 
 
-
 class ActionSelectMixin:
     """Mixin to provide action_select for screens with an OptionList."""
 
@@ -1058,7 +1057,6 @@ class MenuScreen(ActionSelectMixin, Screen):
     def on_resume(self) -> None:
         pass  # no dynamic labels needed
 
-
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
         app = cast("TypingApp", self.app)
@@ -1119,7 +1117,6 @@ class ENSubMenu(ActionSelectMixin, Screen):
 
         yield Footer()
 
-
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
         app = cast("TypingApp", self.app)
@@ -1159,7 +1156,6 @@ class KOSubMenu(ActionSelectMixin, Screen):
                 )
 
         yield Footer()
-
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
@@ -1315,7 +1311,6 @@ class PracticeMenu(ActionSelectMixin, Screen):
 
         yield Footer()
 
-
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = str(event.option_id)
         app = cast("TypingApp", self.app)
@@ -1368,7 +1363,6 @@ class WordCountMenu(ActionSelectMixin, Screen):
 
         yield Footer()
 
-
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = str(event.option_id)
         app = cast("TypingApp", self.app)
@@ -1417,7 +1411,6 @@ class AccuracyMenu(ActionSelectMixin, Screen):
                 )
 
         yield Footer()
-
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         from ttyping.storage import load_config, save_config
@@ -1492,7 +1485,6 @@ class OptionsScreen(ActionSelectMixin, Screen):
         """Refresh labels when returning from a nested screen."""
         self.refresh(recompose=True)
 
-
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = str(event.option_id)
         app = cast("TypingApp", self.app)
@@ -1535,7 +1527,6 @@ class ThemeScreen(ActionSelectMixin, Screen):
                 )
 
         yield Footer()
-
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         from ttyping.storage import load_config, save_config
@@ -1759,7 +1750,6 @@ class WeaknessScreen(ActionSelectMixin, Screen):
         Binding(key="enter", action="select", description="Select"),
         Binding(key="escape", action="go_back", description="Back"),
     ]
-
 
     def compose(self) -> ComposeResult:
         from ttyping.words import (
