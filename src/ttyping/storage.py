@@ -66,24 +66,26 @@ def _ensure_storage() -> None:
     # Security: Ensure storage directory and file have restricted permissions
     # 0o700 for directory (rwx------)
     # 0o600 for file (rw-------)
-    # We use umask and atomic creation to prevent TOCTOU race conditions.
-    old_umask = os.umask(0o077)
-    try:
-        # Create directory with restricted permissions from the start
-        STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-        if (STORAGE_DIR.stat().st_mode & 0o777) != 0o700:
-            STORAGE_DIR.chmod(0o700)
-    finally:
-        os.umask(old_umask)
+    STORAGE_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if (STORAGE_DIR.stat().st_mode & 0o777) != 0o700:
+        STORAGE_DIR.chmod(0o700)
 
     for file_path, default_content in [
         (RESULTS_FILE, "[]"),
         (CONFIG_FILE, "{}"),
     ]:
         if not file_path.exists():
-            file_path.touch(mode=0o600)
-            file_path.write_text(default_content, encoding="utf-8")
-        elif (file_path.stat().st_mode & 0o777) != 0o600:
+            try:
+                # Use os.open to atomically create file with 0o600 permissions
+                fd = os.open(file_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    f.write(default_content)
+            except FileExistsError:
+                # File was created between the exists() check and os.open
+                pass
+
+        # Ensure permissions are correct even if file already existed
+        if (file_path.stat().st_mode & 0o777) != 0o600:
             file_path.chmod(0o600)
 
     _STORAGE_ENSURED = True
