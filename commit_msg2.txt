@@ -1,0 +1,6 @@
+🧹 [Code Health] Fix CI Ruff formatting
+
+🎯 **What:** Formatted the codebase using `uv run ruff format src/` to resolve the CI linting failure on `src/ttyping/screens.py`.
+💡 **Why:** CI strictly enforces Ruff formatting checks. Applying these changes resolves the build failure.
+✅ **Verification:** Verified by locally running `uv run ruff format --check src/` and `uv run ruff check src/`. Both checks pass successfully.
+✨ **Result:** A consistent and properly formatted codebase matching the repository's code style rules, allowing CI checks to succeed.
