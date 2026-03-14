@@ -975,7 +975,20 @@ class HistoryScreen(Screen):
 # ── MenuScreen ─────────────────────────────────────────────────────────────
 
 
-class MenuScreen(Screen):
+
+class ActionSelectMixin:
+    """Mixin to provide action_select for screens with an OptionList."""
+
+    def action_select(self) -> None:
+        """Trigger selection on the OptionList."""
+        try:
+            ol = self.query_one("#menu-options", OptionList)  # type: ignore[attr-defined]
+            ol.action_select()
+        except Exception:
+            pass
+
+
+class MenuScreen(ActionSelectMixin, Screen):
     """Initial menu to select test parameters."""
 
     DEFAULT_CSS = """
@@ -1045,13 +1058,6 @@ class MenuScreen(Screen):
     def on_resume(self) -> None:
         pass  # no dynamic labels needed
 
-    def action_select(self) -> None:
-        """Trigger selection on the OptionList."""
-        try:
-            ol = self.query_one("#menu-options", OptionList)
-            ol.action_select()
-        except Exception:
-            pass
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
@@ -1089,7 +1095,7 @@ class MenuScreen(Screen):
         self.app.exit()
 
 
-class ENSubMenu(Screen):
+class ENSubMenu(ActionSelectMixin, Screen):
     """Submenu for English layout selection."""
 
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
@@ -1113,13 +1119,6 @@ class ENSubMenu(Screen):
 
         yield Footer()
 
-    def action_select(self) -> None:
-        """Trigger selection on the OptionList."""
-        try:
-            ol = self.query_one("#menu-options", OptionList)
-            ol.action_select()
-        except (KeyError, Exception):
-            pass
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
@@ -1138,7 +1137,7 @@ class ENSubMenu(Screen):
         self.app.pop_screen()
 
 
-class KOSubMenu(Screen):
+class KOSubMenu(ActionSelectMixin, Screen):
     """Submenu for Korean layout selection."""
 
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
@@ -1161,13 +1160,6 @@ class KOSubMenu(Screen):
 
         yield Footer()
 
-    def action_select(self) -> None:
-        """Trigger selection on the OptionList."""
-        try:
-            ol = self.query_one("#menu-options", OptionList)
-            ol.action_select()
-        except (KeyError, Exception):
-            pass
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
@@ -1184,7 +1176,7 @@ class KOSubMenu(Screen):
         self.app.pop_screen()
 
 
-class PracticeMenu(Screen):
+class PracticeMenu(ActionSelectMixin, Screen):
     """Menu for selecting specific practice sets (hands, rows, etc.)."""
 
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
@@ -1323,13 +1315,6 @@ class PracticeMenu(Screen):
 
         yield Footer()
 
-    def action_select(self) -> None:
-        """Trigger selection on the OptionList."""
-        try:
-            ol = self.query_one("#menu-options", OptionList)
-            ol.action_select()
-        except (KeyError, Exception):
-            pass
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = str(event.option_id)
@@ -1356,7 +1341,7 @@ class PracticeMenu(Screen):
         self.app.pop_screen()
 
 
-class WordCountMenu(Screen):
+class WordCountMenu(ActionSelectMixin, Screen):
     """Fallback menu for layouts without specific practice sets."""
 
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
@@ -1383,13 +1368,6 @@ class WordCountMenu(Screen):
 
         yield Footer()
 
-    def action_select(self) -> None:
-        """Trigger selection on the OptionList."""
-        try:
-            ol = self.query_one("#menu-options", OptionList)
-            ol.action_select()
-        except (KeyError, Exception):
-            pass
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = str(event.option_id)
@@ -1408,7 +1386,7 @@ class WordCountMenu(Screen):
             self.app.pop_screen()
 
 
-class AccuracyMenu(Screen):
+class AccuracyMenu(ActionSelectMixin, Screen):
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
     BINDINGS = [
         Binding(key="enter", action="select", description="Select"),
@@ -1440,13 +1418,6 @@ class AccuracyMenu(Screen):
 
         yield Footer()
 
-    def action_select(self) -> None:
-        """Trigger selection on the OptionList."""
-        try:
-            ol = self.query_one("#menu-options", OptionList)
-            ol.action_select()
-        except (KeyError, Exception):
-            pass
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         from ttyping.storage import load_config, save_config
@@ -1482,7 +1453,7 @@ class AccuracyMenu(Screen):
         self.app.pop_screen()
 
 
-class OptionsScreen(Screen):
+class OptionsScreen(ActionSelectMixin, Screen):
     """Options submenu: Words, Time, Accuracy, Theme, About."""
 
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
@@ -1521,13 +1492,6 @@ class OptionsScreen(Screen):
         """Refresh labels when returning from a nested screen."""
         self.refresh(recompose=True)
 
-    def action_select(self) -> None:
-        """Trigger selection on the OptionList."""
-        try:
-            ol = self.query_one("#menu-options", OptionList)
-            ol.action_select()
-        except (KeyError, Exception):
-            pass
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = str(event.option_id)
@@ -1547,7 +1511,7 @@ class OptionsScreen(Screen):
         self.app.pop_screen()
 
 
-class ThemeScreen(Screen):
+class ThemeScreen(ActionSelectMixin, Screen):
     """Select dark or light theme."""
 
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
@@ -1572,13 +1536,6 @@ class ThemeScreen(Screen):
 
         yield Footer()
 
-    def action_select(self) -> None:
-        """Trigger selection on the OptionList."""
-        try:
-            ol = self.query_one("#menu-options", OptionList)
-            ol.action_select()
-        except (KeyError, Exception):
-            pass
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         from ttyping.storage import load_config, save_config
@@ -1750,7 +1707,7 @@ class TimeLimitInputScreen(Screen):
         self.app.pop_screen()
 
 
-class WeaknessScreen(Screen):
+class WeaknessScreen(ActionSelectMixin, Screen):
     """Weak Key Analysis — aggregated error stats with targeted drill."""
 
     DEFAULT_CSS = """
@@ -1803,13 +1760,6 @@ class WeaknessScreen(Screen):
         Binding(key="escape", action="go_back", description="Back"),
     ]
 
-    def action_select(self) -> None:
-        """Trigger selection on the OptionList."""
-        try:
-            ol = self.query_one("#weakness-options", OptionList)
-            ol.action_select()
-        except (KeyError, Exception):
-            pass
 
     def compose(self) -> ComposeResult:
         from ttyping.words import (
@@ -1867,7 +1817,7 @@ class WeaknessScreen(Screen):
                             )
                     options.append(Option("← Back", id="back"))
 
-                    yield OptionList(*options, id="weakness-options")
+                    yield OptionList(*options, id="menu-options")
 
                     # Finger breakdown table
                     yield Static("▸ Errors by Finger", classes="weakness-section")
