@@ -109,6 +109,7 @@ class TypingScreen(Screen):
         self.errors: Counter[str] = Counter()  # Tracks characters missed
         self._cached_lines: list[list[int]] | None = None
         self._last_container_width: int = 0
+        self._stats_widget: Static | None = None
 
     def compose(self) -> ComposeResult:
         with Center():
@@ -120,6 +121,7 @@ class TypingScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
+        self._stats_widget = self.query_one("#stats", Static)
         self._render_display()
         self.query_one("#input-area", Input).focus()
 
@@ -404,7 +406,8 @@ class TypingScreen(Screen):
 
     def _update_stats(self) -> None:
         if self.start_time is None:
-            self.query_one("#stats", Static).update("")
+            if self._stats_widget is not None:
+                self._stats_widget.update("")
             return
 
         elapsed = time.time() - self.start_time
@@ -435,7 +438,8 @@ class TypingScreen(Screen):
         else:
             t.append(f"{elapsed:.0f}s", style=f"bold {COL_ACCENT}")
 
-        self.query_one("#stats", Static).update(t)
+        if self._stats_widget is not None:
+            self._stats_widget.update(t)
 
     def _tick_stats(self) -> None:
         """Called by timer to keep stats ticking even when not typing."""
