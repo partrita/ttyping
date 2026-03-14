@@ -76,3 +76,30 @@ def test_get_practice_drill_ko_3set() -> None:
     # Home row 3-set: ㅁㄴㅇㄹㅅㅗㅓㅏㅣ
     # We use a loose check because of decomposition
     assert True  # Basic check that it doesn't crash
+
+def test_get_jamos() -> None:
+    from ttyping.words import _get_jamos
+
+    # Normal Hangul characters
+    assert _get_jamos("한") == "ㅎㅏㄴ"
+    assert _get_jamos("글") == "ㄱㅡㄹ"
+    assert _get_jamos("안녕") == "ㅇㅏㄴㄴㅕㅇ"
+
+    # English letters
+    assert _get_jamos("a") == "a"
+    assert _get_jamos("Z") == "Z"
+    assert _get_jamos("Hello") == "Hello"
+
+    # Symbols and punctuation
+    assert _get_jamos("!") == "!"
+    assert _get_jamos(" ") == " "
+    assert _get_jamos("...") == "..."
+
+    # Empty string
+    assert _get_jamos("") == ""
+
+    # Already decomposed jamos
+    assert _get_jamos("ㅎㅏㄴ") == "ㅎㅏㄴ"
+
+    # Mixed characters
+    assert _get_jamos("한글 Hello!") == "ㅎㅏㄴㄱㅡㄹ Hello!"
