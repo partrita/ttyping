@@ -29,6 +29,9 @@ EN_SENTENCES: list[str] = _load_resource_words("en_sentences.txt")
 KO_SENTENCES: list[str] = _load_resource_words("ko_sentences.txt")
 EN_LOREM_IPSUM: list[str] = _load_resource_words("en_lorem_ipsum.txt")
 KO_LOREM_IPSUM: list[str] = _load_resource_words("ko_lorem_ipsum.txt")
+PY_WORDS: list[str] = _load_resource_words("python.txt")
+RS_WORDS: list[str] = _load_resource_words("rust.txt")
+R_WORDS: list[str] = _load_resource_words("r.txt")
 
 
 # Practice character sets for different layouts
@@ -158,6 +161,9 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
         "ko": KO_2SET,
         "ko_2set": KO_2SET,
         "ko_3set": KO_3SET,
+        "python": PY_WORDS,
+        "rust": RS_WORDS,
+        "r": R_WORDS,
     }
 
     # Handle practice sets (format: layout:set_name)

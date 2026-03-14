@@ -240,7 +240,7 @@ class TypingScreen(Screen):
                     msg,
                     title="Too Low!",
                     severity="warning",
-                    timeout=3,
+                    timeout=1.5,
                 )
 
                 result = TypingResult(
@@ -256,7 +256,7 @@ class TypingScreen(Screen):
                 )
 
                 self.set_timer(
-                    1.0,
+                    0.5,
                     lambda: cast("TypingApp", self.app).reset_session_attempt(result),
                 )
                 return
@@ -1033,6 +1033,9 @@ class MenuScreen(ActionSelectMixin, Screen):
         Binding(key="w", action="select_weak", description="Weak Analysis", show=False),
         Binding(key="h", action="select_history", description="History", show=False),
         Binding(key="o", action="select_options", description="Options", show=False),
+        Binding(
+            key="p", action="select_programming", description="Programming", show=False
+        ),
         Binding(key="escape", action="quit_app", description="Quit"),
         # Korean IME support (2-set)
         Binding(key="ㄷ", action="select_en", show=False),
@@ -1040,6 +1043,7 @@ class MenuScreen(ActionSelectMixin, Screen):
         Binding(key="ㅈ", action="select_weak", show=False),
         Binding(key="ㅗ", action="select_history", show=False),
         Binding(key="ㅐ", action="select_options", show=False),
+        Binding(key="ㅔ", action="select_programming", show=False),
     ]
 
     def compose(self) -> ComposeResult:
@@ -1052,11 +1056,19 @@ class MenuScreen(ActionSelectMixin, Screen):
                         id="en",
                     ),
                     Option(
-                        Text.from_markup("[dim]\\[k][/dim]   Korean typing(한글)"),
+                        Text.from_markup("[dim]\\[k][/dim]   Korean typing(한국어)"),
                         id="ko",
                     ),
                     Option(
-                        Text.from_markup("[dim]\\[w][/dim]   Weak Analysis(약점 분석)"),
+                        Text.from_markup(
+                            "[dim]\\[p][/dim]   Programming typing(프로그래밍 언어)"
+                        ),
+                        id="programming",
+                    ),
+                    Option(
+                        Text.from_markup(
+                            "[dim]\\[w][/dim]   Weak word typing(약점 단어 연습)"
+                        ),
                         id="weakness",
                     ),
                     Option(
@@ -1095,12 +1107,17 @@ class MenuScreen(ActionSelectMixin, Screen):
             app.push_screen(ENSubMenu())
         elif opt_id == "ko":
             app.push_screen(KOSubMenu())
+        elif opt_id == "programming":
+            app.push_screen(ProgrammingSubMenu())
 
     def action_select_en(self) -> None:
         self.app.push_screen(ENSubMenu())
 
     def action_select_ko(self) -> None:
         self.app.push_screen(KOSubMenu())
+
+    def action_select_programming(self) -> None:
+        self.app.push_screen(ProgrammingSubMenu())
 
     def action_select_weak(self) -> None:
         self.app.push_screen(WeaknessScreen())
@@ -1113,6 +1130,40 @@ class MenuScreen(ActionSelectMixin, Screen):
 
     def action_quit_app(self) -> None:
         self.app.exit()
+
+
+class ProgrammingSubMenu(ActionSelectMixin, Screen):
+    """Submenu for Programming language selection."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+
+    BINDINGS = [
+        Binding(key="enter", action="select", description="Select"),
+        Binding(key="escape", action="go_back", description="Back"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static("Programming Typing", id="menu-title")
+                yield OptionList(
+                    Option("Python", id="python"),
+                    Option("Rust", id="rust"),
+                    Option("R", id="r"),
+                    Option("Back", id="back"),
+                    id="menu-options",
+                )
+
+        yield Footer()
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        opt_id = event.option_id
+        app = cast("TypingApp", self.app)
+
+        if opt_id == "back":
+            app.pop_screen()
+        elif opt_id in ("python", "rust", "r"):
+            app.start_custom_test(opt_id, app._word_count, app._duration)
 
 
 class ENSubMenu(ActionSelectMixin, Screen):

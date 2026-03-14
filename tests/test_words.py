@@ -80,8 +80,6 @@ def test_get_practice_drill_ko_3set() -> None:
 
 
 def test_load_resource_words_exception() -> None:
-    with patch(
-        "ttyping.words.resources.files", side_effect=Exception("Mock error")
-    ):
+    with patch("ttyping.words.resources.files", side_effect=Exception("Mock error")):
         words = _load_resource_words("dummy.txt")
         assert words == []

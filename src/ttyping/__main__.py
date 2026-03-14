@@ -12,7 +12,17 @@ def main() -> None:
     )
     parser.add_argument(
         "--lang",
-        choices=["en_qwerty", "en_dvorak", "ko_2set", "ko_3set", "en", "ko"],
+        choices=[
+            "en_qwerty",
+            "en_dvorak",
+            "ko_2set",
+            "ko_3set",
+            "en",
+            "ko",
+            "python",
+            "rust",
+            "r",
+        ],
         help="language for random words",
     )
     parser.add_argument(

@@ -7,7 +7,6 @@ A minimal, monkeytype-inspired terminal typing test for English and Korean, buil
 ## ✨ Features
 
 - **Multi-language Support**: Practice English (Qwerty, Dvorak, Colemak) and Korean (2-set, 3-set).
-- **Custom Content**: Type from internal word lists, sentences, or your own text files.
 - **Finger Practice**: Target specific finger groups to improve muscle memory.
 - **Accuracy Focused**: Optional target accuracy mode that restarts on mistakes.
 - **Local History**: Keep track of your speed (WPM) and accuracy over time.
@@ -20,29 +19,13 @@ Install using `uv` (recommended):
 uv tool install ttyping
 ```
 
-Or with `pip`:
-
-```bash
-pip install ttyping
-```
-
 ## 🎮 Usage
 
 Run the app without arguments to start English practice:
 
 ```bash
-ttyping
+uvx ttyping
 ```
-
-### CLI Options
-
-| Argument | shorthand | Description |
-|----------|-----------|-------------|
-| `--file [path]` | | Practice using a custom text file |
-| `--words [n]` | | Set number of words (max 1000) |
-| `--time [s]` | `-t` | Set test duration in seconds (overrides words) |
-| `--target-accuracy [n]` | `-a` | Set target (0-100); restarts on drop below |
-| `history` | | View past results directly |
 
 ## ⌨️ Keybindings
 
