@@ -1031,12 +1031,30 @@ class MenuScreen(Screen):
             with Vertical(id="menu-container"):
                 yield Static("ttyping", id="menu-title")
                 yield OptionList(
-                    Option("English typing(영어)", id="en"),
-                    Option("Korean typing(한글)", id="ko"),
-                    Option("Weak Analysis(약점 분석)", id="weakness"),
-                    Option("View History(기록 보기)", id="history"),
-                    Option("Options", id="options"),
-                    Option("Quit", id="quit"),
+                    Option(
+                        Text.from_markup("[dim]\\[e][/dim]   English typing(영어)"),
+                        id="en",
+                    ),
+                    Option(
+                        Text.from_markup("[dim]\\[k][/dim]   Korean typing(한글)"),
+                        id="ko",
+                    ),
+                    Option(
+                        Text.from_markup("[dim]\\[w][/dim]   Weak Analysis(약점 분석)"),
+                        id="weakness",
+                    ),
+                    Option(
+                        Text.from_markup("[dim]\\[h][/dim]   View History(기록 보기)"),
+                        id="history",
+                    ),
+                    Option(
+                        Text.from_markup("[dim]\\[o][/dim]   Options"),
+                        id="options",
+                    ),
+                    Option(
+                        Text.from_markup("[dim]\\[esc][/dim] Quit"),
+                        id="quit",
+                    ),
                     id="menu-options",
                 )
 
