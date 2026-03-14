@@ -50,7 +50,7 @@ def main() -> None:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["history", "serve"],
+        choices=["history"],
         help="subcommand (history: view past results)",
     )
 
@@ -61,22 +61,6 @@ def main() -> None:
         args.words = 1000
 
     from ttyping.app import TypingApp
-
-    if args.command == "serve":
-        import asyncio
-
-        from ttyping.server import start_server
-
-        try:
-            asyncio.run(start_server())
-        except KeyboardInterrupt:
-            pass
-        except Exception as e:
-            import sys
-
-            print(f"Sentinel: Server error encountered: {e}", file=sys.stderr)
-            sys.exit(1)
-        return
 
     try:
         app = TypingApp(

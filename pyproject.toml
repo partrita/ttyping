@@ -16,7 +16,6 @@ classifiers = [
 ]
 dependencies = [
     "textual>=0.63.0",
-    "asyncssh",
 ]
 
 [project.scripts]
