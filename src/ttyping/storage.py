@@ -118,7 +118,10 @@ def load_results() -> list[TypingResult]:
 def clear_results() -> None:
     """Delete all stored typing results."""
     _ensure_storage()
-    RESULTS_FILE.write_text("[]", encoding="utf-8")
+    try:
+        RESULTS_FILE.write_text("[]", encoding="utf-8")
+    except OSError:
+        pass
 
 
 def delete_result_by_index(index: int) -> None:
