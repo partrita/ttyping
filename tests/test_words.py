@@ -1,8 +1,9 @@
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
-from ttyping.words import get_words, words_from_file
+from ttyping.words import _load_resource_words, get_words, words_from_file
 
 
 def test_get_words_en() -> None:
@@ -76,3 +77,11 @@ def test_get_practice_drill_ko_3set() -> None:
     # Home row 3-set: ㅁㄴㅇㄹㅅㅗㅓㅏㅣ
     # We use a loose check because of decomposition
     assert True  # Basic check that it doesn't crash
+
+
+def test_load_resource_words_exception() -> None:
+    with patch(
+        "ttyping.words.resources.files", side_effect=Exception("Mock error")
+    ):
+        words = _load_resource_words("dummy.txt")
+        assert words == []
