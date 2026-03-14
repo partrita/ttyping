@@ -4,7 +4,6 @@ import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from ttyping.server import TtypingSSHServer, TtypingSSHSession, start_server
 
 

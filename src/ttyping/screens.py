@@ -1056,7 +1056,7 @@ class MenuScreen(ActionSelectMixin, Screen):
                         id="en",
                     ),
                     Option(
-                        Text.from_markup("[dim]\\[k][/dim]   Korean typing(한국어)"),
+                        Text.from_markup("[dim]\\[k][/dim]   Korean typing(한국어)w"),
                         id="ko",
                     ),
                     Option(
