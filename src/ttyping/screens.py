@@ -735,7 +735,12 @@ class LineChart(Static):
     }
     """
 
-    def __init__(self, data: list[float], color: str, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        data: list[float],
+        color: str,
+        **kwargs: Any,  # noqa: ANN401
+    ) -> None:
         super().__init__(**kwargs)
         self.chart_data = data
         self.chart_color = color
@@ -892,15 +897,21 @@ class HistoryScreen(Screen):
                         f"Tests: {n} · Avg WPM: {avg_wpm:.1f}",
                         id="history-stats",
                     )
-                    
+
                     recent_results = results[-display_count:]
                     with Vertical(classes="chart-container"):
                         yield Static("wpm trend", classes="chart-title")
-                        yield LineChart([r.wpm for r in recent_results], color=COL_ACCENT)
-                    
+                        yield LineChart(
+                            [r.wpm for r in recent_results],
+                            color=COL_ACCENT,
+                        )
+
                     with Vertical(classes="chart-container"):
                         yield Static("accuracy trend", classes="chart-title")
-                        yield LineChart([r.accuracy for r in recent_results], color=COL_TEXT)
+                        yield LineChart(
+                            [r.accuracy for r in recent_results],
+                            color=COL_TEXT,
+                        )
 
                     yield self._create_history_table(results, self._row_to_storage_idx)
 
