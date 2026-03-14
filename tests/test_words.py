@@ -76,3 +76,8 @@ def test_get_practice_drill_ko_3set() -> None:
     # Home row 3-set: ㅁㄴㅇㄹㅅㅗㅓㅏㅣ
     # We use a loose check because of decomposition
     assert True  # Basic check that it doesn't crash
+
+def test_words_from_file_path_traversal() -> None:
+    # Attempting to read a file with path traversal
+    with pytest.raises(ValueError, match="Path traversal denied"):
+        words_from_file("../../../etc/passwd")

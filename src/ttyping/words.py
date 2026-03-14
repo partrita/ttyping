@@ -315,6 +315,11 @@ def _get_jamos(char: str) -> str:
 def words_from_file(path: str, count: int = 25) -> list[str]:
     """Read words from a file and return up to `count` words."""
     p = Path(path)
+
+    # Security: Prevent path traversal
+    if ".." in p.parts:
+        raise ValueError(f"Path traversal denied: '{path}' contains '..'")
+
     if not p.is_file():
         raise ValueError(f"'{path}' is not a regular file")
 
