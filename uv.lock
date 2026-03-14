@@ -411,7 +411,7 @@ wheels = [
 
 [[package]]
 name = "ttyping"
-version = "0.1.2"
+version = "1.0.3"
 source = { editable = "." }
 dependencies = [
     { name = "asyncssh" },

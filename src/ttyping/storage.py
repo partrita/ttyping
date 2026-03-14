@@ -15,6 +15,7 @@ CONFIG_FILE = STORAGE_DIR / "config.json"
 
 _STORAGE_ENSURED: bool = False
 _CONFIG_CACHE: dict[str, Any] | None = None
+_RESULTS_CACHE: list[TypingResult] | None = None
 
 
 @dataclass
@@ -90,6 +91,7 @@ def _ensure_storage() -> None:
 
 def save_result(result: TypingResult) -> None:
     """Append a result to the local storage."""
+    global _RESULTS_CACHE
     _ensure_storage()
     results = load_results()
     if not result.date:
@@ -104,28 +106,40 @@ def save_result(result: TypingResult) -> None:
 
 def load_results() -> list[TypingResult]:
     """Load all results from local storage."""
+    global _RESULTS_CACHE
+    if _RESULTS_CACHE is not None:
+        return _RESULTS_CACHE
+
     _ensure_storage()
     try:
         text = RESULTS_FILE.read_text(encoding="utf-8")
         data = json.loads(text)
         if not isinstance(data, list):
-            return []
-        return [TypingResult.from_dict(r) for r in data if isinstance(r, dict)]
+            _RESULTS_CACHE = []
+            return _RESULTS_CACHE
+        _RESULTS_CACHE = [
+            TypingResult.from_dict(r) for r in data if isinstance(r, dict)
+        ]
+        return _RESULTS_CACHE
     except (json.JSONDecodeError, FileNotFoundError):
-        return []
+        _RESULTS_CACHE = []
+        return _RESULTS_CACHE
 
 
 def clear_results() -> None:
     """Delete all stored typing results."""
+    global _RESULTS_CACHE
     _ensure_storage()
     try:
         RESULTS_FILE.write_text("[]", encoding="utf-8")
+        _RESULTS_CACHE = []
     except OSError:
         pass
 
 
 def delete_result_by_index(index: int) -> None:
     """Delete a single result entry by its index in the stored list."""
+    global _RESULTS_CACHE
     results = load_results()
     if 0 <= index < len(results):
         results.pop(index)
@@ -133,6 +147,7 @@ def delete_result_by_index(index: int) -> None:
         RESULTS_FILE.write_text(
             json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
         )
+        _RESULTS_CACHE = results
 
 
 def save_config(config: dict[str, Any]) -> None:

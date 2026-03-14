@@ -16,6 +16,7 @@ def mock_storage(tmp_path: Path) -> Generator[tuple[Path, Path, Path], None, Non
     config_file = storage_dir / "config.json"
     # Reset the ensured flag so each test actually runs _ensure_storage
     storage._STORAGE_ENSURED = False
+    storage._RESULTS_CACHE = None
     with (
         patch("ttyping.storage.STORAGE_DIR", storage_dir),
         patch("ttyping.storage.RESULTS_FILE", results_file),
@@ -186,6 +187,7 @@ def test_load_results(mock_storage: tuple[Path, Path, Path]) -> None:
     results_file.parent.mkdir(parents=True, exist_ok=True)
     data = [{"wpm": 70, "date": "2023-01-01T00:00:00Z"}]
     results_file.write_text(json.dumps(data))
+    storage._RESULTS_CACHE = None
 
     loaded = storage.load_results()
     assert len(loaded) == 1
@@ -231,6 +233,7 @@ def test_load_error_stats_aggregates(
         {"top_char_errors": []},
     ]
     results_file.write_text(json.dumps(data))
+    storage._RESULTS_CACHE = None
 
     stats = storage.load_error_stats()
     assert stats["a"] == 5
@@ -268,6 +271,7 @@ def test_delete_result_by_index(mock_storage: tuple[Path, Path, Path]) -> None:
     results_file.parent.mkdir(parents=True, exist_ok=True)
     data = [{"wpm": 60}, {"wpm": 70}, {"wpm": 80}]
     results_file.write_text(json.dumps(data))
+    storage._RESULTS_CACHE = None
 
     # Delete middle item
     storage.delete_result_by_index(1)
@@ -285,6 +289,7 @@ def test_delete_result_by_index_out_of_bounds(
     results_file.parent.mkdir(parents=True, exist_ok=True)
     data = [{"wpm": 60}]
     results_file.write_text(json.dumps(data))
+    storage._RESULTS_CACHE = None
 
     # Try deleting out of bounds
     storage.delete_result_by_index(5)
