@@ -238,6 +238,63 @@ def test_load_error_stats_aggregates(
     assert stats["d"] == 4
 
 
+def test_clear_results(mock_storage: tuple[Path, Path, Path]) -> None:
+    _, results_file, _ = mock_storage
+    results_file.parent.mkdir(parents=True, exist_ok=True)
+    results_file.write_text('[{"wpm": 60}]')
+
+    storage.clear_results()
+    assert results_file.read_text() == "[]"
+
+
+def test_clear_results_oserror(mock_storage: tuple[Path, Path, Path]) -> None:
+    _, results_file, _ = mock_storage
+    results_file.parent.mkdir(parents=True, exist_ok=True)
+    results_file.write_text('[{"wpm": 60}]')
+
+    # Ensure storage is initialized so it doesn't call write_text in _ensure_storage
+    storage._ensure_storage()
+
+    with patch.object(Path, "write_text", side_effect=OSError("Disk full")):
+        # Should not raise exception
+        storage.clear_results()
+
+    # Content should remain if write failed
+    assert results_file.read_text() == '[{"wpm": 60}]'
+
+
+def test_delete_result_by_index(mock_storage: tuple[Path, Path, Path]) -> None:
+    _, results_file, _ = mock_storage
+    results_file.parent.mkdir(parents=True, exist_ok=True)
+    data = [{"wpm": 60}, {"wpm": 70}, {"wpm": 80}]
+    results_file.write_text(json.dumps(data))
+
+    # Delete middle item
+    storage.delete_result_by_index(1)
+
+    updated_data = json.loads(results_file.read_text())
+    assert len(updated_data) == 2
+    assert updated_data[0]["wpm"] == 60
+    assert updated_data[1]["wpm"] == 80
+
+
+def test_delete_result_by_index_out_of_bounds(
+    mock_storage: tuple[Path, Path, Path],
+) -> None:
+    _, results_file, _ = mock_storage
+    results_file.parent.mkdir(parents=True, exist_ok=True)
+    data = [{"wpm": 60}]
+    results_file.write_text(json.dumps(data))
+
+    # Try deleting out of bounds
+    storage.delete_result_by_index(5)
+    storage.delete_result_by_index(-1)
+
+    updated_data = json.loads(results_file.read_text())
+    assert len(updated_data) == 1
+    assert updated_data[0]["wpm"] == 60
+
+
 def test_chars_to_finger_en_qwerty() -> None:
     """chars_to_finger maps keys to correct fingers for QWERTY."""
     from ttyping.words import chars_to_finger
