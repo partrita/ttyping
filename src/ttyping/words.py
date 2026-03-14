@@ -195,17 +195,19 @@ def get_practice_drill(
     elif layout == "ko_3set":
         all_words = KO_3SET
 
-    def is_match(word: str, char_set: str) -> bool:
+    fast_chars = set(chars)
+
+    def is_match(word: str) -> bool:
         if layout.startswith("en"):
-            return all(c.lower() in char_set for c in word)
+            return all(c.lower() in fast_chars for c in word)
         else:
             # Korean decomposition check
             for char in word:
-                if any(k not in char_set for k in _get_jamos(char)):
+                if any(k not in fast_chars for k in _get_jamos(char)):
                     return False
             return True
 
-    filtered = [w for w in all_words if is_match(w, chars)]
+    filtered = [w for w in all_words if is_match(w)]
 
     # If we have enough real words, use them
     if len(filtered) >= count // 2 and len(filtered) > 5:
@@ -451,11 +453,13 @@ def get_weak_drill(layout: str, weak_chars: str, count: int = 25) -> list[str]:
 
     is_english = layout.startswith("en")
 
+    fast_weak_chars = set(weak_chars)
+
     def has_weak_char(word: str) -> bool:
         if is_english:
-            return any(c.lower() in weak_chars for c in word)
+            return any(c.lower() in fast_weak_chars for c in word)
         for char in word:
-            if any(k in weak_chars for k in _get_jamos(char)):
+            if any(k in fast_weak_chars for k in _get_jamos(char)):
                 return True
         return False
 

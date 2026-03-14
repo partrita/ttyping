@@ -1,0 +1,6 @@
+🧹 [Code Health] Extract action_select to ActionSelectMixin
+
+🎯 **What:** Removed the duplicated `action_select` method from 9 `Screen` classes (`MenuScreen`, `ENSubMenu`, `KOSubMenu`, `PracticeMenu`, `WordCountMenu`, `AccuracyMenu`, `OptionsScreen`, `ThemeScreen`, `WeaknessScreen`) by creating and inheriting an `ActionSelectMixin`. Updated the `OptionList` ID in `WeaknessScreen` to `#menu-options` for compatibility.
+💡 **Why:** Reduces duplicate boilerplate code across screens, centralizing the option selection logic, which makes maintaining these screen classes easier.
+✅ **Verification:** Ran `uv run pytest` to ensure tests continue to pass and `uv run ruff check src/` to verify linting rules are upheld.
+✨ **Result:** Improved maintainability by reducing redundant class methods without changing behavioral logic.
