@@ -6,3 +6,16 @@
 **What**: Cached `#stats` Static widget (`self._stats_widget`) on `TypingScreen.on_mount` instead of calling `self.query_one("#stats", Static)` directly on every invocation of `_update_stats`.
 **Why**: `_update_stats` is called very frequently (both via a fast 0.5s timer and repeatedly on every keystroke/completion). The Textual `query_one` method searches the DOM, adding overhead. Storing the reference locally allows bypassing this DOM traversal completely.
 **Measured Improvement**: Baseline `_update_stats` benchmark processed 1k calls in ~0.0136s. Using a cached widget processed 1k calls in ~0.0122s, a roughly 1.11x speedup. While small in absolute terms per call, this is a hot path for key interactions, saving CPU cycles and garbage collection overhead during tight loops.
+
+### Mocking module imports
+
+When mocking imports, it's important to understand how they were imported in the source file. If a file `src/my_module/utils.py` does:
+
+```python
+from importlib import resources
+
+def load_file():
+    resources.files("my_module.data")
+```
+
+The correct target to patch is `"my_module.utils.resources.files"` not `"my_module.utils.files"`. Patching `"importlib.resources.files"` also wouldn't affect the specific `resources.files` reference initialized within the scope of the file executing.

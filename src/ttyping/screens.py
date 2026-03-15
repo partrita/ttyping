@@ -1017,11 +1017,12 @@ class MenuScreen(ActionSelectMixin, Screen):
         border: none;
         height: auto;
         max-height: 15;
+        text-align: center;
     }
 
     .about-text {
         width: 100%;
-        text-align: left;
+        text-align: center;
         padding: 0 1;
     }
     """
@@ -1033,9 +1034,7 @@ class MenuScreen(ActionSelectMixin, Screen):
         Binding(key="w", action="select_weak", description="Weak Analysis", show=False),
         Binding(key="h", action="select_history", description="History", show=False),
         Binding(key="o", action="select_options", description="Options", show=False),
-        Binding(
-            key="p", action="select_programming", description="Programming", show=False
-        ),
+        Binding(key="p", action="select_code", description="Code", show=False),
         Binding(key="escape", action="quit_app", description="Quit"),
         # Korean IME support (2-set)
         Binding(key="ㄷ", action="select_en", show=False),
@@ -1043,7 +1042,7 @@ class MenuScreen(ActionSelectMixin, Screen):
         Binding(key="ㅈ", action="select_weak", show=False),
         Binding(key="ㅗ", action="select_history", show=False),
         Binding(key="ㅐ", action="select_options", show=False),
-        Binding(key="ㅔ", action="select_programming", show=False),
+        Binding(key="ㅔ", action="select_code", show=False),
     ]
 
     def compose(self) -> ComposeResult:
@@ -1052,35 +1051,31 @@ class MenuScreen(ActionSelectMixin, Screen):
                 yield Static("ttyping", id="menu-title")
                 yield OptionList(
                     Option(
-                        Text.from_markup("[dim]\\[e][/dim]   English typing(영어)"),
+                        Text.from_markup("English(영어)"),
                         id="en",
                     ),
                     Option(
-                        Text.from_markup("[dim]\\[k][/dim]   Korean typing(한국어)w"),
+                        Text.from_markup("Korean(한국어)"),
                         id="ko",
                     ),
                     Option(
-                        Text.from_markup(
-                            "[dim]\\[p][/dim]   Programming typing(프로그래밍 언어)"
-                        ),
-                        id="programming",
+                        Text.from_markup("Code(코드)"),
+                        id="code",
                     ),
                     Option(
-                        Text.from_markup(
-                            "[dim]\\[w][/dim]   Weak word typing(약점 단어 연습)"
-                        ),
+                        Text.from_markup("Weak word(약점 단어 연습)"),
                         id="weakness",
                     ),
                     Option(
-                        Text.from_markup("[dim]\\[h][/dim]   View History(기록 보기)"),
+                        Text.from_markup("View History(기록 보기)"),
                         id="history",
                     ),
                     Option(
-                        Text.from_markup("[dim]\\[o][/dim]   Options"),
+                        Text.from_markup("Options"),
                         id="options",
                     ),
                     Option(
-                        Text.from_markup("[dim]\\[esc][/dim] Quit"),
+                        Text.from_markup("Quit"),
                         id="quit",
                     ),
                     id="menu-options",
@@ -1107,8 +1102,8 @@ class MenuScreen(ActionSelectMixin, Screen):
             app.push_screen(ENSubMenu())
         elif opt_id == "ko":
             app.push_screen(KOSubMenu())
-        elif opt_id == "programming":
-            app.push_screen(ProgrammingSubMenu())
+        elif opt_id == "code":
+            app.push_screen(CodeSubMenu())
 
     def action_select_en(self) -> None:
         self.app.push_screen(ENSubMenu())
@@ -1116,8 +1111,8 @@ class MenuScreen(ActionSelectMixin, Screen):
     def action_select_ko(self) -> None:
         self.app.push_screen(KOSubMenu())
 
-    def action_select_programming(self) -> None:
-        self.app.push_screen(ProgrammingSubMenu())
+    def action_select_code(self) -> None:
+        self.app.push_screen(CodeSubMenu())
 
     def action_select_weak(self) -> None:
         self.app.push_screen(WeaknessScreen())
@@ -1132,8 +1127,8 @@ class MenuScreen(ActionSelectMixin, Screen):
         self.app.exit()
 
 
-class ProgrammingSubMenu(ActionSelectMixin, Screen):
-    """Submenu for Programming language selection."""
+class CodeSubMenu(ActionSelectMixin, Screen):
+    """Submenu for Code language selection."""
 
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
 
@@ -1145,11 +1140,15 @@ class ProgrammingSubMenu(ActionSelectMixin, Screen):
     def compose(self) -> ComposeResult:
         with Center():
             with Vertical(id="menu-container"):
-                yield Static("Programming Typing", id="menu-title")
+                yield Static("Code Typing", id="menu-title")
                 yield OptionList(
                     Option("Python", id="python"),
                     Option("Rust", id="rust"),
                     Option("R", id="r"),
+                    Option("JavaScript", id="javascript"),
+                    Option("Julia", id="julia"),
+                    Option("Typst", id="typst"),
+                    Option("Markdown", id="markdown"),
                     Option("Back", id="back"),
                     id="menu-options",
                 )
@@ -1162,8 +1161,19 @@ class ProgrammingSubMenu(ActionSelectMixin, Screen):
 
         if opt_id == "back":
             app.pop_screen()
-        elif opt_id in ("python", "rust", "r"):
+        elif opt_id in (
+            "python",
+            "rust",
+            "r",
+            "markdown",
+            "javascript",
+            "julia",
+            "typst",
+        ):
             app.start_custom_test(opt_id, app._word_count, app._duration)
+
+    def action_go_back(self) -> None:
+        self.app.pop_screen()
 
 
 class ENSubMenu(ActionSelectMixin, Screen):
@@ -1816,6 +1826,7 @@ class WeaknessScreen(ActionSelectMixin, Screen):
         width: 100%;
         margin-top: 1;
         border: none;
+        text-align: center;
     }
     """
 
