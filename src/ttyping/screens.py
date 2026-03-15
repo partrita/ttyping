@@ -1162,12 +1162,12 @@ class CodeSubMenu(ActionSelectMixin, Screen):
         if opt_id == "back":
             app.pop_screen()
         elif opt_id in (
-            "python",
-            "rust",
-            "r",
             "markdown",
             "javascript",
             "julia",
+            "python",
+            "r",
+            "rust",
             "typst",
         ):
             app.start_custom_test(opt_id, app._word_count, app._duration)

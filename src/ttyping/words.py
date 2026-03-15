@@ -32,6 +32,10 @@ KO_LOREM_IPSUM: list[str] = _load_resource_words("ko_lorem_ipsum.txt")
 PY_WORDS: list[str] = _load_resource_words("python.txt")
 RS_WORDS: list[str] = _load_resource_words("rust.txt")
 R_WORDS: list[str] = _load_resource_words("r.txt")
+JS_WORDS: list[str] = _load_resource_words("javascript.txt")
+JL_WORDS: list[str] = _load_resource_words("julia.txt")
+TY_WORDS: list[str] = _load_resource_words("typst.txt")
+MD_WORDS: list[str] = _load_resource_words("markdown.txt")
 
 
 # Practice character sets for different layouts
@@ -164,6 +168,10 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
         "python": PY_WORDS,
         "rust": RS_WORDS,
         "r": R_WORDS,
+        "javascript": JS_WORDS,
+        "julia": JL_WORDS,
+        "typst": TY_WORDS,
+        "markdown": MD_WORDS,
     }
 
     # Handle practice sets (format: layout:set_name)
