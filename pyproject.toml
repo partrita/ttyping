@@ -1,6 +1,6 @@
 [project]
 name = "ttyping"
-version = "1.0.3"
+version = "1.0.4"
 description = "A minimal terminal typing test — English & Korean, monkeytype-inspired"
 readme = "README.md"
 requires-python = ">=3.10"
