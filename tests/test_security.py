@@ -71,3 +71,44 @@ def test_storage_ensured_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     # Run again - it should NOT recreate because of the flag
     ttyping.storage._ensure_storage()
     assert not test_storage_dir.exists()
+
+
+def test_storage_symlink_attack_prevention(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    test_storage_dir = tmp_path / ".ttyping"
+    test_results_file = test_storage_dir / "results.json"
+    test_config_file = test_storage_dir / "config.json"
+
+    monkeypatch.setattr(ttyping.storage, "STORAGE_DIR", test_storage_dir)
+    monkeypatch.setattr(ttyping.storage, "RESULTS_FILE", test_results_file)
+    monkeypatch.setattr(ttyping.storage, "CONFIG_FILE", test_config_file)
+    monkeypatch.setattr(ttyping.storage, "_STORAGE_ENSURED", False)
+
+    # Create a dummy target file
+    target_file = tmp_path / "target.txt"
+    target_file.write_text("secret")
+
+    # Create storage dir and make results.json a symlink to target
+    test_storage_dir.mkdir(parents=True, exist_ok=True)
+    test_results_file.symlink_to(target_file)
+    test_config_file.symlink_to(target_file)
+
+    # Make STORAGE_DIR a symlink too
+    test_storage_dir2 = tmp_path / ".ttyping2"
+    monkeypatch.setattr(ttyping.storage, "STORAGE_DIR", test_storage_dir2)
+    test_storage_dir2.symlink_to(test_storage_dir)
+
+    # Run ensure_storage
+    ttyping.storage._ensure_storage()
+
+    # Verify STORAGE_DIR symlink was removed
+    assert not test_storage_dir2.is_symlink()
+    assert test_storage_dir2.is_dir()
+
+    # Verify file symlinks were removed
+    assert not test_results_file.is_symlink()
+    assert not test_config_file.is_symlink()
+
+    # Verify target file remains unchanged
+    assert target_file.read_text() == "secret"
