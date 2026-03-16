@@ -66,6 +66,11 @@ def _ensure_storage() -> None:
     # Security: Ensure storage directory and file have restricted permissions
     # 0o700 for directory (rwx------)
     # 0o600 for file (rw-------)
+
+    # Prevent TOCTOU symlink attacks
+    if STORAGE_DIR.is_symlink():
+        STORAGE_DIR.unlink()
+
     STORAGE_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
     if (STORAGE_DIR.stat().st_mode & 0o777) != 0o700:
         STORAGE_DIR.chmod(0o700)
@@ -74,6 +79,9 @@ def _ensure_storage() -> None:
         (RESULTS_FILE, "[]"),
         (CONFIG_FILE, "{}"),
     ]:
+        if file_path.is_symlink():
+            file_path.unlink()
+
         if not file_path.exists():
             try:
                 # Use os.open to atomically create file with 0o600 permissions

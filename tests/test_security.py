@@ -71,3 +71,68 @@ def test_storage_ensured_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     # Run again - it should NOT recreate because of the flag
     ttyping.storage._ensure_storage()
     assert not test_storage_dir.exists()
+
+
+def test_storage_symlink_attack_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    test_storage_dir = tmp_path / ".ttyping"
+    target_dir = tmp_path / "sensitive_dir"
+    target_dir.mkdir(mode=0o777)
+    initial_mode = target_dir.stat().st_mode & 0o777
+
+    monkeypatch.setattr(ttyping.storage, "STORAGE_DIR", test_storage_dir)
+    monkeypatch.setattr(
+        ttyping.storage, "RESULTS_FILE", test_storage_dir / "results.json"
+    )
+    monkeypatch.setattr(
+        ttyping.storage, "CONFIG_FILE", test_storage_dir / "config.json"
+    )
+    monkeypatch.setattr(ttyping.storage, "_STORAGE_ENSURED", False)
+
+    # Attacker creates symlink
+    test_storage_dir.symlink_to(target_dir, target_is_directory=True)
+
+    # We patch os.getuid to simulate it NOT being our file
+    monkeypatch.setattr("os.getuid", lambda: 9999)
+
+    # Note: mkdir(parents=True, exist_ok=True) does not remove the symlink.
+    # So the symlink remains.
+    ttyping.storage._ensure_storage()
+
+    # Ensure target dir permissions were untouched because st_uid != getuid
+    mode = target_dir.stat().st_mode & 0o777
+    assert mode == initial_mode
+
+
+def test_storage_symlink_attack_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    test_storage_dir = tmp_path / ".ttyping"
+    test_storage_dir.mkdir(mode=0o700)
+
+    test_results_file = test_storage_dir / "results.json"
+    target_file = tmp_path / "sensitive_file.txt"
+    target_file.write_text("secret")
+    target_file.chmod(0o644)
+    initial_mode = target_file.stat().st_mode & 0o777
+
+    monkeypatch.setattr(ttyping.storage, "STORAGE_DIR", test_storage_dir)
+    monkeypatch.setattr(ttyping.storage, "RESULTS_FILE", test_results_file)
+    monkeypatch.setattr(
+        ttyping.storage, "CONFIG_FILE", test_storage_dir / "config.json"
+    )
+    monkeypatch.setattr(ttyping.storage, "_STORAGE_ENSURED", False)
+
+    # Attacker creates symlink
+    test_results_file.symlink_to(target_file)
+
+    # Patch os.getuid so it skips chmod
+    monkeypatch.setattr("os.getuid", lambda: 9999)
+
+    ttyping.storage._ensure_storage()
+
+    # Ensure target file wasn't altered (no overwrite)
+    assert target_file.read_text() == "secret"
+    mode = target_file.stat().st_mode & 0o777
+    assert mode == initial_mode
