@@ -67,8 +67,10 @@ def _ensure_storage() -> None:
     # 0o700 for directory (rwx------)
     # 0o600 for file (rw-------)
     STORAGE_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+
     if (STORAGE_DIR.stat().st_mode & 0o777) != 0o700:
-        STORAGE_DIR.chmod(0o700)
+        if not STORAGE_DIR.is_symlink():
+            STORAGE_DIR.chmod(0o700)
 
     for file_path, default_content in [
         (RESULTS_FILE, "[]"),
@@ -86,7 +88,8 @@ def _ensure_storage() -> None:
 
         # Ensure permissions are correct even if file already existed
         if (file_path.stat().st_mode & 0o777) != 0o600:
-            file_path.chmod(0o600)
+            if not file_path.is_symlink():
+                file_path.chmod(0o600)
 
     _STORAGE_ENSURED = True
 
