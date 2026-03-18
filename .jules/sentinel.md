@@ -7,3 +7,8 @@
 **Vulnerability:** Modifying the global process umask with `os.umask(0o077)` during initialization can lead to race conditions where other threads might create files with unintended permissions during that tiny window.
 **Learning:** Even with try-finally, changing process state like umask is unsafe in a multithreaded application.
 **Prevention:** Where possible, use the `mode` parameter of `open()` or `os.open()` with `os.O_CREAT | os.O_EXCL` rather than modifying the process `umask`, or set the umask once at application startup.
+
+## 2024-05-25 - TOCTOU Symlink vulnerability in storage permissions
+**Vulnerability:** Changing permissions on directories or files without checking if they are symlinks first.
+**Learning:** `storage.py` used `chmod(0o700)` and `chmod(0o600)` on the config directory and files if the existing permissions were incorrect. If a malicious user or script replaced these with symlinks to sensitive files (like `/etc/passwd` or another user's files), `chmod` would follow the symlink and inadvertently change the permissions of the target file. It also breaks legitimate use-cases where users symlink their config to a `.dotfiles` repository.
+**Prevention:** Always verify `not path.is_symlink()` before applying `chmod` to ensure the operation only affects regular files/directories as intended, and safely skips symlinks.
