@@ -71,3 +71,37 @@ def test_storage_ensured_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     # Run again - it should NOT recreate because of the flag
     ttyping.storage._ensure_storage()
     assert not test_storage_dir.exists()
+
+
+def test_ensure_storage_ignores_symlinks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    test_storage_dir = tmp_path / ".ttyping"
+    test_results_file = test_storage_dir / "results.json"
+    test_config_file = test_storage_dir / "config.json"
+
+    monkeypatch.setattr(ttyping.storage, "STORAGE_DIR", test_storage_dir)
+    monkeypatch.setattr(ttyping.storage, "RESULTS_FILE", test_results_file)
+    monkeypatch.setattr(ttyping.storage, "CONFIG_FILE", test_config_file)
+    monkeypatch.setattr(ttyping.storage, "_STORAGE_ENSURED", False)
+
+    # Pre-create files to trigger the chmod branch
+    test_storage_dir.mkdir(parents=True)
+    test_results_file.write_text("[]")
+    test_config_file.write_text("{}")
+
+    # Force permissions to be different from expected (0o700, 0o600)
+    test_storage_dir.chmod(0o755)
+    test_results_file.chmod(0o644)
+    test_config_file.chmod(0o644)
+
+    from unittest.mock import patch
+
+    with (
+        patch.object(Path, "is_symlink", return_value=True),
+        patch.object(Path, "chmod") as mock_chmod,
+    ):
+        ttyping.storage._ensure_storage()
+
+        # chmod should never be called since we mocked is_symlink to True
+        mock_chmod.assert_not_called()

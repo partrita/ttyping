@@ -7,3 +7,8 @@
 **Vulnerability:** Modifying the global process umask with `os.umask(0o077)` during initialization can lead to race conditions where other threads might create files with unintended permissions during that tiny window.
 **Learning:** Even with try-finally, changing process state like umask is unsafe in a multithreaded application.
 **Prevention:** Where possible, use the `mode` parameter of `open()` or `os.open()` with `os.O_CREAT | os.O_EXCL` rather than modifying the process `umask`, or set the umask once at application startup.
+
+## 2024-05-24 - TOCTOU vulnerability via Symlinks in `chmod`
+**Vulnerability:** `_ensure_storage` in `src/ttyping/storage.py` used `chmod` to enforce restrictive permissions on config and result files without first verifying if the paths were symlinks.
+**Learning:** `chmod` inherently follows symlinks on Linux/Unix systems. If an attacker replaces a file with a symlink before the application calls `chmod`, the target of the symlink (e.g., an important system file) will have its permissions changed unexpectedly. This is a classic Time-of-Check to Time-of-Use (TOCTOU) vulnerability. Since `os.chmod(..., follow_symlinks=False)` is not supported on all platforms (like Linux), the application must manually check for symlinks.
+**Prevention:** Always verify `if not Path.is_symlink():` before applying `chmod` to ensure that you are only altering the permissions of the actual file you intend to protect, and not inadvertently following an attacker-controlled symlink.
