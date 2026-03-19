@@ -7,3 +7,8 @@
 **Vulnerability:** Modifying the global process umask with `os.umask(0o077)` during initialization can lead to race conditions where other threads might create files with unintended permissions during that tiny window.
 **Learning:** Even with try-finally, changing process state like umask is unsafe in a multithreaded application.
 **Prevention:** Where possible, use the `mode` parameter of `open()` or `os.open()` with `os.O_CREAT | os.O_EXCL` rather than modifying the process `umask`, or set the umask once at application startup.
+
+## 2024-05-24 - Cross-Platform `os.chmod` Limitations and Symlink Attacks
+**Vulnerability:** TOCTOU symlink attack in `_ensure_storage()` via `chmod()`.
+**Learning:** `os.chmod` with `follow_symlinks=False` is not supported on Linux and Windows, and will unconditionally raise a `NotImplementedError`. Using `path.chmod()` blindly on user configuration directories can allow an attacker to create a symlink and trick the application into changing permissions of an arbitrary file.
+**Prevention:** To safely prevent TOCTOU symlink attacks without breaking user dotfile configurations, manually check `if not path.is_symlink():` before calling `chmod()` instead of relying on `follow_symlinks=False`.
