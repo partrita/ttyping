@@ -1051,27 +1051,27 @@ class MenuScreen(ActionSelectMixin, Screen):
                 yield Static("ttyping", id="menu-title")
                 yield OptionList(
                     Option(
-                        Text.from_markup("English(영어)"),
+                        Text.from_markup(r"English(영어) [dim]\[e][/dim]"),
                         id="en",
                     ),
                     Option(
-                        Text.from_markup("Korean(한국어)"),
+                        Text.from_markup(r"Korean(한국어) [dim]\[k][/dim]"),
                         id="ko",
                     ),
                     Option(
-                        Text.from_markup("Code(코드)"),
+                        Text.from_markup(r"Code(코드) [dim]\[p][/dim]"),
                         id="code",
                     ),
                     Option(
-                        Text.from_markup("Weak word(약점 단어 연습)"),
+                        Text.from_markup(r"Weak word(약점 단어 연습) [dim]\[w][/dim]"),
                         id="weakness",
                     ),
                     Option(
-                        Text.from_markup("View History(기록 보기)"),
+                        Text.from_markup(r"View History(기록 보기) [dim]\[h][/dim]"),
                         id="history",
                     ),
                     Option(
-                        Text.from_markup("Options"),
+                        Text.from_markup(r"Options [dim]\[o][/dim]"),
                         id="options",
                     ),
                     Option(

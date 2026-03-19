@@ -9,3 +9,6 @@
 ## 2026-03-14 - Textual OptionList Keyboard Shortcuts
 **Learning:** In Textual UI, assigning `BINDINGS` with `show=False` prevents shortcut discoverability. Aligning `[dim][key][/dim]` tags directly inside `OptionList` items via Rich markup is an accessible, elegant pattern to reveal them without cluttering the bottom Footer widget.
 **Action:** Use `Text.from_markup` with `[dim]` tags to neatly inline key hints for all Textual `OptionList`s.
+## 2024-03-20 - [Keyboard Shortcut Discoverability]
+**Learning:** In Textual TUIs, hidden keyboard bindings (`show=False`) are entirely invisible to users. Standard footer key hints can get cluttered. Inlining shortcut keys directly into `OptionList` labels using Rich markup (e.g., `Text.from_markup(r"Label [dim]\[key][/dim]")`) is an effective pattern to improve discoverability while keeping the UI clean. Escape brackets in raw strings!
+**Action:** Always inline keyboard shortcuts into Option/Menu labels when the bindings are explicitly hidden from the global footer, ensuring the key is visually de-emphasized (e.g., using `[dim]`) so it doesn't distract from the primary text.
