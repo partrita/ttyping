@@ -51,6 +51,38 @@ def test_storage_permissions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
         os.umask(old_umask)
 
 
+def test_storage_symlink_bypass(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    test_storage_dir = tmp_path / ".ttyping"
+    test_results_file = test_storage_dir / "results.json"
+    test_config_file = test_storage_dir / "config.json"
+
+    monkeypatch.setattr(ttyping.storage, "STORAGE_DIR", test_storage_dir)
+    monkeypatch.setattr(ttyping.storage, "RESULTS_FILE", test_results_file)
+    monkeypatch.setattr(ttyping.storage, "CONFIG_FILE", test_config_file)
+    monkeypatch.setattr(ttyping.storage, "_STORAGE_ENSURED", False)
+
+    # Setup the directory and files
+    test_storage_dir.mkdir(parents=True)
+    test_results_file.touch()
+    test_config_file.touch()
+
+    # Create a mock for chmod to verify it's not called
+    chmod_calls = []
+
+    def mock_chmod(mode: int) -> None:
+        chmod_calls.append(mode)
+
+    # Mock Path methods
+    monkeypatch.setattr(Path, "is_symlink", lambda self: True)
+    monkeypatch.setattr(Path, "chmod", mock_chmod)
+
+    # Ensure storage with symlink mocked to True
+    ttyping.storage._ensure_storage()
+
+    # chmod should not have been called because is_symlink is True
+    assert len(chmod_calls) == 0, "chmod was called on a symlink!"
+
+
 def test_storage_ensured_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     test_storage_dir = tmp_path / ".ttyping"
     test_results_file = test_storage_dir / "results.json"
