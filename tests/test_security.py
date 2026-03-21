@@ -71,3 +71,35 @@ def test_storage_ensured_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     # Run again - it should NOT recreate because of the flag
     ttyping.storage._ensure_storage()
     assert not test_storage_dir.exists()
+
+
+def test_storage_symlink_bypass(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    test_storage_dir = tmp_path / ".ttyping"
+    test_results_file = test_storage_dir / "results.json"
+    test_config_file = test_storage_dir / "config.json"
+
+    monkeypatch.setattr(ttyping.storage, "STORAGE_DIR", test_storage_dir)
+    monkeypatch.setattr(ttyping.storage, "RESULTS_FILE", test_results_file)
+    monkeypatch.setattr(ttyping.storage, "CONFIG_FILE", test_config_file)
+    monkeypatch.setattr(ttyping.storage, "_STORAGE_ENSURED", False)
+
+    test_storage_dir.mkdir(parents=True)
+    test_results_file.write_text("[]")
+    test_config_file.write_text("{}")
+
+    # Pre-set loose permissions
+    test_storage_dir.chmod(0o777)
+    test_results_file.chmod(0o666)
+    test_config_file.chmod(0o666)
+
+    # Mock is_symlink to return True so it skips the chmod step
+    monkeypatch.setattr(Path, "is_symlink", lambda self: True)
+
+    ttyping.storage._ensure_storage()
+
+    # Permissions should still be loose because chmod was bypassed
+    assert (test_storage_dir.stat().st_mode & 0o777) == 0o777
+    assert (test_results_file.stat().st_mode & 0o777) == 0o666
+    assert (test_config_file.stat().st_mode & 0o777) == 0o666
