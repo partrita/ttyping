@@ -7,3 +7,7 @@
 **Vulnerability:** Modifying the global process umask with `os.umask(0o077)` during initialization can lead to race conditions where other threads might create files with unintended permissions during that tiny window.
 **Learning:** Even with try-finally, changing process state like umask is unsafe in a multithreaded application.
 **Prevention:** Where possible, use the `mode` parameter of `open()` or `os.open()` with `os.O_CREAT | os.O_EXCL` rather than modifying the process `umask`, or set the umask once at application startup.
+## 2025-02-26 - Prevent Privilege Escalation via Symlink
+**Vulnerability:** The application enforced restrictive permissions (chmod 0o700/0o600) on its config/results files without checking if the files were symlinks.
+**Learning:** Calling `chmod` on a `Path` object follows symlinks on Linux by default. An attacker could replace `.ttyping/results.json` with a symlink to another user's file, tricking the application into modifying the target file's permissions, enabling a TOCTOU (Time-of-check to time-of-use) privilege escalation.
+**Prevention:** Always verify `not path.is_symlink()` prior to invoking `.chmod()` to ensure modifications only apply to real files.
