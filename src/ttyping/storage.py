@@ -57,6 +57,22 @@ class TypingResult:
         )
 
 
+def _secure_write(file_path: Path, content: str) -> None:
+    """Safely write content to a file, ensuring 0o600 permissions upon creation."""
+    # Use os.open to atomically create file with 0o600 perms, or truncate if exists
+    fd = os.open(
+        file_path,
+        os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+        0o600,
+    )
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(content)
+    # Ensure permissions are correct even if file already existed
+    is_symlink = file_path.is_symlink()
+    if not is_symlink and (file_path.stat().st_mode & 0o777) != 0o600:
+        file_path.chmod(0o600)
+
+
 def _ensure_storage() -> None:
     """Ensure storage directory and file exist with correct permissions."""
     global _STORAGE_ENSURED
@@ -85,7 +101,8 @@ def _ensure_storage() -> None:
                 pass
 
         # Ensure permissions are correct even if file already existed
-        if not file_path.is_symlink() and (file_path.stat().st_mode & 0o777) != 0o600:
+        is_symlink = file_path.is_symlink()
+        if not is_symlink and (file_path.stat().st_mode & 0o777) != 0o600:
             file_path.chmod(0o600)
 
     _STORAGE_ENSURED = True
@@ -101,9 +118,7 @@ def save_result(result: TypingResult) -> None:
     results.append(result)
 
     data = [r.to_dict() for r in results]
-    RESULTS_FILE.write_text(
-        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    _secure_write(RESULTS_FILE, json.dumps(data, indent=2, ensure_ascii=False))
 
 
 def load_results() -> list[TypingResult]:
@@ -133,7 +148,7 @@ def clear_results() -> None:
     global _RESULTS_CACHE
     _ensure_storage()
     try:
-        RESULTS_FILE.write_text("[]", encoding="utf-8")
+        _secure_write(RESULTS_FILE, "[]")
         _RESULTS_CACHE = []
     except OSError:
         pass
@@ -146,9 +161,7 @@ def delete_result_by_index(index: int) -> None:
     if 0 <= index < len(results):
         results.pop(index)
         data = [r.to_dict() for r in results]
-        RESULTS_FILE.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
+        _secure_write(RESULTS_FILE, json.dumps(data, indent=2, ensure_ascii=False))
         _RESULTS_CACHE = results
 
 
@@ -156,9 +169,7 @@ def save_config(config: dict[str, Any]) -> None:
     """Save user configuration to local storage."""
     global _CONFIG_CACHE
     _ensure_storage()
-    CONFIG_FILE.write_text(
-        json.dumps(config, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    _secure_write(CONFIG_FILE, json.dumps(config, indent=2, ensure_ascii=False))
     _CONFIG_CACHE = config
 
 

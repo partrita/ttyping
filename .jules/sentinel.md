@@ -11,3 +11,7 @@
 **Vulnerability:** The application enforced restrictive permissions (chmod 0o700/0o600) on its config/results files without checking if the files were symlinks.
 **Learning:** Calling `chmod` on a `Path` object follows symlinks on Linux by default. An attacker could replace `.ttyping/results.json` with a symlink to another user's file, tricking the application into modifying the target file's permissions, enabling a TOCTOU (Time-of-check to time-of-use) privilege escalation.
 **Prevention:** Always verify `not path.is_symlink()` prior to invoking `.chmod()` to ensure modifications only apply to real files.
+## 2025-02-26 - Unsafe File Creation Permissions via write_text
+**Vulnerability:** The application was using `Path.write_text()` to write sensitive typing results and configurations to disk. If these files were deleted while the application was running, `write_text()` would recreate them with default umask permissions (e.g., `0o644`), bypassing the strict `0o600` permissions established at startup by `_ensure_storage()`.
+**Learning:** `Path.write_text()` simply calls `open()` and inherits the user's default umask for new file creation. The initial permission setup using `chmod` is not sticky and does not apply to recreation events.
+**Prevention:** Avoid `Path.write_text()` when writing files that require strict permissions. Use atomic file creation via `os.open` with explicit flags (`os.O_WRONLY | os.O_CREAT | os.O_TRUNC`) and the desired permission mode (e.g., `0o600`), then convert the file descriptor to a file object using `os.fdopen()`.
