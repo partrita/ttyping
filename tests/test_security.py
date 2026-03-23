@@ -73,6 +73,42 @@ def test_storage_ensured_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     assert not test_storage_dir.exists()
 
 
+def test_storage_intermediate_permissions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Set a deeply nested path
+    test_storage_dir = tmp_path / "a" / "b" / "c" / ".ttyping"
+    test_results_file = test_storage_dir / "results.json"
+    test_config_file = test_storage_dir / "config.json"
+
+    monkeypatch.setattr(ttyping.storage, "STORAGE_DIR", test_storage_dir)
+    monkeypatch.setattr(ttyping.storage, "RESULTS_FILE", test_results_file)
+    monkeypatch.setattr(ttyping.storage, "CONFIG_FILE", test_config_file)
+    monkeypatch.setattr(ttyping.storage, "_STORAGE_ENSURED", False)
+
+    # Set a loose umask to see if our code handles it safely
+    old_umask = os.umask(0o000)
+    try:
+        ttyping.storage._ensure_storage()
+
+        # Verify leaf directory permissions (0o700)
+        assert test_storage_dir.exists()
+        mode = test_storage_dir.stat().st_mode & 0o777
+        assert mode == 0o700, f"Expected 0o700, got {oct(mode)}"
+
+        # Verify intermediate directories inherit umask, they shouldn't be
+        # explicitly restricted to 0o700 to prevent breaking shared setups
+        parent = test_storage_dir.parent
+        while parent != tmp_path:
+            assert parent.exists()
+            mode = parent.stat().st_mode & 0o777
+            assert mode != 0o700, f"Intermediate dir {parent} restricted"
+            parent = parent.parent
+
+    finally:
+        os.umask(old_umask)
+
+
 def test_storage_symlink_bypass(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
