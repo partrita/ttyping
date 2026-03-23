@@ -258,7 +258,7 @@ def test_clear_results_oserror(mock_storage: tuple[Path, Path, Path]) -> None:
     # Ensure storage is initialized so it doesn't call write_text in _ensure_storage
     storage._ensure_storage()
 
-    with patch.object(Path, "write_text", side_effect=OSError("Disk full")):
+    with patch("ttyping.storage._secure_write", side_effect=OSError("Disk full")):
         # Should not raise exception
         storage.clear_results()
 
