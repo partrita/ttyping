@@ -712,6 +712,10 @@ class ConfirmDeleteScreen(Screen):
                     " and error statistics.",
                     id="confirm-body",
                 )
+                yield Static(
+                    Text.from_markup(r"[dim]Press \[y] or \[n][/dim]"),
+                    id="confirm-hints",
+                )
 
         yield Footer()
 

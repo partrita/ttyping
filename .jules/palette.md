@@ -9,3 +9,7 @@
 ## 2026-03-14 - Textual OptionList Keyboard Shortcuts
 **Learning:** In Textual UI, assigning `BINDINGS` with `show=False` prevents shortcut discoverability. Aligning `[dim][key][/dim]` tags directly inside `OptionList` items via Rich markup is an accessible, elegant pattern to reveal them without cluttering the bottom Footer widget.
 **Action:** Use `Text.from_markup` with `[dim]` tags to neatly inline key hints for all Textual `OptionList`s.
+
+## 2026-03-21 - Destructive Action Keyboard Hints
+**Learning:** For destructive actions (like deleting all history), users often hesitate when they don't see clear, immediate instructions on how to confirm or abort the action. Visual hints reinforce confidence.
+**Action:** In Textual TUIs, explicitly display keyboard hints for destructive or critical actions (e.g., pressing 'y' or 'n' to confirm deletion) using visual text elements like `Static` with Rich markup to prevent user hesitation and ensure accessibility.
