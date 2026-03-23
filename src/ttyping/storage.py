@@ -82,7 +82,12 @@ def _ensure_storage() -> None:
     # Security: Ensure storage directory and file have restricted permissions
     # 0o700 for directory (rwx------)
     # 0o600 for file (rw-------)
-    STORAGE_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+
+    # Use default permissions for intermediate directories, and explicitly
+    # apply 0o700 to the storage directory after creation to avoid
+    # unintentionally restricting shared parent directories.
+    STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
     if not STORAGE_DIR.is_symlink() and (STORAGE_DIR.stat().st_mode & 0o777) != 0o700:
         STORAGE_DIR.chmod(0o700)
 

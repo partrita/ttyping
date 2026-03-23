@@ -1,7 +1,5 @@
-## 2024-05-24 - Unnecessary Sub-directory permissions vulnerability in Storage
-**Vulnerability:** Weak permissions for .ttyping/ configuration storage
-**Learning:** `storage.py` set directory permissions with 0o700, but Python's `Path.mkdir(parents=True)` without additional handling only applies mode to the *last* created directory. Intermediate directories are created with default umask permissions, which could be less restrictive.
-**Prevention:** In this application, `.ttyping` is created in the user's home directory. Intermediate directories aren't created (since `~` already exists), but when doing directory permission operations, ensure the permissions on any implicitly created intermediate directories are also correct or handled, or just use `exist_ok=True` without relying on parents=True where possible, or use explicit modes.
+## 2024-05-14 - Intermediate Directory Permissions Vulnerability & Shared Path Architecture
+**Vulnerability:** A vulnerability was identified during the execution of `STORAGE_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)`. The `.mkdir()` function in `pathlib` only applies the specified mode to the *last* (leaf) directory created. If intermediate directories were also implicitly created, they would inherit the system's default umask permissions (often overly permissive like `0o755` or `0o777`), potentially exposing sensitive files in the application's configuration path structure.
 
 ## 2024-05-24 - `os.umask(0o077)` is not thread safe
 **Vulnerability:** Modifying the global process umask with `os.umask(0o077)` during initialization can lead to race conditions where other threads might create files with unintended permissions during that tiny window.
