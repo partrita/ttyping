@@ -13,3 +13,7 @@
 ## 2026-03-21 - Destructive Action Keyboard Hints
 **Learning:** For destructive actions (like deleting all history), users often hesitate when they don't see clear, immediate instructions on how to confirm or abort the action. Visual hints reinforce confidence.
 **Action:** In Textual TUIs, explicitly display keyboard hints for destructive or critical actions (e.g., pressing 'y' or 'n' to confirm deletion) using visual text elements like `Static` with Rich markup to prevent user hesitation and ensure accessibility.
+
+## 2024-05-18 - Improve Discoverability of Keyboard Bindings
+**Learning:** Hidden keyboard bindings (`show=False`) improve visual cleanliness by avoiding cluttered footers, but they create a discoverability issue where users don't know the shortcuts exist.
+**Action:** Inline keyboard hints directly into OptionList labels using Rich markup (e.g., `Text.from_markup(r"Label [dim]\[key][/dim]")`) to provide immediate, contextual discoverability without relying on a global footer or external documentation. Ensure to escape the opening bracket `\[` in a raw string to prevent Textual/Rich markup parsing errors.
