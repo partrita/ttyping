@@ -457,6 +457,9 @@ def get_weak_drill(layout: str, weak_chars: str, count: int = 25) -> list[str]:
     Tries to find real words from the word list that contain those chars.
     Falls back to random character sequences if not enough real words found.
     """
+    if not weak_chars:
+        return []
+
     sources: dict[str, list[str]] = {
         "en_qwerty": EN_QWERTY,
         "en_dvorak": EN_DVORAK,

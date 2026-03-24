@@ -83,3 +83,10 @@ def test_load_resource_words_exception() -> None:
     with patch("ttyping.words.resources.files", side_effect=Exception("Mock error")):
         words = _load_resource_words("dummy.txt")
         assert words == []
+
+
+def test_get_weak_drill_empty_chars() -> None:
+    from ttyping.words import get_weak_drill
+
+    words = get_weak_drill("en_qwerty", "", count=5)
+    assert words == []
