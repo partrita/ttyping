@@ -317,3 +317,30 @@ def test_get_weak_drill_returns_words() -> None:
     words = get_weak_drill("en_qwerty", "asdf", count=10)
     assert len(words) == 10
     assert all(isinstance(w, str) and len(w) > 0 for w in words)
+
+
+def test_save_config(mock_storage: tuple[Path, Path, Path]) -> None:
+    _, _, config_file = mock_storage
+
+    test_config = {"lang": "ko", "theme": "dark"}
+    storage.save_config(test_config)
+
+    assert storage._CONFIG_CACHE == test_config
+
+    saved_data = json.loads(config_file.read_text(encoding="utf-8"))
+    assert saved_data == test_config
+
+
+def test_save_config_with_non_ascii(mock_storage: tuple[Path, Path, Path]) -> None:
+    _, _, config_file = mock_storage
+
+    test_config = {"message": "안녕하세요"}
+    storage.save_config(test_config)
+
+    assert storage._CONFIG_CACHE == test_config
+
+    text = config_file.read_text(encoding="utf-8")
+    assert "안녕하세요" in text
+
+    saved_data = json.loads(text)
+    assert saved_data == test_config
