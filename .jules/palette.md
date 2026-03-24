@@ -13,3 +13,7 @@
 ## 2026-03-21 - Destructive Action Keyboard Hints
 **Learning:** For destructive actions (like deleting all history), users often hesitate when they don't see clear, immediate instructions on how to confirm or abort the action. Visual hints reinforce confidence.
 **Action:** In Textual TUIs, explicitly display keyboard hints for destructive or critical actions (e.g., pressing 'y' or 'n' to confirm deletion) using visual text elements like `Static` with Rich markup to prevent user hesitation and ensure accessibility.
+
+## 2024-05-23 - Inline Keybindings for Discoverability
+**Learning:** Hidden keybindings in TUIs are often missed by users because they aren't visible in the footer or the UI.
+**Action:** Inline keyboard shortcuts directly into option labels using rich markup (e.g., `[dim]\[key][/dim]`) to improve discoverability while keeping the UI clean.
