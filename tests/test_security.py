@@ -139,3 +139,27 @@ def test_storage_symlink_bypass(
     assert (test_storage_dir.stat().st_mode & 0o777) == 0o777
     assert (test_results_file.stat().st_mode & 0o777) == 0o666
     assert (test_config_file.stat().st_mode & 0o777) == 0o666
+
+
+def test_secure_write_symlink_prevention(tmp_path: Path) -> None:
+    """Test that _secure_write refuses to write to a symlink."""
+    # Create a dummy target file
+    target_file = tmp_path / "target.txt"
+    target_file.write_text("original content")
+    target_file.chmod(0o644)
+
+    # Create a symlink to the target
+    link_file = tmp_path / "link.txt"
+    link_file.symlink_to(target_file.name)
+
+    # Attempt to use _secure_write on the symlink
+    with pytest.raises(OSError) as exc_info:
+        ttyping.storage._secure_write(link_file, "hacked content")
+
+    # The error message should either be our custom one or the OS-level O_NOFOLLOW error
+    error_msg = str(exc_info.value)
+    assert "Refusing to write to symlink" in error_msg or "Too many levels of symbolic links" in error_msg
+
+    # Verify the target file was not modified
+    assert target_file.read_text() == "original content"
+    assert (target_file.stat().st_mode & 0o777) == 0o644

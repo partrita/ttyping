@@ -59,18 +59,25 @@ class TypingResult:
 
 def _secure_write(file_path: Path, content: str) -> None:
     """Safely write content to a file, ensuring 0o600 permissions upon creation."""
+    # Security: Prevent writing through a symlink to another user's file.
+    if file_path.is_symlink():
+        raise OSError(f"Refusing to write to symlink: {file_path}")
+
     # Use os.open to atomically create file with 0o600 perms, or truncate if exists
+    # O_NOFOLLOW prevents following symlinks natively (if supported by OS)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(
         file_path,
-        os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+        flags,
         0o600,
     )
+    # Ensure permissions are correct even if file already existed, using the
+    # open file descriptor to prevent TOCTOU symlink attacks before close
+    if (os.fstat(fd).st_mode & 0o777) != 0o600:
+        os.fchmod(fd, 0o600)
+
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(content)
-    # Ensure permissions are correct even if file already existed
-    is_symlink = file_path.is_symlink()
-    if not is_symlink and (file_path.stat().st_mode & 0o777) != 0o600:
-        file_path.chmod(0o600)
 
 
 def _ensure_storage() -> None:
