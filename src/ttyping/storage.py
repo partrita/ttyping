@@ -59,18 +59,24 @@ class TypingResult:
 
 def _secure_write(file_path: Path, content: str) -> None:
     """Safely write content to a file, ensuring 0o600 permissions upon creation."""
+    if file_path.is_symlink():
+        raise OSError("Refusing to write to symlink")
+
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+
     # Use os.open to atomically create file with 0o600 perms, or truncate if exists
-    fd = os.open(
-        file_path,
-        os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
-        0o600,
-    )
+    fd = os.open(file_path, flags, 0o600)
+
+    if hasattr(os, "fstat") and hasattr(os, "fchmod"):
+        if (os.fstat(fd).st_mode & 0o777) != 0o600:
+            os.fchmod(fd, 0o600)
+    elif (file_path.stat().st_mode & 0o777) != 0o600:
+        file_path.chmod(0o600)
+
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(content)
-    # Ensure permissions are correct even if file already existed
-    is_symlink = file_path.is_symlink()
-    if not is_symlink and (file_path.stat().st_mode & 0o777) != 0o600:
-        file_path.chmod(0o600)
 
 
 def _ensure_storage() -> None:
@@ -95,19 +101,48 @@ def _ensure_storage() -> None:
         (RESULTS_FILE, "[]"),
         (CONFIG_FILE, "{}"),
     ]:
+        if file_path.is_symlink():
+            continue
+
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+
         if not file_path.exists():
             try:
                 # Use os.open to atomically create file with 0o600 permissions
-                fd = os.open(file_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                fd = os.open(file_path, flags, 0o600)
+
+                if hasattr(os, "fstat") and hasattr(os, "fchmod"):
+                    if (os.fstat(fd).st_mode & 0o777) != 0o600:
+                        os.fchmod(fd, 0o600)
+                elif (file_path.stat().st_mode & 0o777) != 0o600:
+                    file_path.chmod(0o600)
+
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
                     f.write(default_content)
+                continue
             except FileExistsError:
                 # File was created between the exists() check and os.open
                 pass
 
         # Ensure permissions are correct even if file already existed
-        is_symlink = file_path.is_symlink()
-        if not is_symlink and (file_path.stat().st_mode & 0o777) != 0o600:
+        if hasattr(os, "fstat") and hasattr(os, "fchmod"):
+            try:
+                # Open just to fix permissions securely, don't truncate
+                flags_fix = os.O_WRONLY | os.O_APPEND
+                if hasattr(os, "O_NOFOLLOW"):
+                    flags_fix |= os.O_NOFOLLOW
+
+                fd = os.open(file_path, flags_fix)
+                try:
+                    if (os.fstat(fd).st_mode & 0o777) != 0o600:
+                        os.fchmod(fd, 0o600)
+                finally:
+                    os.close(fd)
+            except OSError:
+                pass
+        elif not file_path.is_symlink() and (file_path.stat().st_mode & 0o777) != 0o600:
             file_path.chmod(0o600)
 
     _STORAGE_ENSURED = True
