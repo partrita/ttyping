@@ -22,20 +22,18 @@ ___bolditalic___
 [link](url)
 ![image](url)
 <url>
-> quote
-- list
-* list
-+ list
-1. ordered
-2. ordered
-[ ] task
-[x] task
+>quote
+-list
+*list
++list
+1.ordered
+2.ordered
 ---
 ***
 ___
-| table |
-| :--- |
-| cell |
+|table|
+|:---|
+|cell|
 Alignment
 Center
 Left
@@ -53,7 +51,6 @@ Frontmatter
 YAML
 TOML
 JSON
-Markdown
 GFM
 CommonMark
 Syntax

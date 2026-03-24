@@ -78,8 +78,8 @@ format!
 assert!
 assert_eq!
 match
-if let
-while let
+if
+while
 loop
 =
 +

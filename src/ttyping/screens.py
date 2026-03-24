@@ -12,6 +12,7 @@ from textual import events
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Center, Vertical
+from textual.geometry import Offset
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Input, OptionList, Static
 from textual.widgets.option_list import Option
@@ -83,6 +84,10 @@ class TypingScreen(Screen):
         margin-top: 1;
         padding: 0 1;
     }
+
+    #input-area.typo {
+        background: #5f2120;
+    }
     """
 
     def __init__(
@@ -110,6 +115,7 @@ class TypingScreen(Screen):
         self._cached_lines: list[list[int]] | None = None
         self._last_container_width: int = 0
         self._stats_widget: Static | None = None
+        self._shaking: bool = False
 
     def compose(self) -> ComposeResult:
         with Center():
@@ -125,6 +131,24 @@ class TypingScreen(Screen):
         self._render_display()
         self.query_one("#input-area", Input).focus()
 
+    def _shake_input(self) -> None:
+        if self._shaking:
+            return
+        self._shaking = True
+        inp = self.query_one("#input-area", Input)
+        inp.add_class("typo")
+
+        # Shake: Move slightly to the right, then left, then back
+        self.animate("offset", Offset(1, 0), duration=0.05)
+        self.animate("offset", Offset(-1, 0), duration=0.05, delay=0.05)
+        self.animate("offset", Offset(0, 0), duration=0.05, delay=0.1)
+
+        def reset_shaking() -> None:
+            self._shaking = False
+            inp.remove_class("typo")
+
+        self.set_timer(0.2, reset_shaking)
+
     # ── input handling ─────────────────────────────────────────────────
 
     def on_input_changed(self, event: Input.Changed) -> None:
@@ -132,6 +156,7 @@ class TypingScreen(Screen):
             return
 
         value = event.value
+        has_error = False
 
         # Track raw keystrokes and errors
         if len(value) > len(self.current_input):
@@ -144,8 +169,13 @@ class TypingScreen(Screen):
                 if idx < len(target_word):
                     if char != target_word[idx]:
                         self.total_errors += 1
+                        has_error = True
                 elif char != " ":
                     self.total_errors += 1
+                    has_error = True
+
+        if has_error:
+            self._shake_input()
 
         # Space → complete current word
         if value.endswith(" "):
@@ -547,6 +577,14 @@ class ResultScreen(Screen):
                 detail.append(f"  ·  {r.correct}/{r.words} words", style=COL_DIM)
                 detail.append(f"  ·  {r.lang}", style=COL_DIM)
                 yield Static(detail, classes="result-detail")
+
+                # WPM Trend Chart
+                results = load_results()
+                if len(results) > 1:
+                    yield Static("wpm trend (last 10)", classes="result-title")
+                    recent_wpm = [res.wpm for res in results[-10:]]
+                    yield LineChart(recent_wpm, color=COL_ACCENT)
+
                 if r.top_char_errors:
                     yield Static("top missed characters", classes="result-title")
                     yield Static(

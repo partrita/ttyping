@@ -648,13 +648,19 @@ BigInt
 Symbol.prototype.description
 globalThis
 import.meta
-Optional Chaining
-Nullish Coalescing
-Logical Assignment
-Numeric Separators
-Private Methods
-Private Fields
-Static Blocks
+Optional
+Chaining
+Nullish
+Coalescing
+Logical
+Assignment
+Numeric
+Separators
+Private
+Methods
+Fields
+Static
+Blocks
 Array.prototype.at
 v8.getHeapStatistics
 v8.getHeapSnapshot
@@ -673,16 +679,12 @@ Promise.any
 AggregateError
 WeakRef
 FinalizationRegistry
-Logical Bitwise Assignment
 Intl.DisplayNames
 Intl.ListFormat
 Intl.Segmenter
 Intl.RelativeTimeFormat
 Array.prototype.findLast
 Array.prototype.findLastIndex
-Hashbang Grammar
-Atomics.waitAsync
-Symbols as WeakMap keys
 WebAssembly
 WebAssembly.Module
 WebAssembly.Instance
@@ -1037,13 +1039,6 @@ BigInt
 Symbol.prototype.description
 globalThis
 import.meta
-Optional Chaining
-Nullish Coalescing
-Logical Assignment
-Numeric Separators
-Private Methods
-Private Fields
-Static Blocks
 Array.prototype.at
 v8.getHeapStatistics
 v8.getHeapSnapshot
@@ -1062,16 +1057,12 @@ Promise.any
 AggregateError
 WeakRef
 FinalizationRegistry
-Logical Bitwise Assignment
 Intl.DisplayNames
 Intl.ListFormat
 Intl.Segmenter
 Intl.RelativeTimeFormat
 Array.prototype.findLast
 Array.prototype.findLastIndex
-Hashbang Grammar
-Atomics.waitAsync
-Symbols as WeakMap keys
 WebAssembly
 WebAssembly.Module
 WebAssembly.Instance
