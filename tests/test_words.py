@@ -83,3 +83,68 @@ def test_load_resource_words_exception() -> None:
     with patch("ttyping.words.resources.files", side_effect=Exception("Mock error")):
         words = _load_resource_words("dummy.txt")
         assert words == []
+
+
+def test_get_practice_drill_en_qwerty() -> None:
+    from ttyping.words import PRACTICE_SETS, get_practice_drill
+
+    words = get_practice_drill("en_qwerty", "home_row", 5)
+    assert len(words) == 5
+    allowed = set(PRACTICE_SETS["en_qwerty"]["home_row"])
+    for word in words:
+        assert all(c.lower() in allowed for c in word)
+
+
+def test_get_practice_drill_ko_2set() -> None:
+    from ttyping.words import PRACTICE_SETS, _get_jamos, get_practice_drill
+
+    words = get_practice_drill("ko_2set", "left_hand", 5)
+    assert len(words) == 5
+    allowed = set(PRACTICE_SETS["ko_2set"]["left_hand"])
+    for word in words:
+        for char in word:
+            jamos = _get_jamos(char)
+            assert all(jamo in allowed for jamo in jamos)
+
+
+def test_get_practice_drill_nonsense_words() -> None:
+    from ttyping.words import PRACTICE_SETS, get_practice_drill
+
+    # "left_pinky" in "en_qwerty" has very few or no real words
+    # So it should generate nonsense sequences.
+    # Set home_return=False to just get the chars without interleaving
+    words = get_practice_drill("en_qwerty", "left_pinky", 5, home_return=False)
+    assert len(words) == 5
+    allowed = set(PRACTICE_SETS["en_qwerty"]["left_pinky"])
+    for word in words:
+        assert 3 <= len(word) <= 6
+        assert all(c in allowed for c in word)
+
+
+def test_get_practice_drill_home_return() -> None:
+    from ttyping.words import FINGER_HOME_KEY, PRACTICE_SETS, get_practice_drill
+
+    layout = "ko_2set"
+    set_name = "right_pinky"
+
+    # "right_pinky" in "ko_2set" has no real words and home key is not in practice set.
+    # We set home_return=True to test the interleaving logic.
+    words = get_practice_drill(layout, set_name, 5, home_return=True)
+    assert len(words) == 5
+
+    allowed_chars = set(PRACTICE_SETS[layout][set_name])
+    home_key = FINGER_HOME_KEY[layout][set_name]
+
+    for word in words:
+        # We interleaved a home_key after each random practice char,
+        # so length should be 2 * (3 to 6) = 6 to 12.
+        assert 6 <= len(word) <= 12
+        assert len(word) % 2 == 0
+
+        # Every even index character (0, 2, 4...) should be a practice char
+        # Every odd index character (1, 3, 5...) should be the home key
+        for i in range(len(word)):
+            if i % 2 == 0:
+                assert word[i] in allowed_chars
+            else:
+                assert word[i] == home_key
