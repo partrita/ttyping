@@ -57,6 +57,31 @@ class TypingResult:
         )
 
 
+def _fchmod_safe(file_path: Path, mode: int) -> None:
+    """Safely update permissions via file descriptor to prevent TOCTOU symlinks."""
+    if hasattr(os, "fstat") and hasattr(os, "fchmod"):
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        try:
+            fd = os.open(file_path, flags)
+            try:
+                st = os.fstat(fd)
+                if (st.st_mode & 0o777) != mode:
+                    os.fchmod(fd, mode)
+                return
+            finally:
+                os.close(fd)
+        except OSError:
+            # Fallback if O_NOFOLLOW fails or file cannot be opened
+            pass
+
+    # Fallback for platforms without fstat/fchmod (e.g. some Windows setups)
+    # or if the descriptor approach fails.
+    if not file_path.is_symlink() and (file_path.stat().st_mode & 0o777) != mode:
+        file_path.chmod(mode)
+
+
 def _secure_write(file_path: Path, content: str) -> None:
     """Safely write content to a file, ensuring 0o600 permissions upon creation."""
     # Security: Prevent TOCTOU symlink vulnerability
@@ -73,12 +98,16 @@ def _secure_write(file_path: Path, content: str) -> None:
         flags,
         0o600,
     )
+    # Ensure permissions are correct using the open fd before we close it
+    if hasattr(os, "fstat") and hasattr(os, "fchmod"):
+        st = os.fstat(fd)
+        if (st.st_mode & 0o777) != 0o600:
+            os.fchmod(fd, 0o600)
+    elif not file_path.is_symlink() and (file_path.stat().st_mode & 0o777) != 0o600:
+        file_path.chmod(0o600)
+
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(content)
-    # Ensure permissions are correct even if file already existed
-    is_symlink = file_path.is_symlink()
-    if not is_symlink and (file_path.stat().st_mode & 0o777) != 0o600:
-        file_path.chmod(0o600)
 
 
 def _ensure_storage() -> None:
@@ -96,8 +125,7 @@ def _ensure_storage() -> None:
     # unintentionally restricting shared parent directories.
     STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
-    if not STORAGE_DIR.is_symlink() and (STORAGE_DIR.stat().st_mode & 0o777) != 0o700:
-        STORAGE_DIR.chmod(0o700)
+    _fchmod_safe(STORAGE_DIR, 0o700)
 
     for file_path, default_content in [
         (RESULTS_FILE, "[]"),
@@ -115,6 +143,15 @@ def _ensure_storage() -> None:
 
                 # Use os.open to atomically create file with 0o600 permissions
                 fd = os.open(file_path, flags, 0o600)
+
+                # Ensure permissions are correct using the open fd before we close it
+                if hasattr(os, "fstat") and hasattr(os, "fchmod"):
+                    st = os.fstat(fd)
+                    if (st.st_mode & 0o777) != 0o600:
+                        os.fchmod(fd, 0o600)
+                elif not file_path.is_symlink() and (file_path.stat().st_mode & 0o777) != 0o600:
+                    file_path.chmod(0o600)
+
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
                     f.write(default_content)
             except FileExistsError:
@@ -122,9 +159,7 @@ def _ensure_storage() -> None:
                 pass
 
         # Ensure permissions are correct even if file already existed
-        is_symlink = file_path.is_symlink()
-        if not is_symlink and (file_path.stat().st_mode & 0o777) != 0o600:
-            file_path.chmod(0o600)
+        _fchmod_safe(file_path, 0o600)
 
     _STORAGE_ENSURED = True
 

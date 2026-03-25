@@ -133,12 +133,20 @@ def test_storage_symlink_bypass(
     # Mock is_symlink to return True so it skips the chmod step
     monkeypatch.setattr(Path, "is_symlink", lambda self: True)
 
+    # We must also mock out fstat/fchmod so the test behaves like old
+    # path-based check for bypasses when fstat fails or isn't there
+    def mock_fstat(fd):
+        raise OSError()
+
+    monkeypatch.setattr(os, "fstat", mock_fstat)
+
     ttyping.storage._ensure_storage()
 
     # Permissions should still be loose because chmod was bypassed
     assert (test_storage_dir.stat().st_mode & 0o777) == 0o777
     assert (test_results_file.stat().st_mode & 0o777) == 0o666
     assert (test_config_file.stat().st_mode & 0o777) == 0o666
+
 
 def test_secure_write_refuses_symlink(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
