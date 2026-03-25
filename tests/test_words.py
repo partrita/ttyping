@@ -83,3 +83,64 @@ def test_load_resource_words_exception() -> None:
     with patch("ttyping.words.resources.files", side_effect=Exception("Mock error")):
         words = _load_resource_words("dummy.txt")
         assert words == []
+
+
+def test_get_practice_drill_en_real_words() -> None:
+    from ttyping.words import get_practice_drill
+
+    # Using 'top_row' usually has enough English words
+    words = get_practice_drill("en_qwerty", "top_row", count=10)
+    assert len(words) == 10
+    # verify that words only use top row characters
+    allowed = set("qwertyuiop")
+    for word in words:
+        assert all(c.lower() in allowed for c in word)
+
+
+def test_get_practice_drill_ko_real_words() -> None:
+    from ttyping.words import _get_jamos, get_practice_drill
+
+    # Using 'left_hand' in ko_2set has enough words (only consonants)
+    words = get_practice_drill("ko_2set", "right_hand", count=5)
+    assert len(words) == 5
+    # right hand characters in ko_2set are vowels mostly
+    allowed = set("ㅛㅕㅑㅐㅔㅗㅓㅏㅣㅠㅜㅡ")
+    for word in words:
+        for char in word:
+            jamos = _get_jamos(char)
+            assert all(j in allowed for j in jamos)
+
+
+def test_get_practice_drill_nonsense_with_home_return() -> None:
+    from ttyping.words import get_practice_drill
+
+    # "left_pinky" typically doesn't have enough real words (q, a, z)
+    # home return should interleave 'a' (the home key for en_qwerty left_pinky)
+    words = get_practice_drill("en_qwerty", "left_pinky", count=5, home_return=True)
+    assert len(words) == 5
+
+    # check if 'a' is interleaved
+    # words are formed like: char, home_key, char, home_key...
+    # Except 'a' is in left_pinky, so if home_key is in chars, it won't interleave!
+    # Let's use right_pinky for ko_2set, chars are ㅔ;:/?"'[]{}0)-_=+ and home is ㅎ
+    words_ko = get_practice_drill("ko_2set", "right_pinky", count=5, home_return=True)
+    assert len(words_ko) == 5
+    home_key = "ㅎ"
+    for word in words_ko:
+        # Every alternate character (starting from index 1) should be the home key
+        for i, char in enumerate(word):
+            if i % 2 == 1:
+                assert char == home_key
+
+
+def test_get_practice_drill_nonsense_no_home_return() -> None:
+    from ttyping.words import get_practice_drill
+
+    words = get_practice_drill("ko_2set", "right_pinky", count=5, home_return=False)
+    assert len(words) == 5
+    allowed_chars = set("ㅔ;:/?\"'[]{}0)-_=+")
+    for word in words:
+        # should not be interleaved with home key
+        # should just be random characters from the set
+        for char in word:
+            assert char in allowed_chars
