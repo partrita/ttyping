@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import os
 import random
 import unicodedata
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
+from stat import S_ISREG
 
 
 def _load_resource_words(filename: str) -> list[str]:
@@ -334,15 +336,19 @@ def words_from_file(path: str, count: int = 25) -> list[str]:
     if not p.is_file():
         raise ValueError(f"'{path}' is not a regular file")
 
-    if p.stat().st_size > 10_000_000:
-        raise ValueError(f"'{path}' is too large (max 10MB)")
-
     if count <= 0:
         return []
 
     words: list[str] = []
     # Optimization: Read file line by line and exit early once we have enough words.
     with open(path, encoding="utf-8") as f:
+        # Security: fstat the open file descriptor to prevent TOCTOU symlink swap
+        st = os.fstat(f.fileno())
+        if not S_ISREG(st.st_mode):
+            raise ValueError(f"'{path}' is not a regular file")
+        if st.st_size > 10_000_000:
+            raise ValueError(f"'{path}' is too large (max 10MB)")
+
         for line in f:
             for word in line.split():
                 words.append(word)
