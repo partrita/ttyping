@@ -149,7 +149,10 @@ def _ensure_storage() -> None:
                     st = os.fstat(fd)
                     if (st.st_mode & 0o777) != 0o600:
                         os.fchmod(fd, 0o600)
-                elif not file_path.is_symlink() and (file_path.stat().st_mode & 0o777) != 0o600:
+                elif (
+                    not file_path.is_symlink()
+                    and (file_path.stat().st_mode & 0o777) != 0o600
+                ):
                     file_path.chmod(0o600)
 
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
