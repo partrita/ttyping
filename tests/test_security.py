@@ -139,3 +139,24 @@ def test_storage_symlink_bypass(
     assert (test_storage_dir.stat().st_mode & 0o777) == 0o777
     assert (test_results_file.stat().st_mode & 0o777) == 0o666
     assert (test_config_file.stat().st_mode & 0o777) == 0o666
+
+def test_secure_write_refuses_symlink(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    test_storage_dir = tmp_path / ".ttyping"
+    test_storage_dir.mkdir(parents=True)
+
+    target_file = tmp_path / "important_file.txt"
+    target_file.write_text("secret_data")
+
+    symlink_file = test_storage_dir / "results.json"
+    symlink_file.symlink_to(target_file)
+
+    with pytest.raises(OSError) as excinfo:
+        ttyping.storage._secure_write(symlink_file, "hacked")
+
+    err_str = str(excinfo.value)
+    assert "Refusing to write to symlink" in err_str or "Too many levels" in err_str
+
+    # Ensure target was not overwritten
+    assert target_file.read_text() == "secret_data"

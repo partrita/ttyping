@@ -59,10 +59,18 @@ class TypingResult:
 
 def _secure_write(file_path: Path, content: str) -> None:
     """Safely write content to a file, ensuring 0o600 permissions upon creation."""
+    # Security: Prevent TOCTOU symlink vulnerability
+    if file_path.is_symlink():
+        raise OSError(f"Refusing to write to symlink: {file_path}")
+
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+
     # Use os.open to atomically create file with 0o600 perms, or truncate if exists
     fd = os.open(
         file_path,
-        os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+        flags,
         0o600,
     )
     with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -97,8 +105,16 @@ def _ensure_storage() -> None:
     ]:
         if not file_path.exists():
             try:
+                # Security: Prevent TOCTOU symlink vulnerability
+                if file_path.is_symlink():
+                    raise OSError(f"Refusing to write to symlink: {file_path}")
+
+                flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                if hasattr(os, "O_NOFOLLOW"):
+                    flags |= os.O_NOFOLLOW
+
                 # Use os.open to atomically create file with 0o600 permissions
-                fd = os.open(file_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                fd = os.open(file_path, flags, 0o600)
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
                     f.write(default_content)
             except FileExistsError:
