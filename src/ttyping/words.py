@@ -18,7 +18,7 @@ def _load_resource_words(filename: str) -> list[str]:
         path = resources.files("ttyping.data").joinpath(filename)
         with path.open(encoding="utf-8") as f:
             return [line.strip() for line in f if line.strip()]
-    except Exception:
+    except (ModuleNotFoundError, FileNotFoundError):
         # Fallback to empty list if resource is missing or load fails
         return []
 
