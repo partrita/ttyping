@@ -225,23 +225,23 @@ class TypingApp(App):
         self._current_session_words = words
         return words
 
-    def restart(self) -> None:
-        """Pop current screens and start a new typing test with fresh words."""
+    def _clear_typing_screens(self) -> None:
+        """Clear active typing and result screens from the stack."""
         while len(self.screen_stack) > 1 and self.screen.__class__.__name__ in (
             "TypingScreen",
             "ResultScreen",
         ):
             self.pop_screen()
+
+    def restart(self) -> None:
+        """Pop current screens and start a new typing test with fresh words."""
+        self._clear_typing_screens()
         self._start_typing(keep_words=False)
 
     def reset_session_attempt(self, stats: TypingResult) -> None:
         """Record a failed attempt (accuracy drop) and restart with SAME words."""
         self._session_attempts.append(stats)
-        while len(self.screen_stack) > 1 and self.screen.__class__.__name__ in (
-            "TypingScreen",
-            "ResultScreen",
-        ):
-            self.pop_screen()
+        self._clear_typing_screens()
         self._start_typing(keep_words=True)
 
     def show_result(self, result: TypingResult) -> None:
