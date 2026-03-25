@@ -58,7 +58,7 @@ class TypingResult:
 
 
 def _fchmod_safe(file_path: Path) -> None:
-    """Safely update file permissions using file descriptors to prevent TOCTOU symlink attacks."""
+    """Use file descriptors to safely set permissions, preventing TOCTOU attacks."""
     if hasattr(os, "fchmod") and hasattr(os, "fstat"):
         flags = os.O_RDONLY
         if hasattr(os, "O_NOFOLLOW"):
@@ -73,7 +73,7 @@ def _fchmod_safe(file_path: Path) -> None:
             finally:
                 os.close(fd)
         except OSError:
-            # File may have been deleted, or is a symlink and O_NOFOLLOW prevented opening
+            # File deleted, or symlink blocked by O_NOFOLLOW
             return
 
     # Fallback for platforms without fchmod/fstat (e.g. Windows)
