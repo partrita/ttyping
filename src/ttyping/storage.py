@@ -57,6 +57,31 @@ class TypingResult:
         )
 
 
+def _fchmod_safe(file_path: Path) -> None:
+    """Use file descriptors to safely set permissions, preventing TOCTOU attacks."""
+    if hasattr(os, "fchmod") and hasattr(os, "fstat"):
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        try:
+            fd = os.open(file_path, flags)
+            try:
+                st = os.fstat(fd)
+                if (st.st_mode & 0o777) != 0o600:
+                    os.fchmod(fd, 0o600)
+                return
+            finally:
+                os.close(fd)
+        except OSError:
+            # File deleted, or symlink blocked by O_NOFOLLOW
+            return
+
+    # Fallback for platforms without fchmod/fstat (e.g. Windows)
+    is_symlink = file_path.is_symlink()
+    if not is_symlink and (file_path.stat().st_mode & 0o777) != 0o600:
+        file_path.chmod(0o600)
+
+
 def _secure_write(file_path: Path, content: str) -> None:
     """Safely write content to a file, ensuring 0o600 permissions upon creation."""
     # Security: Prevent TOCTOU symlink vulnerability
@@ -76,9 +101,7 @@ def _secure_write(file_path: Path, content: str) -> None:
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(content)
     # Ensure permissions are correct even if file already existed
-    is_symlink = file_path.is_symlink()
-    if not is_symlink and (file_path.stat().st_mode & 0o777) != 0o600:
-        file_path.chmod(0o600)
+    _fchmod_safe(file_path)
 
 
 def _ensure_storage() -> None:
@@ -122,9 +145,7 @@ def _ensure_storage() -> None:
                 pass
 
         # Ensure permissions are correct even if file already existed
-        is_symlink = file_path.is_symlink()
-        if not is_symlink and (file_path.stat().st_mode & 0o777) != 0o600:
-            file_path.chmod(0o600)
+        _fchmod_safe(file_path)
 
     _STORAGE_ENSURED = True
 

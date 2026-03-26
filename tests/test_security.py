@@ -130,8 +130,14 @@ def test_storage_symlink_bypass(
     test_results_file.chmod(0o666)
     test_config_file.chmod(0o666)
 
-    # Mock is_symlink to return True so it skips the chmod step
+    # Mock is_symlink to return True so it skips the fallback path
     monkeypatch.setattr(Path, "is_symlink", lambda self: True)
+
+    # Mock os.open so _fchmod_safe simulates a symlink being blocked by O_NOFOLLOW
+    def mock_open(*args, **kwargs):
+        raise OSError("Too many levels of symbolic links")
+
+    monkeypatch.setattr("os.open", mock_open)
 
     ttyping.storage._ensure_storage()
 
