@@ -88,6 +88,12 @@ class TypingScreen(Screen):
     #input-area.typo {
         background: #5f2120;
     }
+
+    #hints {
+        width: 100%;
+        text-align: center;
+        margin-top: 2;
+    }
     """
 
     def __init__(
@@ -123,6 +129,12 @@ class TypingScreen(Screen):
                 yield Static("", id="stats")
                 yield Static("", id="text-display")
                 yield Input(id="input-area", password=False)
+                yield Static(
+                    Text.from_markup(
+                        r"[dim]\[tab][/dim] restart  [dim]\[esc][/dim] back"
+                    ),
+                    id="hints",
+                )
 
         yield Footer()
 
@@ -549,6 +561,12 @@ class ResultScreen(Screen):
         max-height: 10;
         margin-top: 1;
     }
+
+    #result-hints {
+        width: 100%;
+        text-align: center;
+        margin-top: 1;
+    }
     """
 
     def __init__(
@@ -610,6 +628,14 @@ class ResultScreen(Screen):
                         str(r.errors),
                     )
                     yield table
+
+                yield Static(
+                    Text.from_markup(
+                        r"[dim]\[tab][/dim] retry  [dim]\[h][/dim] history  "
+                        r"[dim]\[esc][/dim] back"
+                    ),
+                    id="result-hints",
+                )
 
         yield Footer()
 
@@ -960,6 +986,15 @@ class HistoryScreen(Screen):
                         )
 
                     yield self._create_history_table(results, self._row_to_storage_idx)
+
+                yield Static(
+                    Text.from_markup(
+                        r"[dim]\[d][/dim] delete  [dim]\[shift+d][/dim] delete all  "
+                        r"[dim]\[esc][/dim] back"
+                    ),
+                    id="history-hints",
+                    classes="history-hint",
+                )
 
         yield Footer()
 

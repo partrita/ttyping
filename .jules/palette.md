@@ -17,3 +17,7 @@
 ## 2024-05-23 - Inline Keybindings for Discoverability
 **Learning:** Hidden keybindings in TUIs are often missed by users because they aren't visible in the footer or the UI.
 **Action:** Inline keyboard shortcuts directly into option labels using rich markup (e.g., `[dim]\[key][/dim]`) to improve discoverability while keeping the UI clean.
+
+## 2026-03-22 - Visual Keyboard Hints for Hidden Keybindings
+**Learning:** Hidden keybindings (like 'Tab' for restart or 'Esc' for back) in main screens without OptionLists are completely invisible to users, causing friction.
+**Action:** Add explicit visual text widgets (e.g., `Static`) with Rich markup (like `[dim]\[tab][/dim]`) to the bottom of main screens to make these non-menu shortcuts discoverable.
