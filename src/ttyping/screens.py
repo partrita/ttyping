@@ -1078,6 +1078,7 @@ class MenuScreen(ActionSelectMixin, Screen):
         Binding(key="o", action="select_options", description="Options", show=False),
         Binding(key="p", action="select_code", description="Code", show=False),
         Binding(key="escape", action="quit_app", description="Quit"),
+        Binding(key="q", action="quit_app", description="Quit", show=False),
         # Korean IME support (2-set)
         Binding(key="ㄷ", action="select_en", show=False),
         Binding(key="ㅏ", action="select_ko", show=False),
@@ -1085,6 +1086,7 @@ class MenuScreen(ActionSelectMixin, Screen):
         Binding(key="ㅗ", action="select_history", show=False),
         Binding(key="ㅐ", action="select_options", show=False),
         Binding(key="ㅔ", action="select_code", show=False),
+        Binding(key="ㅂ", action="quit_app", show=False),
     ]
 
     def compose(self) -> ComposeResult:
@@ -1117,7 +1119,7 @@ class MenuScreen(ActionSelectMixin, Screen):
                         id="options",
                     ),
                     Option(
-                        Text.from_markup("Quit"),
+                        Text.from_markup(r"Quit [dim]\[q][/dim]"),
                         id="quit",
                     ),
                     id="menu-options",
