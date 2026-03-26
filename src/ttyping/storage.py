@@ -7,6 +7,7 @@ import os
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from stat import S_ISREG
 from typing import Any
 
 STORAGE_DIR = Path.home() / ".ttyping"
@@ -104,6 +105,23 @@ def _secure_write(file_path: Path, content: str) -> None:
     _fchmod_safe(file_path)
 
 
+def _secure_read(file_path: Path) -> str:
+    """Safely read a file, verifying it is a regular file and not a symlink."""
+    if file_path.is_symlink():
+        raise OSError(f"Refusing to read from symlink: {file_path}")
+
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+
+    fd = os.open(file_path, flags)
+    with os.fdopen(fd, "r", encoding="utf-8") as f:
+        st = os.fstat(fd)
+        if not S_ISREG(st.st_mode):
+            raise OSError(f"Not a regular file: {file_path}")
+        return f.read()
+
+
 def _ensure_storage() -> None:
     """Ensure storage directory and file exist with correct permissions."""
     global _STORAGE_ENSURED
@@ -171,7 +189,7 @@ def load_results() -> list[TypingResult]:
 
     _ensure_storage()
     try:
-        text = RESULTS_FILE.read_text(encoding="utf-8")
+        text = _secure_read(RESULTS_FILE)
         data = json.loads(text)
         if not isinstance(data, list):
             _RESULTS_CACHE = []
@@ -180,7 +198,7 @@ def load_results() -> list[TypingResult]:
             TypingResult.from_dict(r) for r in data if isinstance(r, dict)
         ]
         return _RESULTS_CACHE
-    except (json.JSONDecodeError, FileNotFoundError):
+    except (json.JSONDecodeError, OSError):
         _RESULTS_CACHE = []
         return _RESULTS_CACHE
 
@@ -223,14 +241,14 @@ def load_config() -> dict[str, Any]:
 
     _ensure_storage()
     try:
-        text = CONFIG_FILE.read_text(encoding="utf-8")
+        text = _secure_read(CONFIG_FILE)
         data = json.loads(text)
         if not isinstance(data, dict):
             _CONFIG_CACHE = {}
             return {}
         _CONFIG_CACHE = data
         return _CONFIG_CACHE
-    except (json.JSONDecodeError, FileNotFoundError):
+    except (json.JSONDecodeError, OSError):
         _CONFIG_CACHE = {}
         return {}
 
