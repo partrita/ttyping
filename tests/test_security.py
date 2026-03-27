@@ -166,3 +166,21 @@ def test_secure_write_refuses_symlink(
 
     # Ensure target was not overwritten
     assert target_file.read_text() == "secret_data"
+
+def test_secure_read_symlink(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    test_storage_dir = tmp_path / ".ttyping"
+    test_storage_dir.mkdir(parents=True)
+
+    target_file = tmp_path / "important_file.txt"
+    target_file.write_text("secret_data")
+
+    symlink_file = test_storage_dir / "results.json"
+    symlink_file.symlink_to(target_file)
+
+    with pytest.raises(OSError) as excinfo:
+        ttyping.storage._secure_read(symlink_file)
+
+    err_str = str(excinfo.value)
+    assert "Refusing to read from symlink" in err_str or "Too many levels" in err_str
