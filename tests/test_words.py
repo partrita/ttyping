@@ -146,3 +146,48 @@ def test_get_practice_drill_nonsense_no_home_return() -> None:
         # should just be random characters from the set
         for char in word:
             assert char in allowed_chars
+
+
+def test_get_words_sentences() -> None:
+    # Test en_sentences
+    count = 2
+    words = get_words("en_sentences", count=count)
+    # Each sentence has at least one word, so len(words) >= count
+    assert len(words) >= count
+    assert isinstance(words, list)
+    assert all(isinstance(w, str) for w in words)
+
+    # Test ko_sentences
+    words_ko = get_words("ko_sentences", count=count)
+    assert len(words_ko) >= count
+    assert isinstance(words_ko, list)
+    assert all(isinstance(w, str) for w in words_ko)
+
+
+def test_get_words_lorem_ipsum() -> None:
+    # Test en_lorem_ipsum
+    count = 2
+    words = get_words("en_lorem_ipsum", count=count)
+    assert len(words) >= count
+    assert all(isinstance(w, str) for w in words)
+
+    # Test ko_lorem_ipsum
+    words_ko = get_words("ko_lorem_ipsum", count=count)
+    assert len(words_ko) >= count
+    assert all(isinstance(w, str) for w in words_ko)
+
+
+def test_get_words_sentences_fallback() -> None:
+    # Patch EN_SENTENCES to be empty to trigger fallback
+    with patch("ttyping.words.EN_SENTENCES", []):
+        words = get_words("en_sentences", count=1)
+        # "No sentences found." splits into ["No", "sentences", "found."]
+        assert words == ["No", "sentences", "found."]
+
+
+def test_get_words_lorem_ipsum_fallback() -> None:
+    # Patch KO_LOREM_IPSUM to be empty to trigger fallback
+    with patch("ttyping.words.KO_LOREM_IPSUM", []):
+        words = get_words("ko_lorem_ipsum", count=1)
+        # "No lorem ipsum found." splits into ["No", "lorem", "ipsum", "found."]
+        assert words == ["No", "lorem", "ipsum", "found."]
