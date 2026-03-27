@@ -17,3 +17,13 @@
 **Vulnerability:** The application used `os.open()` with `os.O_CREAT | os.O_TRUNC` to save result files. However, this does not prevent a Time-of-Check to Time-of-Use (TOCTOU) vulnerability where an attacker replaces the file with a symlink. When writing, it would follow the symlink and overwrite the target file.
 **Learning:** `O_CREAT` combined with `O_TRUNC` follows symlinks. You must include `os.O_NOFOLLOW` in the flags for `os.open` (if available on the platform) to ensure the operation fails if the destination is a symlink. Additionally, a preemptive `.is_symlink()` check helps on platforms that don't support `O_NOFOLLOW`.
 **Prevention:** Always use `os.O_NOFOLLOW` when securely opening or creating files, and add `if path.is_symlink(): raise OSError(...)` prior to `os.open()` for cross-platform robustness against symlink-based arbitrary file writes.
+
+## 2025-05-14 - Fix TOCTOU vulnerability in file chmod
+**Vulnerability:** TOCTOU (Time-of-Check Time-of-Use) in file permission setting.
+**Learning:** Using path-based  after a file check or creation creates a race condition window where an attacker can replace the target with a symlink. The secure way to handle this on Unix-like systems is to use  and  on an open file descriptor.
+**Prevention:** Always prefer descriptor-based operations (, ) over path-based ones when the file is already open. Use `os.O_NOFOLLOW` when opening existing files to prevent following symlinks.
+
+## 2025-05-14 - Fix TOCTOU vulnerability in file chmod
+**Vulnerability:** TOCTOU (Time-of-Check Time-of-Use) in file permission setting.
+**Learning:** Using path-based `chmod` after a file check or creation creates a race condition window where an attacker can replace the target with a symlink. The secure way to handle this on Unix-like systems is to use `os.fchmod` and `os.fstat` on an open file descriptor.
+**Prevention:** Always prefer descriptor-based operations (`fchmod`, `fstat`) over path-based ones when the file is already open. Use `os.O_NOFOLLOW` when opening existing files to prevent following symlinks.

@@ -122,23 +122,28 @@ def test_storage_symlink_bypass(
     monkeypatch.setattr(ttyping.storage, "_STORAGE_ENSURED", False)
 
     test_storage_dir.mkdir(parents=True)
-    test_results_file.write_text("[]")
-    test_config_file.write_text("{}")
 
-    # Pre-set loose permissions
-    test_storage_dir.chmod(0o777)
-    test_results_file.chmod(0o666)
-    test_config_file.chmod(0o666)
+    # Create real files to point symlinks to
+    results_target = tmp_path / "results_target"
+    config_target = tmp_path / "config_target"
+    results_target.write_text("[]")
+    config_target.write_text("{}")
 
-    # Mock is_symlink to return True so it skips the chmod step
-    monkeypatch.setattr(Path, "is_symlink", lambda self: True)
+    # Create symlinks
+    test_results_file.symlink_to(results_target)
+    test_config_file.symlink_to(config_target)
+
+    # Pre-set loose permissions on targets
+    # STORAGE_DIR will be chmod'd to 0o700 because it's not a symlink,
+    # so we'll just check the files.
+    results_target.chmod(0o666)
+    config_target.chmod(0o666)
 
     ttyping.storage._ensure_storage()
 
-    # Permissions should still be loose because chmod was bypassed
-    assert (test_storage_dir.stat().st_mode & 0o777) == 0o777
-    assert (test_results_file.stat().st_mode & 0o777) == 0o666
-    assert (test_config_file.stat().st_mode & 0o777) == 0o666
+    # Permissions should still be loose because chmod was bypassed for symlinks
+    assert (results_target.stat().st_mode & 0o777) == 0o666
+    assert (config_target.stat().st_mode & 0o777) == 0o666
 
 def test_secure_write_refuses_symlink(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -160,3 +165,29 @@ def test_secure_write_refuses_symlink(
 
     # Ensure target was not overwritten
     assert target_file.read_text() == "secret_data"
+
+
+def test_fchmod_is_called(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from unittest.mock import MagicMock
+
+    test_storage_dir = tmp_path / ".ttyping"
+    test_results_file = test_storage_dir / "results.json"
+    test_config_file = test_storage_dir / "config.json"
+
+    monkeypatch.setattr(ttyping.storage, "STORAGE_DIR", test_storage_dir)
+    monkeypatch.setattr(ttyping.storage, "RESULTS_FILE", test_results_file)
+    monkeypatch.setattr(ttyping.storage, "CONFIG_FILE", test_config_file)
+    monkeypatch.setattr(ttyping.storage, "_STORAGE_ENSURED", False)
+
+    mock_fchmod = MagicMock()
+    monkeypatch.setattr(os, "fchmod", mock_fchmod)
+    # Ensure fstat is also present if we're mocking fchmod
+    monkeypatch.setattr(os, "fstat", MagicMock(return_value=MagicMock(st_mode=0o777)))
+
+    # This should trigger _ensure_storage -> _fchmod_safe (via os.open)
+    ttyping.storage._ensure_storage()
+
+    # Verify fchmod was called for results.json and config.json
+    assert mock_fchmod.called
+    # At least two calls expected (one for results.json, one for config.json)
+    assert mock_fchmod.call_count >= 2

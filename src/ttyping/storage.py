@@ -57,6 +57,25 @@ class TypingResult:
         )
 
 
+def _fchmod_safe(fd: int, path: Path, mode: int) -> None:
+    """Safely update file permissions using an open file descriptor if available."""
+    try:
+        # Security: Use fstat and fchmod on the open file descriptor to prevent TOCTOU
+        # where the file path is replaced by a symlink after opening.
+        if hasattr(os, "fstat") and hasattr(os, "fchmod"):
+            st = os.fstat(fd)
+            if (st.st_mode & 0o777) != mode:
+                os.fchmod(fd, mode)
+            return
+    except OSError:
+        # Fallback to path-based chmod if fchmod fails
+        pass
+
+    # Fallback for platforms like Windows where fchmod is unavailable
+    if not path.is_symlink() and (path.stat().st_mode & 0o777) != mode:
+        path.chmod(mode)
+
+
 def _secure_write(file_path: Path, content: str) -> None:
     """Safely write content to a file, ensuring 0o600 permissions upon creation."""
     # Security: Prevent TOCTOU symlink vulnerability
@@ -75,10 +94,8 @@ def _secure_write(file_path: Path, content: str) -> None:
     )
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(content)
-    # Ensure permissions are correct even if file already existed
-    is_symlink = file_path.is_symlink()
-    if not is_symlink and (file_path.stat().st_mode & 0o777) != 0o600:
-        file_path.chmod(0o600)
+        # Ensure permissions are correct even if file already existed
+        _fchmod_safe(f.fileno(), file_path, 0o600)
 
 
 def _ensure_storage() -> None:
@@ -117,14 +134,25 @@ def _ensure_storage() -> None:
                 fd = os.open(file_path, flags, 0o600)
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
                     f.write(default_content)
+                    _fchmod_safe(f.fileno(), file_path, 0o600)
             except FileExistsError:
                 # File was created between the exists() check and os.open
                 pass
+        else:
+            # File already exists, ensure permissions are correct
+            flags = os.O_RDONLY
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
 
-        # Ensure permissions are correct even if file already existed
-        is_symlink = file_path.is_symlink()
-        if not is_symlink and (file_path.stat().st_mode & 0o777) != 0o600:
-            file_path.chmod(0o600)
+            try:
+                fd = os.open(file_path, flags)
+                try:
+                    _fchmod_safe(fd, file_path, 0o600)
+                finally:
+                    os.close(fd)
+            except OSError:
+                # Fallback for symlinks or other issues
+                _fchmod_safe(-1, file_path, 0o600)
 
     _STORAGE_ENSURED = True
 
