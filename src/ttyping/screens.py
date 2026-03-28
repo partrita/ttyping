@@ -112,7 +112,8 @@ class TypingScreen(Screen):
         self._timer_handle: Any | None = None  # textual.timer.Timer at runtime
         self._finished: bool = False
         self.errors: Counter[str] = Counter()  # Tracks characters missed
-        self.char_timings: list[dict[str, Any]] = []  # Tracks (char, timestamp, is_correct)
+        # Tracks (char, timestamp, is_correct)
+        self.char_timings: list[dict[str, Any]] = []
         self._cached_lines: list[list[int]] | None = None
         self._last_container_width: int = 0
         self._stats_widget: Static | None = None
@@ -162,17 +163,29 @@ class TypingScreen(Screen):
         # Track raw keystrokes and errors
         # Handle IME composition (length might not increase, but content changes)
         if len(value) >= len(self.current_input) and value != self.current_input:
-            # We treat any change that isn't a deletion as a potential new character/update
-            added = value[len(self.current_input) :] if len(value) > len(self.current_input) else ""
+            # Treat any change that isn't a deletion as a potential new character/update
+            added = (
+                value[len(self.current_input) :]
+                if len(value) > len(self.current_input)
+                else ""
+            )
             
             # If length is same but content changed, it's an IME update (e.g. ㄱ -> 가)
             if len(value) == len(self.current_input):
                 # We update the last timing entry if it's the same position
-                if self.char_timings and self.char_timings[-1]["word_idx"] == self.current_word_idx and self.char_timings[-1]["char_idx"] == len(value) - 1:
+                if (
+                    self.char_timings
+                    and self.char_timings[-1]["word_idx"] == self.current_word_idx
+                    and self.char_timings[-1]["char_idx"] == len(value) - 1
+                ):
                     last_idx = len(value) - 1
                     target_word = self.words[self.current_word_idx]
                     char = value[last_idx]
-                    is_correct = char == target_word[last_idx] if last_idx < len(target_word) else (char == " ")
+                    is_correct = (
+                        char == target_word[last_idx]
+                        if last_idx < len(target_word)
+                        else (char == " ")
+                    )
                     
                     self.char_timings[-1].update({
                         "char": char,
@@ -669,7 +682,7 @@ class ResultScreen(Screen):
                 diffs.append(0.1)
             else:
                 dt = timings[i]["time"] - timings[i - 1]["time"]
-                # Cap extremely long pauses (e.g. user took a break) to not skew normalization
+                # Cap extremely long pauses to not skew normalization
                 diffs.append(min(dt, 1.5))
 
         if not diffs:
@@ -905,8 +918,6 @@ class LineChart(Static):
             data = [data[0], data[0]]
 
         # Braille dots for 8 rows (height=2 * 4 dots)
-        height = 2
-        rows = height * 4
         
         # Sample points
         points = 2 * width
@@ -932,7 +943,6 @@ class LineChart(Static):
         top_line = []
         bot_line = []
         
-        dots = [0x01, 0x08, 0x02, 0x10, 0x04, 0x20, 0x40, 0x80]
         # Braille dot mapping (standard):
         # 1 4
         # 2 5
@@ -974,7 +984,11 @@ class LineChart(Static):
             # Bottom cell (rows 0-3)
             bot_line.append(chr(get_braille_char(l_total_row, r_total_row, 0)))
 
-        res_text = Text("".join(top_line), style=self.chart_color) + "\n" + Text("".join(bot_line), style=self.chart_color)
+        res_text = (
+            Text("".join(top_line), style=self.chart_color)
+            + "\n"
+            + Text("".join(bot_line), style=self.chart_color)
+        )
         self.update(res_text)
 
 
