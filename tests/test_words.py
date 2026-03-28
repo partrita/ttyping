@@ -58,6 +58,20 @@ def test_words_from_file_too_large(tmp_path: Path) -> None:
         words_from_file(str(d))
 
 
+def test_words_from_file_symlink(tmp_path: Path) -> None:
+    target = tmp_path / "target.txt"
+    target.write_text("hello symlink", encoding="utf-8")
+
+    symlink = tmp_path / "symlink.txt"
+    symlink.symlink_to(target)
+
+    with pytest.raises(OSError) as excinfo:
+        words_from_file(str(symlink))
+
+    err_str = str(excinfo.value)
+    assert "Refusing to read from symlink" in err_str or "Too many levels" in err_str
+
+
 def test_get_practice_drill_en_dvorak() -> None:
     from ttyping.words import get_words
 
