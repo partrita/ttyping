@@ -169,7 +169,7 @@ class TypingScreen(Screen):
                 if len(value) > len(self.current_input)
                 else ""
             )
-            
+
             # If length is same but content changed, it's an IME update (e.g. ㄱ -> 가)
             if len(value) == len(self.current_input):
                 # We update the last timing entry if it's the same position
@@ -186,12 +186,14 @@ class TypingScreen(Screen):
                         if last_idx < len(target_word)
                         else (char == " ")
                     )
-                    
-                    self.char_timings[-1].update({
-                        "char": char,
-                        "time": time.time(),
-                        "correct": is_correct,
-                    })
+
+                    self.char_timings[-1].update(
+                        {
+                            "char": char,
+                            "time": time.time(),
+                            "correct": is_correct,
+                        }
+                    )
                     # Re-check error for shaking
                     if not is_correct:
                         has_error = True
@@ -215,13 +217,15 @@ class TypingScreen(Screen):
                         has_error = True
                         is_correct = False
 
-                    self.char_timings.append({
-                        "char": char,
-                        "time": time.time(),
-                        "correct": is_correct,
-                        "word_idx": self.current_word_idx,
-                        "char_idx": idx,
-                    })
+                    self.char_timings.append(
+                        {
+                            "char": char,
+                            "time": time.time(),
+                            "correct": is_correct,
+                            "word_idx": self.current_word_idx,
+                            "char_idx": idx,
+                        }
+                    )
 
         if has_error:
             self._shake_input()
@@ -333,7 +337,7 @@ class TypingScreen(Screen):
                     keystrokes=stats["keystrokes"],
                     errors=stats["errors"],
                     char_timings=self.char_timings,
-                    text=" ".join(self.words[:self.current_word_idx]),
+                    text=" ".join(self.words[: self.current_word_idx]),
                 )
 
                 self.set_timer(
@@ -391,7 +395,7 @@ class TypingScreen(Screen):
             errors=self.total_errors,
             top_char_errors=top_char_errors,
             char_timings=self.char_timings,
-            text=" ".join(self.words[:self.current_word_idx]),
+            text=" ".join(self.words[: self.current_word_idx]),
         )
 
         save_result(result)
@@ -697,14 +701,14 @@ class ResultScreen(Screen):
         for i, entry in enumerate(timings):
             char = entry["char"]
             dt = diffs[i]
-            
+
             # 0.0 (fastest/green) to 1.0 (slowest/red)
             norm = (dt - min_dt) / dt_range
-            
+
             # Use a more monkeytype-like palette:
             # Fast: Greenish (#d1d0c5 text, but here we use colors)
             # Slow: Reddish
-            
+
             if norm < 0.3:
                 # Fast: Vibrant Green
                 color = "rgb(0,255,100)"
@@ -714,12 +718,12 @@ class ResultScreen(Screen):
             else:
                 # Slow: Red
                 color = "rgb(255,50,50)"
-            
+
             style = color
             if not entry.get("correct", True):
                 # Errors are highlighted with a background or distinct color
                 style = f"white on {COL_ERROR}"
-            
+
             t.append(char, style=style)
 
         return t
@@ -918,7 +922,7 @@ class LineChart(Static):
             data = [data[0], data[0]]
 
         # Braille dots for 8 rows (height=2 * 4 dots)
-        
+
         # Sample points
         points = 2 * width
         sampled = []
@@ -935,14 +939,14 @@ class LineChart(Static):
         min_v = min(sampled)
         max_v = max(sampled)
         extent = max_v - min_v if max_v > min_v else 1
-        
+
         # Braille patterns for 4-dot high cells
         # We need to render 2 lines.
         # Top line (row 4-7), Bottom line (row 0-3)
-        
+
         top_line = []
         bot_line = []
-        
+
         # Braille dot mapping (standard):
         # 1 4
         # 2 5
@@ -955,7 +959,7 @@ class LineChart(Static):
         # 5: row 1
         # 4: row 0 (bottom)
         # Wait, braille is usually 2x4.
-        
+
         def get_braille_char(l_row: int, r_row: int, offset_row: int) -> int:
             """Build braille char for two points in a 4-dot high cell."""
             char = 0x2800
@@ -963,7 +967,7 @@ class LineChart(Static):
             # Map 0 -> dot 7/8, 1 -> dot 3/6, 2 -> dot 2/5, 3 -> dot 1/4
             l_dot_map = {0: 0x40, 1: 0x04, 2: 0x02, 3: 0x01}
             r_dot_map = {0: 0x80, 1: 0x20, 2: 0x10, 3: 0x08}
-            
+
             # Fill dots from 0 to target row to make a solid-ish line/area
             for r in range(min(l_row, 3) + 1):
                 char |= l_dot_map.get(r, 0)
@@ -974,11 +978,11 @@ class LineChart(Static):
         for i in range(width):
             l_val = sampled[i * 2]
             r_val = sampled[i * 2 + 1]
-            
+
             # Overall row (0 to 7)
             l_total_row = int((l_val - min_v) / extent * 7.99)
             r_total_row = int((r_val - min_v) / extent * 7.99)
-            
+
             # Top cell (rows 4-7)
             top_line.append(chr(get_braille_char(l_total_row - 4, r_total_row - 4, 4)))
             # Bottom cell (rows 0-3)
