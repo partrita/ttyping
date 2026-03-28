@@ -112,6 +112,7 @@ class TypingScreen(Screen):
         self._timer_handle: Any | None = None  # textual.timer.Timer at runtime
         self._finished: bool = False
         self.errors: Counter[str] = Counter()  # Tracks characters missed
+        self.char_timings: list[dict[str, Any]] = []  # Tracks (char, timestamp, is_correct)
         self._cached_lines: list[list[int]] | None = None
         self._last_container_width: int = 0
         self._stats_widget: Static | None = None
@@ -159,20 +160,55 @@ class TypingScreen(Screen):
         has_error = False
 
         # Track raw keystrokes and errors
-        if len(value) > len(self.current_input):
-            added = value[len(self.current_input) :]
-            self.total_keystrokes += len(added)
-
-            target_word = self.words[self.current_word_idx]
-            for i, char in enumerate(added):
-                idx = len(self.current_input) + i
-                if idx < len(target_word):
-                    if char != target_word[idx]:
+        # Handle IME composition (length might not increase, but content changes)
+        if len(value) >= len(self.current_input) and value != self.current_input:
+            # We treat any change that isn't a deletion as a potential new character/update
+            added = value[len(self.current_input) :] if len(value) > len(self.current_input) else ""
+            
+            # If length is same but content changed, it's an IME update (e.g. ㄱ -> 가)
+            if len(value) == len(self.current_input):
+                # We update the last timing entry if it's the same position
+                if self.char_timings and self.char_timings[-1]["word_idx"] == self.current_word_idx and self.char_timings[-1]["char_idx"] == len(value) - 1:
+                    last_idx = len(value) - 1
+                    target_word = self.words[self.current_word_idx]
+                    char = value[last_idx]
+                    is_correct = char == target_word[last_idx] if last_idx < len(target_word) else (char == " ")
+                    
+                    self.char_timings[-1].update({
+                        "char": char,
+                        "time": time.time(),
+                        "correct": is_correct,
+                    })
+                    # Re-check error for shaking
+                    if not is_correct:
+                        has_error = True
+                else:
+                    # This shouldn't happen much with normal IME but let's be safe
+                    pass
+            else:
+                # Normal addition
+                self.total_keystrokes += len(added)
+                target_word = self.words[self.current_word_idx]
+                for i, char in enumerate(added):
+                    idx = len(self.current_input) + i
+                    is_correct = True
+                    if idx < len(target_word):
+                        if char != target_word[idx]:
+                            self.total_errors += 1
+                            has_error = True
+                            is_correct = False
+                    elif char != " ":
                         self.total_errors += 1
                         has_error = True
-                elif char != " ":
-                    self.total_errors += 1
-                    has_error = True
+                        is_correct = False
+
+                    self.char_timings.append({
+                        "char": char,
+                        "time": time.time(),
+                        "correct": is_correct,
+                        "word_idx": self.current_word_idx,
+                        "char_idx": idx,
+                    })
 
         if has_error:
             self._shake_input()
@@ -283,6 +319,8 @@ class TypingScreen(Screen):
                     correct=self.current_word_idx - self.uncorrected_errors,
                     keystrokes=stats["keystrokes"],
                     errors=stats["errors"],
+                    char_timings=self.char_timings,
+                    text=" ".join(self.words[:self.current_word_idx]),
                 )
 
                 self.set_timer(
@@ -339,6 +377,8 @@ class TypingScreen(Screen):
             keystrokes=self.total_keystrokes,
             errors=self.total_errors,
             top_char_errors=top_char_errors,
+            char_timings=self.char_timings,
+            text=" ".join(self.words[:self.current_word_idx]),
         )
 
         save_result(result)
@@ -514,7 +554,7 @@ class ResultScreen(Screen):
     }
 
     #result-container {
-        width: 60;
+        width: 72;
         height: auto;
         align: center middle;
         padding: 2 4;
@@ -537,17 +577,13 @@ class ResultScreen(Screen):
         margin-top: 1;
     }
 
-    #top-errors-graph {
-        width: 100%;
-        margin-top: 1;
-        content-align: center middle;
-    }
-
-    #session-table {
+    #speed-map {
         width: 100%;
         height: auto;
-        max-height: 10;
         margin-top: 1;
+        padding: 1 2;
+        background: $boost;
+        border: tall $surface;
     }
     """
 
@@ -577,6 +613,11 @@ class ResultScreen(Screen):
                 detail.append(f"  ·  {r.correct}/{r.words} words", style=COL_DIM)
                 detail.append(f"  ·  {r.lang}", style=COL_DIM)
                 yield Static(detail, classes="result-detail")
+
+                # Speed Map (New)
+                if r.char_timings:
+                    yield Static("typing speed map", classes="result-title")
+                    yield Static(self._render_speed_map(), id="speed-map")
 
                 # WPM Trend Chart
                 results = load_results()
@@ -612,6 +653,63 @@ class ResultScreen(Screen):
                     yield table
 
         yield Footer()
+
+    def _render_speed_map(self) -> Text:
+        """Render the typed text with character-level speed visualization."""
+        if not self.result.char_timings:
+            return Text(self.result.text)
+
+        # Calculate time differences between characters
+        timings = self.result.char_timings
+        diffs = []
+        for i in range(len(timings)):
+            if i == 0:
+                # For the first char, we don't have a previous time.
+                # Use a small constant to keep it neutral/green.
+                diffs.append(0.1)
+            else:
+                dt = timings[i]["time"] - timings[i - 1]["time"]
+                # Cap extremely long pauses (e.g. user took a break) to not skew normalization
+                diffs.append(min(dt, 1.5))
+
+        if not diffs:
+            return Text(self.result.text)
+
+        # Normalize speeds using a logarithmic-ish scale or just better min/max
+        min_dt = min(diffs)
+        max_dt = max(diffs)
+        dt_range = max_dt - min_dt if max_dt > min_dt else 1.0
+
+        t = Text()
+        for i, entry in enumerate(timings):
+            char = entry["char"]
+            dt = diffs[i]
+            
+            # 0.0 (fastest/green) to 1.0 (slowest/red)
+            norm = (dt - min_dt) / dt_range
+            
+            # Use a more monkeytype-like palette:
+            # Fast: Greenish (#d1d0c5 text, but here we use colors)
+            # Slow: Reddish
+            
+            if norm < 0.3:
+                # Fast: Vibrant Green
+                color = "rgb(0,255,100)"
+            elif norm < 0.7:
+                # Medium: Yellow/Orange
+                color = "rgb(255,200,0)"
+            else:
+                # Slow: Red
+                color = "rgb(255,50,50)"
+            
+            style = color
+            if not entry.get("correct", True):
+                # Errors are highlighted with a background or distinct color
+                style = f"white on {COL_ERROR}"
+            
+            t.append(char, style=style)
+
+        return t
 
     def _render_bar_graph(self, data: list[tuple[str, int]]) -> Text:
         from rich.cells import cell_len
@@ -776,7 +874,7 @@ class LineChart(Static):
     DEFAULT_CSS = """
     LineChart {
         width: 100%;
-        height: 1;
+        height: 2;
         content-align: center middle;
     }
     """
@@ -806,7 +904,11 @@ class LineChart(Static):
         if len(data) == 1:
             data = [data[0], data[0]]
 
-        # Sample 2 * width points for braille (2 dots wide per char)
+        # Braille dots for 8 rows (height=2 * 4 dots)
+        height = 2
+        rows = height * 4
+        
+        # Sample points
         points = 2 * width
         sampled = []
         for i in range(points):
@@ -822,31 +924,58 @@ class LineChart(Static):
         min_v = min(sampled)
         max_v = max(sampled)
         extent = max_v - min_v if max_v > min_v else 1
+        
+        # Braille patterns for 4-dot high cells
+        # We need to render 2 lines.
+        # Top line (row 4-7), Bottom line (row 0-3)
+        
+        top_line = []
+        bot_line = []
+        
+        dots = [0x01, 0x08, 0x02, 0x10, 0x04, 0x20, 0x40, 0x80]
+        # Braille dot mapping (standard):
+        # 1 4
+        # 2 5
+        # 3 6
+        # 7 8
+        # Dot 1: 0x01, 2: 0x02, 3: 0x04, 4: 0x08, 5: 0x10, 6: 0x20, 7: 0x40, 8: 0x80
+        # In our coordinate system (0 is bottom), rows are:
+        # 7: row 3 (top)
+        # 6: row 2
+        # 5: row 1
+        # 4: row 0 (bottom)
+        # Wait, braille is usually 2x4.
+        
+        def get_braille_char(l_row: int, r_row: int, offset_row: int) -> int:
+            """Build braille char for two points in a 4-dot high cell."""
+            char = 0x2800
+            # Rows are 0,1,2,3 from BOTTOM of this cell
+            # Map 0 -> dot 7/8, 1 -> dot 3/6, 2 -> dot 2/5, 3 -> dot 1/4
+            l_dot_map = {0: 0x40, 1: 0x04, 2: 0x02, 3: 0x01}
+            r_dot_map = {0: 0x80, 1: 0x20, 2: 0x10, 3: 0x08}
+            
+            # Fill dots from 0 to target row to make a solid-ish line/area
+            for r in range(min(l_row, 3) + 1):
+                char |= l_dot_map.get(r, 0)
+            for r in range(min(r_row, 3) + 1):
+                char |= r_dot_map.get(r, 0)
+            return char
 
-        # Braille dot values for 4 rows
-        # From bottom to top to match cartesian plane
-        left_dots = [0x40, 0x04, 0x02, 0x01]
-        right_dots = [0x80, 0x20, 0x10, 0x08]
-
-        res = []
         for i in range(width):
             l_val = sampled[i * 2]
             r_val = sampled[i * 2 + 1]
-            l_row = int((l_val - min_v) / extent * 3.99)
-            r_row = int((r_val - min_v) / extent * 3.99)
+            
+            # Overall row (0 to 7)
+            l_total_row = int((l_val - min_v) / extent * 7.99)
+            r_total_row = int((r_val - min_v) / extent * 7.99)
+            
+            # Top cell (rows 4-7)
+            top_line.append(chr(get_braille_char(l_total_row - 4, r_total_row - 4, 4)))
+            # Bottom cell (rows 0-3)
+            bot_line.append(chr(get_braille_char(l_total_row, r_total_row, 0)))
 
-            char_val = 0x2800 | left_dots[l_row] | right_dots[r_row]
-
-            # Connect the dots with a vertical line to make it continuous
-            start = min(l_row, r_row)
-            end = max(l_row, r_row)
-            for row in range(start, end + 1):
-                char_val |= left_dots[row]
-                char_val |= right_dots[row]
-
-            res.append(chr(char_val))
-
-        self.update(Text("".join(res), style=self.chart_color))
+        res_text = Text("".join(top_line), style=self.chart_color) + "\n" + Text("".join(bot_line), style=self.chart_color)
+        self.update(res_text)
 
 
 # ── HistoryScreen ──────────────────────────────────────────────────────────
@@ -993,6 +1122,15 @@ class HistoryScreen(Screen):
                 f"{r.correct}/{r.words}",
             )
         return table
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Show result detail screen when a row is selected."""
+        results = load_results()
+        row_idx = event.cursor_row
+        if 0 <= row_idx < len(self._row_to_storage_idx):
+            storage_idx = self._row_to_storage_idx[row_idx]
+            if 0 <= storage_idx < len(results):
+                self.app.push_screen(ResultScreen(results[storage_idx]))
 
     def action_go_back(self) -> None:
         if len(self.app.screen_stack) > 1:

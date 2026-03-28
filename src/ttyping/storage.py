@@ -33,6 +33,8 @@ class TypingResult:
     errors: int
     gross_wpm: float = 0.0
     top_char_errors: list[tuple[str, int]] = field(default_factory=list)
+    char_timings: list[dict[str, Any]] = field(default_factory=list)
+    text: str = ""
     date: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -54,6 +56,8 @@ class TypingResult:
             errors=int(data.get("errors", 0)),
             gross_wpm=float(data.get("gross_wpm", 0)),
             top_char_errors=data.get("top_char_errors", []),
+            char_timings=data.get("char_timings", []),
+            text=str(data.get("text", "")),
             date=data.get("date"),
         )
 

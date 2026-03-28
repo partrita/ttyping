@@ -1,5 +1,7 @@
 # ttyping ⌨️
 
+![](./screenshot.png)
+
 A minimal, monkeytype-inspired terminal typing test for English and Korean, built with Python and [Textual](https://github.com/Textualize/textual).
 
 `ttyping` provides a clean and focused typing practice environment directly in your terminal. It tracks speed (WPM) and accuracy, saving results locally for history viewing.
