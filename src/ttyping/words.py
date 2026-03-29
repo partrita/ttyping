@@ -333,6 +333,10 @@ def _get_jamos(char: str) -> str:
 def words_from_file(path: str, count: int = 25) -> list[str]:
     """Read words from a file and return up to `count` words."""
     p = Path(path)
+    # Security: pre-emptive symlink check
+    if p.is_symlink():
+        raise ValueError(f"Refusing to read from symlink: {path}")
+
     if not p.is_file():
         raise ValueError(f"'{path}' is not a regular file")
 
@@ -340,9 +344,20 @@ def words_from_file(path: str, count: int = 25) -> list[str]:
         return []
 
     words: list[str] = []
+
+    # Security: Use os.open with O_NOFOLLOW to prevent TOCTOU symlink swap
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+
+    try:
+        fd = os.open(path, flags)
+    except OSError as e:
+        raise ValueError(f"Could not open file: {path}") from e
+
     # Optimization: Read file line by line and exit early once we have enough words.
-    with open(path, encoding="utf-8") as f:
-        # Security: fstat the open file descriptor to prevent TOCTOU symlink swap
+    with os.fdopen(fd, "r", encoding="utf-8") as f:
+        # Security: fstat the open file descriptor to verify it is a regular file
         st = os.fstat(f.fileno())
         if not S_ISREG(st.st_mode):
             raise ValueError(f"'{path}' is not a regular file")

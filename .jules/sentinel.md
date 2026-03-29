@@ -25,3 +25,7 @@
 **Vulnerability:** Application read user-writable configuration and result files using `Path.read_text()` which is susceptible to Time-of-Check to Time-of-Use (TOCTOU) symlink attacks and reading from non-regular files.
 **Learning:** `Path.read_text()` provides no protection against reading from symlinks or non-regular files (like device files), which could lead to arbitrary file reads or application hangs.
 **Prevention:** Implement a `_secure_read` helper that uses `os.open` with `O_RDONLY | O_NOFOLLOW` and validates `S_ISREG` using `os.fstat(fd)` on the open descriptor before reading. Update file reading operations to use this secure helper and catch `OSError`.
+## 2025-02-26 - Prevent TOCTOU Symlink Vulnerability on File Reads
+**Vulnerability:** The application read user-provided practice files via `words_from_file` using a standard `open()` call, which follows symlinks. This is susceptible to Time-of-Check to Time-of-Use (TOCTOU) symlink attacks or reading sensitive arbitrary files that an attacker symlinked to.
+**Learning:** Checking a file's state (`os.fstat(f.fileno())`) after opening it with standard `open()` is insufficient if the file descriptor was resolved through a symlink. We must prevent following symlinks in the first place during the `open` process.
+**Prevention:** Use `os.open` with `O_RDONLY | O_NOFOLLOW` and validate `S_ISREG` using `os.fstat(fd)` on the open descriptor before reading. Preemptive `path.is_symlink()` checks also help on platforms lacking `O_NOFOLLOW`.
