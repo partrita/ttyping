@@ -1,6 +1,7 @@
 import os
 import shutil
 from pathlib import Path
+from typing import NoReturn
 
 import pytest
 
@@ -134,7 +135,7 @@ def test_storage_symlink_bypass(
     monkeypatch.setattr(Path, "is_symlink", lambda self: True)
 
     # Mock os.open so _fchmod_safe simulates a symlink being blocked by O_NOFOLLOW
-    def mock_open(*args, **kwargs):
+    def mock_open(*args: object, **kwargs: object) -> NoReturn:
         raise OSError("Too many levels of symbolic links")
 
     monkeypatch.setattr("os.open", mock_open)
@@ -145,6 +146,7 @@ def test_storage_symlink_bypass(
     assert (test_storage_dir.stat().st_mode & 0o777) == 0o777
     assert (test_results_file.stat().st_mode & 0o777) == 0o666
     assert (test_config_file.stat().st_mode & 0o777) == 0o666
+
 
 def test_secure_write_refuses_symlink(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -167,9 +169,8 @@ def test_secure_write_refuses_symlink(
     # Ensure target was not overwritten
     assert target_file.read_text() == "secret_data"
 
-def test_secure_read_symlink(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+
+def test_secure_read_symlink(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     test_storage_dir = tmp_path / ".ttyping"
     test_storage_dir.mkdir(parents=True)
 
