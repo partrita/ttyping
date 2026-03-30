@@ -185,3 +185,19 @@ def test_secure_read_symlink(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
 
     err_str = str(excinfo.value)
     assert "Refusing to read from symlink" in err_str or "Too many levels" in err_str
+
+
+def test_secure_read_large_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    test_storage_dir = tmp_path / ".ttyping"
+    test_storage_dir.mkdir(parents=True)
+
+    target_file = test_storage_dir / "results.json"
+
+    with open(target_file, "wb") as f:
+        f.truncate(11_000_000)
+
+    with pytest.raises(OSError) as excinfo:
+        ttyping.storage._secure_read(target_file)
+
+    err_str = str(excinfo.value)
+    assert "is too large" in err_str

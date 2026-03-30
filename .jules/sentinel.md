@@ -29,3 +29,7 @@
 **Vulnerability:** The application read user-provided practice files via `words_from_file` using a standard `open()` call, which follows symlinks. This is susceptible to Time-of-Check to Time-of-Use (TOCTOU) symlink attacks or reading sensitive arbitrary files that an attacker symlinked to.
 **Learning:** Checking a file's state (`os.fstat(f.fileno())`) after opening it with standard `open()` is insufficient if the file descriptor was resolved through a symlink. We must prevent following symlinks in the first place during the `open` process.
 **Prevention:** Use `os.open` with `O_RDONLY | O_NOFOLLOW` and validate `S_ISREG` using `os.fstat(fd)` on the open descriptor before reading. Preemptive `path.is_symlink()` checks also help on platforms lacking `O_NOFOLLOW`.
+## 2025-02-26 - Prevent Denial of Service (DoS) via Large File Reads
+**Vulnerability:** The application was loading `config.json` and `results.json` directly into memory via `_secure_read` without enforcing any size limits. An attacker could potentially cause a local Denial of Service (DoS) through memory exhaustion by generating an excessively large configuration or history file.
+**Learning:** Checking a file's validity (e.g. `S_ISREG`) isn't enough; you must also constrain the amount of resources that a potentially malicious user-provided or modified file can consume.
+**Prevention:** Enforce maximum file size limitations (e.g., 10MB) by checking `os.fstat(fd).st_size` immediately after opening the file, and prior to reading its contents into memory.
