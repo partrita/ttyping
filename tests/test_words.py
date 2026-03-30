@@ -58,6 +58,20 @@ def test_words_from_file_too_large(tmp_path: Path) -> None:
         words_from_file(str(d))
 
 
+def test_words_from_file_symlink(tmp_path: Path) -> None:
+    target = tmp_path / "target.txt"
+    target.write_text("hello world", encoding="utf-8")
+
+    symlink = tmp_path / "symlink.txt"
+    try:
+        symlink.symlink_to(target)
+    except OSError:
+        pytest.skip("Symlinks not supported on this platform")
+
+    with pytest.raises(ValueError, match="Refusing to read from symlink"):
+        words_from_file(str(symlink))
+
+
 def test_get_practice_drill_en_dvorak() -> None:
     from ttyping.words import get_words
 
