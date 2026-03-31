@@ -123,6 +123,8 @@ def _secure_read(file_path: Path) -> str:
         st = os.fstat(fd)
         if not S_ISREG(st.st_mode):
             raise OSError(f"Not a regular file: {file_path}")
+        if st.st_size > 10_000_000:
+            raise OSError(f"'{file_path}' is too large (max 10MB)")
         return f.read()
 
 
