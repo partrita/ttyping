@@ -887,6 +887,27 @@ class ConfirmDeleteScreen(Screen):
         self.app.pop_screen()
 
 
+def _normalize_coord(val: float, min_v: float, extent: float) -> int:
+    """Normalize a value to an 8-row coordinate system."""
+    return int((val - min_v) / extent * 7.99)
+
+
+def _get_braille_char(l_row: int, r_row: int) -> str:
+    """Build braille char for two points in a 4-dot high cell."""
+    char = 0x2800
+    # Rows are 0,1,2,3 from BOTTOM of this cell
+    # Map 0 -> dot 7/8, 1 -> dot 3/6, 2 -> dot 2/5, 3 -> dot 1/4
+    l_dot_map = {0: 0x40, 1: 0x04, 2: 0x02, 3: 0x01}
+    r_dot_map = {0: 0x80, 1: 0x20, 2: 0x10, 3: 0x08}
+
+    # Fill dots from 0 to target row to make a solid-ish line/area
+    for r in range(min(l_row, 3) + 1):
+        char |= l_dot_map.get(r, 0)
+    for r in range(min(r_row, 3) + 1):
+        char |= r_dot_map.get(r, 0)
+    return chr(char)
+
+
 # ── LineChart ──────────────────────────────────────────────────────────────
 
 
@@ -952,46 +973,18 @@ class LineChart(Static):
         top_line = []
         bot_line = []
 
-        # Braille dot mapping (standard):
-        # 1 4
-        # 2 5
-        # 3 6
-        # 7 8
-        # Dot 1: 0x01, 2: 0x02, 3: 0x04, 4: 0x08, 5: 0x10, 6: 0x20, 7: 0x40, 8: 0x80
-        # In our coordinate system (0 is bottom), rows are:
-        # 7: row 3 (top)
-        # 6: row 2
-        # 5: row 1
-        # 4: row 0 (bottom)
-        # Wait, braille is usually 2x4.
-
-        def get_braille_char(l_row: int, r_row: int, offset_row: int) -> int:
-            """Build braille char for two points in a 4-dot high cell."""
-            char = 0x2800
-            # Rows are 0,1,2,3 from BOTTOM of this cell
-            # Map 0 -> dot 7/8, 1 -> dot 3/6, 2 -> dot 2/5, 3 -> dot 1/4
-            l_dot_map = {0: 0x40, 1: 0x04, 2: 0x02, 3: 0x01}
-            r_dot_map = {0: 0x80, 1: 0x20, 2: 0x10, 3: 0x08}
-
-            # Fill dots from 0 to target row to make a solid-ish line/area
-            for r in range(min(l_row, 3) + 1):
-                char |= l_dot_map.get(r, 0)
-            for r in range(min(r_row, 3) + 1):
-                char |= r_dot_map.get(r, 0)
-            return char
-
         for i in range(width):
             l_val = sampled[i * 2]
             r_val = sampled[i * 2 + 1]
 
             # Overall row (0 to 7)
-            l_total_row = int((l_val - min_v) / extent * 7.99)
-            r_total_row = int((r_val - min_v) / extent * 7.99)
+            l_total_row = _normalize_coord(l_val, min_v, extent)
+            r_total_row = _normalize_coord(r_val, min_v, extent)
 
             # Top cell (rows 4-7)
-            top_line.append(chr(get_braille_char(l_total_row - 4, r_total_row - 4, 4)))
+            top_line.append(_get_braille_char(l_total_row - 4, r_total_row - 4))
             # Bottom cell (rows 0-3)
-            bot_line.append(chr(get_braille_char(l_total_row, r_total_row, 0)))
+            bot_line.append(_get_braille_char(l_total_row, r_total_row))
 
         res_text = Text("".join(top_line), style=self.chart_color) + "\n"
         res_text += Text("".join(bot_line), style=self.chart_color)
