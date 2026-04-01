@@ -363,7 +363,6 @@ def words_from_file(path: str, count: int = 25) -> list[str]:
 
     # Optimization: Read file line by line and exit early once we have enough words.
     with os.fdopen(fd, "r", encoding="utf-8") as f:
-
         for line in f:
             for word in line.split():
                 words.append(word)
