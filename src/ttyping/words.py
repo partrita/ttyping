@@ -346,12 +346,14 @@ def words_from_file(path: str, count: int = 25) -> list[str]:
     words: list[str] = []
 
     # Security: Use os.open with O_NOFOLLOW to prevent TOCTOU symlink swap
-    flags = os.O_RDONLY
+    flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0)
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
 
     try:
         fd = os.open(path, flags)
+        if getattr(os, "O_NONBLOCK", 0):
+            os.set_blocking(fd, True)
     except OSError as e:
         raise ValueError(f"Could not open file: {path}") from e
 

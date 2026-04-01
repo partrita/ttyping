@@ -65,11 +65,13 @@ class TypingResult:
 def _fchmod_safe(file_path: Path, mode: int = 0o600) -> None:
     """Use file descriptors to safely set permissions, preventing TOCTOU attacks."""
     if hasattr(os, "fchmod") and hasattr(os, "fstat"):
-        flags = os.O_RDONLY
+        flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0)
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
         try:
             fd = os.open(file_path, flags)
+            if getattr(os, "O_NONBLOCK", 0):
+                os.set_blocking(fd, True)
             try:
                 st = os.fstat(fd)
                 if (st.st_mode & 0o777) != mode:
@@ -93,7 +95,7 @@ def _secure_write(file_path: Path, content: str) -> None:
     if file_path.is_symlink():
         raise OSError(f"Refusing to write to symlink: {file_path}")
 
-    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NONBLOCK", 0)
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
 
@@ -103,6 +105,8 @@ def _secure_write(file_path: Path, content: str) -> None:
         flags,
         0o600,
     )
+    if getattr(os, "O_NONBLOCK", 0):
+        os.set_blocking(fd, True)
     # Security: Set permissions on the open file to prevent TOCTOU
     if hasattr(os, "fchmod") and hasattr(os, "fstat"):
         st = os.fstat(fd)
@@ -119,11 +123,13 @@ def _secure_read(file_path: Path) -> str:
     if file_path.is_symlink():
         raise OSError(f"Refusing to read from symlink: {file_path}")
 
-    flags = os.O_RDONLY
+    flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0)
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
 
     fd = os.open(file_path, flags)
+    if getattr(os, "O_NONBLOCK", 0):
+        os.set_blocking(fd, True)
     with os.fdopen(fd, "r", encoding="utf-8") as f:
         st = os.fstat(fd)
         if not S_ISREG(st.st_mode):
@@ -160,12 +166,14 @@ def _ensure_storage() -> None:
                 if file_path.is_symlink():
                     raise OSError(f"Refusing to write to symlink: {file_path}")
 
-                flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NONBLOCK", 0)
                 if hasattr(os, "O_NOFOLLOW"):
                     flags |= os.O_NOFOLLOW
 
                 # Use os.open to atomically create file with 0o600 permissions
                 fd = os.open(file_path, flags, 0o600)
+                if getattr(os, "O_NONBLOCK", 0):
+                    os.set_blocking(fd, True)
                 # Security: Set permissions on the open file to prevent TOCTOU
                 if hasattr(os, "fchmod") and hasattr(os, "fstat"):
                     st = os.fstat(fd)

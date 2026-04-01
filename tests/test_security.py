@@ -201,3 +201,44 @@ def test_secure_read_large_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
 
     err_str = str(excinfo.value)
     assert "is too large" in err_str
+
+
+def test_secure_read_fifo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    fifo_path = tmp_path / "test_fifo"
+    try:
+        os.mkfifo(fifo_path)
+    except AttributeError:
+        pytest.skip("os.mkfifo not available on this platform")
+
+    with pytest.raises(OSError) as excinfo:
+        ttyping.storage._secure_read(fifo_path)
+
+    err_str = str(excinfo.value)
+    assert "Not a regular file" in err_str
+
+
+def test_secure_write_fifo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    fifo_path = tmp_path / "test_fifo"
+    try:
+        os.mkfifo(fifo_path)
+    except AttributeError:
+        pytest.skip("os.mkfifo not available on this platform")
+
+    # Opening a FIFO with O_WRONLY | O_NONBLOCK without a reader raises ENXIO
+    with pytest.raises(OSError):
+        ttyping.storage._secure_write(fifo_path, "test")
+
+
+def test_words_from_file_fifo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    fifo_path = tmp_path / "test_fifo"
+    try:
+        os.mkfifo(fifo_path)
+    except AttributeError:
+        pytest.skip("os.mkfifo not available on this platform")
+
+    import ttyping.words
+    with pytest.raises(ValueError) as excinfo:
+        ttyping.words.words_from_file(str(fifo_path))
+
+    err_str = str(excinfo.value)
+    assert "not a regular file" in err_str
