@@ -103,6 +103,11 @@ def _secure_write(file_path: Path, content: str) -> None:
         flags,
         0o600,
     )
+    # Security: Set permissions on the open file to prevent TOCTOU
+    if hasattr(os, "fchmod") and hasattr(os, "fstat"):
+        st = os.fstat(fd)
+        if (st.st_mode & 0o777) != 0o600:
+            os.fchmod(fd, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(content)
     # Ensure permissions are correct even if file already existed
@@ -161,6 +166,11 @@ def _ensure_storage() -> None:
 
                 # Use os.open to atomically create file with 0o600 permissions
                 fd = os.open(file_path, flags, 0o600)
+                # Security: Set permissions on the open file to prevent TOCTOU
+                if hasattr(os, "fchmod") and hasattr(os, "fstat"):
+                    st = os.fstat(fd)
+                    if (st.st_mode & 0o777) != 0o600:
+                        os.fchmod(fd, 0o600)
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
                     f.write(default_content)
             except FileExistsError:
