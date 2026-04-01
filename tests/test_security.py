@@ -45,7 +45,7 @@ def test_storage_permissions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
         assert mode == 0o600, f"Expected 0o600, got {oct(mode)}"
 
         # Verify content
-        assert test_results_file.read_text() == "[]"
+        assert test_results_file.read_text() == ""
         assert test_config_file.read_text() == "{}"
 
     finally:
@@ -123,7 +123,7 @@ def test_storage_symlink_bypass(
     monkeypatch.setattr(ttyping.storage, "_STORAGE_ENSURED", False)
 
     test_storage_dir.mkdir(parents=True)
-    test_results_file.write_text("[]")
+    test_results_file.write_text("")
     test_config_file.write_text("{}")
 
     # Pre-set loose permissions
