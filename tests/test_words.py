@@ -205,3 +205,33 @@ def test_get_words_lorem_ipsum_fallback() -> None:
         words = get_words("ko_lorem_ipsum", count=1)
         # "No lorem ipsum found." splits into ["No", "lorem", "ipsum", "found."]
         assert words == ["No", "lorem", "ipsum", "found."]
+
+def test_get_jamos() -> None:
+    from ttyping.words import _get_jamos
+
+    # Simple Korean characters
+    assert _get_jamos("한") == "ㅎㅏㄴ"
+    assert _get_jamos("글") == "ㄱㅡㄹ"
+    assert _get_jamos("가") == "ㄱㅏ"
+
+    # Korean characters with complex/double batchims
+    assert _get_jamos("닭") == "ㄷㅏㄺ"
+    assert _get_jamos("깎") == "ㄲㅏㄲ"
+
+    # Non-Korean characters
+    assert _get_jamos("A") == "A"
+    assert _get_jamos("1") == "1"
+    assert _get_jamos(" ") == " "
+    assert _get_jamos("!@#") == "!@#"
+
+    # Empty string
+    assert _get_jamos("") == ""
+
+    # Multi-character strings
+    assert _get_jamos("안녕") == "ㅇㅏㄴㄴㅕㅇ"
+    assert _get_jamos("안녕하세요") == "ㅇㅏㄴㄴㅕㅇㅎㅏㅅㅔㅇㅛ"
+    assert _get_jamos("한글 A 1") == "ㅎㅏㄴㄱㅡㄹ A 1"
+
+    # Repeated calls to test LRU cache behavior
+    assert _get_jamos("한") == "ㅎㅏㄴ"
+    assert _get_jamos("한") == "ㅎㅏㄴ"
