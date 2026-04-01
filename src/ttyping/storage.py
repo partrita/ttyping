@@ -106,8 +106,6 @@ def _secure_append(file_path: Path, content: str) -> None:
     _fchmod_safe(file_path)
 
 
-
-
 def _secure_write(file_path: Path, content: str) -> None:
     """Safely write content to a file, ensuring 0o600 permissions upon creation."""
     # Security: Prevent TOCTOU symlink vulnerability
