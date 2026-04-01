@@ -166,7 +166,9 @@ def _ensure_storage() -> None:
                 if file_path.is_symlink():
                     raise OSError(f"Refusing to write to symlink: {file_path}")
 
-                flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NONBLOCK", 0)
+                flags = (
+                    os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NONBLOCK", 0)
+                )
                 if hasattr(os, "O_NOFOLLOW"):
                     flags |= os.O_NOFOLLOW
 
