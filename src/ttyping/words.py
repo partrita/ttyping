@@ -337,9 +337,6 @@ def words_from_file(path: str, count: int = 25) -> list[str]:
     if p.is_symlink():
         raise ValueError(f"Refusing to read from symlink: {path}")
 
-    if not p.is_file():
-        raise ValueError(f"'{path}' is not a regular file")
-
     if count <= 0:
         return []
 
@@ -355,14 +352,17 @@ def words_from_file(path: str, count: int = 25) -> list[str]:
     except OSError as e:
         raise ValueError(f"Could not open file: {path}") from e
 
+    # Security: fstat the open file descriptor to verify it is a regular file
+    st = os.fstat(fd)
+    if not S_ISREG(st.st_mode):
+        os.close(fd)
+        raise ValueError(f"'{path}' is not a regular file")
+    if st.st_size > 10_000_000:
+        os.close(fd)
+        raise ValueError(f"'{path}' is too large (max 10MB)")
+
     # Optimization: Read file line by line and exit early once we have enough words.
     with os.fdopen(fd, "r", encoding="utf-8") as f:
-        # Security: fstat the open file descriptor to verify it is a regular file
-        st = os.fstat(f.fileno())
-        if not S_ISREG(st.st_mode):
-            raise ValueError(f"'{path}' is not a regular file")
-        if st.st_size > 10_000_000:
-            raise ValueError(f"'{path}' is too large (max 10MB)")
 
         for line in f:
             for word in line.split():
