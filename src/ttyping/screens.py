@@ -153,6 +153,76 @@ class TypingScreen(Screen):
 
     # ── input handling ─────────────────────────────────────────────────
 
+    def _handle_ime_update(self, value: str) -> bool:
+        has_error = False
+        # We update the last timing entry if it's the same position
+        if (
+            self.char_timings
+            and self.char_timings[-1]["word_idx"] == self.current_word_idx
+            and self.char_timings[-1]["char_idx"] == len(value) - 1
+        ):
+            last_idx = len(value) - 1
+            target_word = self.words[self.current_word_idx]
+            char = value[last_idx]
+            is_correct = (
+                char == target_word[last_idx]
+                if last_idx < len(target_word)
+                else (char == " ")
+            )
+
+            self.char_timings[-1].update(
+                {
+                    "char": char,
+                    "time": time.time(),
+                    "correct": is_correct,
+                }
+            )
+            # Re-check error for shaking
+            if not is_correct:
+                has_error = True
+        return has_error
+
+    def _handle_normal_addition(self, added: str) -> bool:
+        has_error = False
+        self.total_keystrokes += len(added)
+        target_word = self.words[self.current_word_idx]
+        for i, char in enumerate(added):
+            idx = len(self.current_input) + i
+            is_correct = True
+            if idx < len(target_word):
+                if char != target_word[idx]:
+                    self.total_errors += 1
+                    has_error = True
+                    is_correct = False
+            elif char != " ":
+                self.total_errors += 1
+                has_error = True
+                is_correct = False
+
+            self.char_timings.append(
+                {
+                    "char": char,
+                    "time": time.time(),
+                    "correct": is_correct,
+                    "word_idx": self.current_word_idx,
+                    "char_idx": idx,
+                }
+            )
+        return has_error
+
+    def _track_legacy_errors(self, value: str) -> None:
+        if value and self.current_word_idx < len(self.words):
+            target_word = self.words[self.current_word_idx]
+            last_typed_idx = len(value) - 1
+            if last_typed_idx < len(target_word):
+                if value[last_typed_idx] != target_word[last_typed_idx]:
+                    self.errors[target_word[last_typed_idx]] += 1
+
+    def _ensure_timer_started(self, value: str) -> None:
+        if self.start_time is None and value:
+            self.start_time = time.time()
+            self._timer_handle = self.set_interval(0.5, self._tick_stats)
+
     def on_input_changed(self, event: Input.Changed) -> None:
         if self._finished:
             return
@@ -172,60 +242,10 @@ class TypingScreen(Screen):
 
             # If length is same but content changed, it's an IME update (e.g. ㄱ -> 가)
             if len(value) == len(self.current_input):
-                # We update the last timing entry if it's the same position
-                if (
-                    self.char_timings
-                    and self.char_timings[-1]["word_idx"] == self.current_word_idx
-                    and self.char_timings[-1]["char_idx"] == len(value) - 1
-                ):
-                    last_idx = len(value) - 1
-                    target_word = self.words[self.current_word_idx]
-                    char = value[last_idx]
-                    is_correct = (
-                        char == target_word[last_idx]
-                        if last_idx < len(target_word)
-                        else (char == " ")
-                    )
-
-                    self.char_timings[-1].update(
-                        {
-                            "char": char,
-                            "time": time.time(),
-                            "correct": is_correct,
-                        }
-                    )
-                    # Re-check error for shaking
-                    if not is_correct:
-                        has_error = True
-                else:
-                    # This shouldn't happen much with normal IME but let's be safe
-                    pass
+                has_error = self._handle_ime_update(value)
             else:
                 # Normal addition
-                self.total_keystrokes += len(added)
-                target_word = self.words[self.current_word_idx]
-                for i, char in enumerate(added):
-                    idx = len(self.current_input) + i
-                    is_correct = True
-                    if idx < len(target_word):
-                        if char != target_word[idx]:
-                            self.total_errors += 1
-                            has_error = True
-                            is_correct = False
-                    elif char != " ":
-                        self.total_errors += 1
-                        has_error = True
-                        is_correct = False
-
-                    self.char_timings.append(
-                        {
-                            "char": char,
-                            "time": time.time(),
-                            "correct": is_correct,
-                            "word_idx": self.current_word_idx,
-                            "char_idx": idx,
-                        }
-                    )
+                has_error = self._handle_normal_addition(added)
 
         if has_error:
             self._shake_input()
@@ -237,19 +257,12 @@ class TypingScreen(Screen):
             return
 
         # Legacy character error tracking for top errors display
-        if value and self.current_word_idx < len(self.words):
-            target_word = self.words[self.current_word_idx]
-            last_typed_idx = len(value) - 1
-            if last_typed_idx < len(target_word):
-                if value[last_typed_idx] != target_word[last_typed_idx]:
-                    self.errors[target_word[last_typed_idx]] += 1
+        self._track_legacy_errors(value)
 
         self.current_input = value
 
         # Start timer on first keystroke
-        if self.start_time is None and value:
-            self.start_time = time.time()
-            self._timer_handle = self.set_interval(0.5, self._tick_stats)
+        self._ensure_timer_started(value)
 
         self._render_display()
         self._update_stats()
