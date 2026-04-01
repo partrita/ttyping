@@ -176,9 +176,12 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
         "markdown": MD_WORDS,
     }
 
-    # Handle practice sets (format: layout:set_name)
+    # Handle practice sets (format: practice:layout:set_name or layout:set_name)
     if ":" in lang:
-        layout, set_name = lang.split(":", 1)
+        if lang.startswith("practice:"):
+            _, layout, set_name = lang.split(":", 2)
+        else:
+            layout, set_name = lang.split(":", 1)
         if layout in PRACTICE_SETS and set_name in PRACTICE_SETS[layout]:
             return get_practice_drill(layout, set_name, count)
 

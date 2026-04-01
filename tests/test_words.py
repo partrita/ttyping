@@ -75,7 +75,7 @@ def test_words_from_file_symlink(tmp_path: Path) -> None:
 def test_get_practice_drill_en_dvorak() -> None:
     from ttyping.words import get_words
 
-    words = get_words("en_dvorak:home_row", 5)
+    words = get_words("practice:en_dvorak:home_row", 5)
     assert len(words) == 5
     # Home row Dvorak: aoeuidhtns
     allowed = set("aoeuidhtns")
