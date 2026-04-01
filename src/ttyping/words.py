@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import os
+import random
 import unicodedata
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
 from stat import S_ISREG
 
-import random
 
 def _load_resource_words(filename: str) -> list[str]:
     """Load words from a package resource file."""
@@ -130,7 +130,6 @@ PRACTICE_SETS: dict[str, dict[str, str]] = {
 }
 
 
-
 LAYOUT_TO_WORDS: dict[str, list[str]] = {
     "en": EN_QWERTY,
     "en_qwerty": EN_QWERTY,
@@ -148,6 +147,7 @@ LAYOUT_TO_WORDS: dict[str, list[str]] = {
     "markdown": MD_WORDS,
 }
 
+
 def _is_practice_match(word: str, fast_chars: set[str], layout: str) -> bool:
     if layout.startswith("en"):
         return all(c.lower() in fast_chars for c in word)
@@ -157,7 +157,10 @@ def _is_practice_match(word: str, fast_chars: set[str], layout: str) -> bool:
                 return False
         return True
 
-def _generate_nonsense_drills(count: int, chars: str, home_key: str | None) -> list[str]:
+
+def _generate_nonsense_drills(
+    count: int, chars: str, home_key: str | None
+) -> list[str]:
     drills = []
     for _ in range(count):
         word_len = random.randint(3, 6)
