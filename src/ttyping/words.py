@@ -236,7 +236,24 @@ def get_practice_drill(
     all_words = LAYOUT_TO_WORDS.get(layout, [])
     fast_chars = set(chars)
 
-    filtered = [w for w in all_words if _is_practice_match(w, fast_chars, layout)]
+    def is_match(word: str) -> bool:
+        if layout.startswith("en"):
+            return set(word.lower()).issubset(fast_chars)
+        else:
+            # Korean decomposition check
+            for char in word:
+                if not set(_get_jamos(char)).issubset(fast_chars):
+                    return False
+            return True
+
+    # Optimization: Filter a random subset first to avoid O(N) full-list scanning
+    subset_size = min(len(all_words), max(300, count * 5))
+    subset = random.sample(all_words, subset_size) if all_words else []
+    filtered = [w for w in subset if is_match(w)]
+
+    if len(filtered) < count // 2 or len(filtered) <= 5:
+        # Fallback to full list if the subset didn't yield enough matches
+        filtered = [w for w in all_words if is_match(w)]
 
     # If we have enough real words, use them
     if len(filtered) >= count // 2 and len(filtered) > 5:
@@ -483,13 +500,20 @@ def get_weak_drill(layout: str, weak_chars: str, count: int = 25) -> list[str]:
 
     def has_weak_char(word: str) -> bool:
         if is_english:
-            return any(c.lower() in fast_weak_chars for c in word)
+            return not set(word.lower()).isdisjoint(fast_weak_chars)
         for char in word:
-            if any(k in fast_weak_chars for k in _get_jamos(char)):
+            if not set(_get_jamos(char)).isdisjoint(fast_weak_chars):
                 return True
         return False
 
-    filtered = [w for w in all_words if has_weak_char(w)]
+    # Optimization: Filter a random subset first to avoid O(N) full-list scanning
+    subset_size = min(len(all_words), max(300, count * 5))
+    subset = random.sample(all_words, subset_size) if all_words else []
+    filtered = [w for w in subset if has_weak_char(w)]
+
+    if len(filtered) < count // 2 or len(filtered) <= 3:
+        # Fallback to full list if the subset didn't yield enough matches
+        filtered = [w for w in all_words if has_weak_char(w)]
 
     if len(filtered) >= count // 2 and len(filtered) > 3:
         return random.choices(filtered, k=count)
