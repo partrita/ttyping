@@ -1620,7 +1620,7 @@ class PracticeMenu(ActionSelectMixin, Screen):
             set_name = opt_id.split(":")[1]
             # Use a prefix to tell get_words to use practice set
             app.start_custom_test(
-                f"{self.layout_id}:{set_name}", app._word_count, app._duration
+                f"practice:{self.layout_id}:{set_name}", app._word_count, app._duration
             )
 
     def action_go_back(self) -> None:
