@@ -344,3 +344,86 @@ def test_save_config_with_non_ascii(mock_storage: tuple[Path, Path, Path]) -> No
 
     saved_data = json.loads(text)
     assert saved_data == test_config
+
+def test_typing_result_from_dict_complete() -> None:
+    data = {
+        "wpm": 80.5,
+        "accuracy": 98.2,
+        "time": 30.0,
+        "lang": "en_dvorak",
+        "words": 40,
+        "correct": 190,
+        "keystrokes": 200,
+        "errors": 10,
+        "gross_wpm": 85.0,
+        "top_char_errors": [["a", 2], ["e", 1]],
+        "char_timings": [{"char": "a", "time": 0.1}],
+        "text": "some typed text",
+        "date": "2023-10-27T10:00:00Z"
+    }
+    result = TypingResult.from_dict(data)
+    assert result.wpm == 80.5
+    assert result.accuracy == 98.2
+    assert result.time == 30.0
+    assert result.lang == "en_dvorak"
+    assert result.words == 40
+    assert result.correct == 190
+    assert result.keystrokes == 200
+    assert result.errors == 10
+    assert result.gross_wpm == 85.0
+    assert result.top_char_errors == [["a", 2], ["e", 1]]
+    assert result.char_timings == [{"char": "a", "time": 0.1}]
+    assert result.text == "some typed text"
+    assert result.date == "2023-10-27T10:00:00Z"
+
+def test_typing_result_from_dict_missing_fields() -> None:
+    data = {}
+    result = TypingResult.from_dict(data)
+    assert result.wpm == 0.0
+    assert result.accuracy == 0.0
+    assert result.time == 0.0
+    assert result.lang == "en"
+    assert result.words == 0
+    assert result.correct == 0
+    assert result.keystrokes == 0
+    assert result.errors == 0
+    assert result.gross_wpm == 0.0
+    assert result.top_char_errors == []
+    assert result.char_timings == []
+    assert result.text == ""
+    assert result.date is None
+
+def test_typing_result_from_dict_type_conversion() -> None:
+    data = {
+        "wpm": "80.5",
+        "accuracy": "98.2",
+        "time": "30",
+        "lang": 123,
+        "words": "40",
+        "correct": "190",
+        "keystrokes": "200",
+        "errors": "10",
+        "gross_wpm": "85.0",
+        "text": 456,
+    }
+    result = TypingResult.from_dict(data)
+    assert result.wpm == 80.5
+    assert isinstance(result.wpm, float)
+    assert result.accuracy == 98.2
+    assert isinstance(result.accuracy, float)
+    assert result.time == 30.0
+    assert isinstance(result.time, float)
+    assert result.lang == "123"
+    assert isinstance(result.lang, str)
+    assert result.words == 40
+    assert isinstance(result.words, int)
+    assert result.correct == 190
+    assert isinstance(result.correct, int)
+    assert result.keystrokes == 200
+    assert isinstance(result.keystrokes, int)
+    assert result.errors == 10
+    assert isinstance(result.errors, int)
+    assert result.gross_wpm == 85.0
+    assert isinstance(result.gross_wpm, float)
+    assert result.text == "456"
+    assert isinstance(result.text, str)

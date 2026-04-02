@@ -21,116 +21,116 @@ class TypingApp(App):
     ]
 
     # ── Dual-theme CSS ─────────────────────────────────────────────────────
-    # Light mode rules (no class). Dark overrides use App.-dark-mode prefix.
+    # Light mode rules (no class). Dark overrides use .-dark-mode prefix.
     CSS = """
     /* ── Base ───────────────────────────────────────── */
     Screen               { background: #eff1f5; }
-    App.-dark-mode Screen { background: #323437; }
+    .-dark-mode Screen { background: #323437; }
 
     /* ── Typing screen ──────────────────────────────── */
     #stats               { color: #c8a010; }
-    App.-dark-mode #stats { color: #e2b714; }
+    .-dark-mode #stats { color: #e2b714; }
 
     #input-area {
         border: round #7a7b7e;
         background: #e0e1e5;
         color: #323437;
     }
-    App.-dark-mode #input-area {
+    .-dark-mode #input-area {
         border: round #909294;
         background: #2c2e31;
         color: #d1d0c5;
     }
     #input-area:focus          { border: round #c8a010; }
-    App.-dark-mode #input-area:focus { border: round #e2b714; }
+    .-dark-mode #input-area:focus { border: round #e2b714; }
 
     #hints               { color: #7a7b7e; }
-    App.-dark-mode #hints { color: #909294; }
+    .-dark-mode #hints { color: #909294; }
 
     /* ── Result screen ──────────────────────────────── */
     .result-detail       { color: #7a7b7e; }
     .result-title        { color: #7a7b7e; }
     #result-hints        { color: #7a7b7e; }
-    App.-dark-mode .result-detail { color: #909294; }
-    App.-dark-mode .result-title  { color: #909294; }
-    App.-dark-mode #result-hints  { color: #909294; }
+    .-dark-mode .result-detail { color: #909294; }
+    .-dark-mode .result-title  { color: #909294; }
+    .-dark-mode #result-hints  { color: #909294; }
 
     /* ── History screen ─────────────────────────────── */
     #history-title { color: #c8a010; }
-    App.-dark-mode #history-title { color: #e2b714; }
+    .-dark-mode #history-title { color: #e2b714; }
 
     #history-stats  { color: #7a7b7e; }
     #history-hints  { color: #7a7b7e; }
-    App.-dark-mode #history-stats { color: #909294; }
-    App.-dark-mode #history-hints { color: #909294; }
+    .-dark-mode #history-stats { color: #909294; }
+    .-dark-mode #history-hints { color: #909294; }
 
     #history-table  { background: #e0e1e5; }
-    App.-dark-mode #history-table { background: #2c2e31; }
+    .-dark-mode #history-table { background: #2c2e31; }
 
     #history-empty  { color: #7a7b7e; }
-    App.-dark-mode #history-empty { color: #909294; }
+    .-dark-mode #history-empty { color: #909294; }
 
     /* ── Menu / sub-menu containers ─────────────────── */
     #menu-container {
         border: round #c8a010;
         background: #e0e1e5;
     }
-    App.-dark-mode #menu-container {
+    .-dark-mode #menu-container {
         border: round #e2b714;
         background: #2c2e31;
     }
 
     #menu-title { color: #c8a010; }
-    App.-dark-mode #menu-title { color: #e2b714; }
+    .-dark-mode #menu-title { color: #e2b714; }
 
     #menu-hints  { display: none; }
 
     #menu-options { background: #e0e1e5; }
-    App.-dark-mode #menu-options { background: #2c2e31; }
+    .-dark-mode #menu-options { background: #2c2e31; }
 
     /* ── Confirm delete modal ────────────────────────── */
     #confirm-box {
         background: #e0e1e5;
         border: round #ca4754;
     }
-    App.-dark-mode #confirm-box {
+    .-dark-mode #confirm-box {
         background: #2c2e31;
         border: round #ca4754;
     }
     #confirm-title  { color: #ca4754; }
     #confirm-body   { color: #323437; }
     #confirm-hints  { color: #7a7b7e; }
-    App.-dark-mode #confirm-body  { color: #d1d0c5; }
-    App.-dark-mode #confirm-hints { color: #909294; }
+    .-dark-mode #confirm-body  { color: #d1d0c5; }
+    .-dark-mode #confirm-hints { color: #909294; }
 
     /* ── Weakness screen ─────────────────────────────── */
     #weakness-container {
         border: round #c8a010;
         background: #e0e1e5;
     }
-    App.-dark-mode #weakness-container {
+    .-dark-mode #weakness-container {
         border: round #e2b714;
         background: #2c2e31;
     }
     #weakness-title   { color: #c8a010; }
-    App.-dark-mode #weakness-title { color: #e2b714; }
+    .-dark-mode #weakness-title { color: #e2b714; }
 
     .weakness-section { color: #7a7b7e; }
-    App.-dark-mode .weakness-section { color: #909294; }
+    .-dark-mode .weakness-section { color: #909294; }
 
     #weakness-options { background: #e0e1e5; }
-    App.-dark-mode #weakness-options { background: #2c2e31; }
+    .-dark-mode #weakness-options { background: #2c2e31; }
 
     #weakness-hints  { color: #7a7b7e; }
-    App.-dark-mode #weakness-hints { color: #909294; }
+    .-dark-mode #weakness-hints { color: #909294; }
 
     /* ── About screen ────────────────────────────────── */
     .about-text  { color: #7a7b7e; }
-    App.-dark-mode .about-text { color: #909294; }
+    .-dark-mode .about-text { color: #909294; }
 
     /* ── DataTable global ────────────────────────────── */
     DataTable          { background: #e0e1e5; color: #323437; }
-    App.-dark-mode DataTable { background: #2c2e31; color: #d1d0c5; }
+    .-dark-mode DataTable { background: #2c2e31; color: #d1d0c5; }
     """
 
     def __init__(

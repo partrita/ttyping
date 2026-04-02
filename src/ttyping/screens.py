@@ -153,6 +153,76 @@ class TypingScreen(Screen):
 
     # ── input handling ─────────────────────────────────────────────────
 
+    def _handle_ime_update(self, value: str) -> bool:
+        has_error = False
+        # We update the last timing entry if it's the same position
+        if (
+            self.char_timings
+            and self.char_timings[-1]["word_idx"] == self.current_word_idx
+            and self.char_timings[-1]["char_idx"] == len(value) - 1
+        ):
+            last_idx = len(value) - 1
+            target_word = self.words[self.current_word_idx]
+            char = value[last_idx]
+            is_correct = (
+                char == target_word[last_idx]
+                if last_idx < len(target_word)
+                else (char == " ")
+            )
+
+            self.char_timings[-1].update(
+                {
+                    "char": char,
+                    "time": time.time(),
+                    "correct": is_correct,
+                }
+            )
+            # Re-check error for shaking
+            if not is_correct:
+                has_error = True
+        return has_error
+
+    def _handle_normal_addition(self, added: str) -> bool:
+        has_error = False
+        self.total_keystrokes += len(added)
+        target_word = self.words[self.current_word_idx]
+        for i, char in enumerate(added):
+            idx = len(self.current_input) + i
+            is_correct = True
+            if idx < len(target_word):
+                if char != target_word[idx]:
+                    self.total_errors += 1
+                    has_error = True
+                    is_correct = False
+            elif char != " ":
+                self.total_errors += 1
+                has_error = True
+                is_correct = False
+
+            self.char_timings.append(
+                {
+                    "char": char,
+                    "time": time.time(),
+                    "correct": is_correct,
+                    "word_idx": self.current_word_idx,
+                    "char_idx": idx,
+                }
+            )
+        return has_error
+
+    def _track_legacy_errors(self, value: str) -> None:
+        if value and self.current_word_idx < len(self.words):
+            target_word = self.words[self.current_word_idx]
+            last_typed_idx = len(value) - 1
+            if last_typed_idx < len(target_word):
+                if value[last_typed_idx] != target_word[last_typed_idx]:
+                    self.errors[target_word[last_typed_idx]] += 1
+
+    def _ensure_timer_started(self, value: str) -> None:
+        if self.start_time is None and value:
+            self.start_time = time.time()
+            self._timer_handle = self.set_interval(0.5, self._tick_stats)
+
     def on_input_changed(self, event: Input.Changed) -> None:
         if self._finished:
             return
@@ -172,60 +242,10 @@ class TypingScreen(Screen):
 
             # If length is same but content changed, it's an IME update (e.g. ㄱ -> 가)
             if len(value) == len(self.current_input):
-                # We update the last timing entry if it's the same position
-                if (
-                    self.char_timings
-                    and self.char_timings[-1]["word_idx"] == self.current_word_idx
-                    and self.char_timings[-1]["char_idx"] == len(value) - 1
-                ):
-                    last_idx = len(value) - 1
-                    target_word = self.words[self.current_word_idx]
-                    char = value[last_idx]
-                    is_correct = (
-                        char == target_word[last_idx]
-                        if last_idx < len(target_word)
-                        else (char == " ")
-                    )
-
-                    self.char_timings[-1].update(
-                        {
-                            "char": char,
-                            "time": time.time(),
-                            "correct": is_correct,
-                        }
-                    )
-                    # Re-check error for shaking
-                    if not is_correct:
-                        has_error = True
-                else:
-                    # This shouldn't happen much with normal IME but let's be safe
-                    pass
+                has_error = self._handle_ime_update(value)
             else:
                 # Normal addition
-                self.total_keystrokes += len(added)
-                target_word = self.words[self.current_word_idx]
-                for i, char in enumerate(added):
-                    idx = len(self.current_input) + i
-                    is_correct = True
-                    if idx < len(target_word):
-                        if char != target_word[idx]:
-                            self.total_errors += 1
-                            has_error = True
-                            is_correct = False
-                    elif char != " ":
-                        self.total_errors += 1
-                        has_error = True
-                        is_correct = False
-
-                    self.char_timings.append(
-                        {
-                            "char": char,
-                            "time": time.time(),
-                            "correct": is_correct,
-                            "word_idx": self.current_word_idx,
-                            "char_idx": idx,
-                        }
-                    )
+                has_error = self._handle_normal_addition(added)
 
         if has_error:
             self._shake_input()
@@ -237,19 +257,12 @@ class TypingScreen(Screen):
             return
 
         # Legacy character error tracking for top errors display
-        if value and self.current_word_idx < len(self.words):
-            target_word = self.words[self.current_word_idx]
-            last_typed_idx = len(value) - 1
-            if last_typed_idx < len(target_word):
-                if value[last_typed_idx] != target_word[last_typed_idx]:
-                    self.errors[target_word[last_typed_idx]] += 1
+        self._track_legacy_errors(value)
 
         self.current_input = value
 
         # Start timer on first keystroke
-        if self.start_time is None and value:
-            self.start_time = time.time()
-            self._timer_handle = self.set_interval(0.5, self._tick_stats)
+        self._ensure_timer_started(value)
 
         self._render_display()
         self._update_stats()
@@ -887,6 +900,27 @@ class ConfirmDeleteScreen(Screen):
         self.app.pop_screen()
 
 
+def _normalize_coord(val: float, min_v: float, extent: float) -> int:
+    """Normalize a value to an 8-row coordinate system."""
+    return int((val - min_v) / extent * 7.99)
+
+
+def _get_braille_char(l_row: int, r_row: int) -> str:
+    """Build braille char for two points in a 4-dot high cell."""
+    char = 0x2800
+    # Rows are 0,1,2,3 from BOTTOM of this cell
+    # Map 0 -> dot 7/8, 1 -> dot 3/6, 2 -> dot 2/5, 3 -> dot 1/4
+    l_dot_map = {0: 0x40, 1: 0x04, 2: 0x02, 3: 0x01}
+    r_dot_map = {0: 0x80, 1: 0x20, 2: 0x10, 3: 0x08}
+
+    # Fill dots from 0 to target row to make a solid-ish line/area
+    for r in range(min(l_row, 3) + 1):
+        char |= l_dot_map.get(r, 0)
+    for r in range(min(r_row, 3) + 1):
+        char |= r_dot_map.get(r, 0)
+    return chr(char)
+
+
 # ── LineChart ──────────────────────────────────────────────────────────────
 
 
@@ -952,46 +986,18 @@ class LineChart(Static):
         top_line = []
         bot_line = []
 
-        # Braille dot mapping (standard):
-        # 1 4
-        # 2 5
-        # 3 6
-        # 7 8
-        # Dot 1: 0x01, 2: 0x02, 3: 0x04, 4: 0x08, 5: 0x10, 6: 0x20, 7: 0x40, 8: 0x80
-        # In our coordinate system (0 is bottom), rows are:
-        # 7: row 3 (top)
-        # 6: row 2
-        # 5: row 1
-        # 4: row 0 (bottom)
-        # Wait, braille is usually 2x4.
-
-        def get_braille_char(l_row: int, r_row: int, offset_row: int) -> int:
-            """Build braille char for two points in a 4-dot high cell."""
-            char = 0x2800
-            # Rows are 0,1,2,3 from BOTTOM of this cell
-            # Map 0 -> dot 7/8, 1 -> dot 3/6, 2 -> dot 2/5, 3 -> dot 1/4
-            l_dot_map = {0: 0x40, 1: 0x04, 2: 0x02, 3: 0x01}
-            r_dot_map = {0: 0x80, 1: 0x20, 2: 0x10, 3: 0x08}
-
-            # Fill dots from 0 to target row to make a solid-ish line/area
-            for r in range(min(l_row, 3) + 1):
-                char |= l_dot_map.get(r, 0)
-            for r in range(min(r_row, 3) + 1):
-                char |= r_dot_map.get(r, 0)
-            return char
-
         for i in range(width):
             l_val = sampled[i * 2]
             r_val = sampled[i * 2 + 1]
 
             # Overall row (0 to 7)
-            l_total_row = int((l_val - min_v) / extent * 7.99)
-            r_total_row = int((r_val - min_v) / extent * 7.99)
+            l_total_row = _normalize_coord(l_val, min_v, extent)
+            r_total_row = _normalize_coord(r_val, min_v, extent)
 
             # Top cell (rows 4-7)
-            top_line.append(chr(get_braille_char(l_total_row - 4, r_total_row - 4, 4)))
+            top_line.append(_get_braille_char(l_total_row - 4, r_total_row - 4))
             # Bottom cell (rows 0-3)
-            bot_line.append(chr(get_braille_char(l_total_row, r_total_row, 0)))
+            bot_line.append(_get_braille_char(l_total_row, r_total_row))
 
         res_text = Text("".join(top_line), style=self.chart_color) + "\n"
         res_text += Text("".join(bot_line), style=self.chart_color)
