@@ -130,6 +130,52 @@ PRACTICE_SETS: dict[str, dict[str, str]] = {
 }
 
 
+LAYOUT_TO_WORDS: dict[str, list[str]] = {
+    "en": EN_QWERTY,
+    "en_qwerty": EN_QWERTY,
+    "en_dvorak": EN_DVORAK,
+    "en_colemak": EN_QWERTY,
+    "ko": KO_2SET,
+    "ko_2set": KO_2SET,
+    "ko_3set": KO_3SET,
+    "python": PY_WORDS,
+    "rust": RS_WORDS,
+    "r": R_WORDS,
+    "javascript": JS_WORDS,
+    "julia": JL_WORDS,
+    "typst": TY_WORDS,
+    "markdown": MD_WORDS,
+}
+
+
+def _is_practice_match(word: str, fast_chars: set[str], layout: str) -> bool:
+    if layout.startswith("en"):
+        return all(c.lower() in fast_chars for c in word)
+    else:
+        for char in word:
+            if any(k not in fast_chars for k in _get_jamos(char)):
+                return False
+        return True
+
+
+def _generate_nonsense_drills(
+    count: int, chars: str, home_key: str | None
+) -> list[str]:
+    drills = []
+    for _ in range(count):
+        word_len = random.randint(3, 6)
+        if home_key and home_key not in chars:
+            practice_chars = random.choices(chars, k=word_len)
+            parts = []
+            for ch in practice_chars:
+                parts.append(ch)
+                parts.append(home_key)
+            drills.append("".join(parts))
+        else:
+            drills.append("".join(random.choices(chars, k=word_len)))
+    return drills
+
+
 def get_words(lang: str = "en", count: int = 25) -> list[str]:
     """Return a random selection of words/sentences for the given language or layout."""
     # Sentences are treated as single "words" for practice.
@@ -159,30 +205,16 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
             words.extend(s.split())
         return words
 
-    sources: dict[str, list[str]] = {
-        "en": EN_QWERTY,
-        "en_qwerty": EN_QWERTY,
-        "en_dvorak": EN_DVORAK,
-        "en_colemak": EN_QWERTY,
-        "ko": KO_2SET,
-        "ko_2set": KO_2SET,
-        "ko_3set": KO_3SET,
-        "python": PY_WORDS,
-        "rust": RS_WORDS,
-        "r": R_WORDS,
-        "javascript": JS_WORDS,
-        "julia": JL_WORDS,
-        "typst": TY_WORDS,
-        "markdown": MD_WORDS,
-    }
-
     # Handle practice sets (format: layout:set_name)
     if ":" in lang:
-        layout, set_name = lang.split(":", 1)
+        if lang.startswith("practice:"):
+            _, layout, set_name = lang.split(":", 2)
+        else:
+            layout, set_name = lang.split(":", 1)
         if layout in PRACTICE_SETS and set_name in PRACTICE_SETS[layout]:
             return get_practice_drill(layout, set_name, count)
 
-    source = sources.get(lang, EN_QWERTY)
+    source = LAYOUT_TO_WORDS.get(lang, EN_QWERTY)
     if not source:
         source = EN_QWERTY
     return random.choices(source, k=count)
@@ -201,55 +233,21 @@ def get_practice_drill(
     chars = PRACTICE_SETS[layout][set_name]
 
     # Try to find real words first
-    all_words = []
-    if layout == "en_qwerty":
-        all_words = EN_QWERTY
-    elif layout == "en_dvorak":
-        all_words = EN_DVORAK
-    elif layout == "ko_2set":
-        all_words = KO_2SET
-    elif layout == "ko_3set":
-        all_words = KO_3SET
-
+    all_words = LAYOUT_TO_WORDS.get(layout, [])
     fast_chars = set(chars)
 
-    def is_match(word: str) -> bool:
-        if layout.startswith("en"):
-            return all(c.lower() in fast_chars for c in word)
-        else:
-            # Korean decomposition check
-            for char in word:
-                if any(k not in fast_chars for k in _get_jamos(char)):
-                    return False
-            return True
-
-    filtered = [w for w in all_words if is_match(w)]
+    filtered = [w for w in all_words if _is_practice_match(w, fast_chars, layout)]
 
     # If we have enough real words, use them
     if len(filtered) >= count // 2 and len(filtered) > 5:
         return random.choices(filtered, k=count)
 
     # Otherwise, generate random character combinations (nonsense words)
-    # For finger-level sets, interleave each char with the finger's home row key
-    # so the user practices returning to home position between keystrokes.
     home_key: str | None = None
     if home_return and set_name in FINGER_LABELS:
         home_key = FINGER_HOME_KEY.get(layout, {}).get(set_name)
 
-    drills = []
-    for _ in range(count):
-        word_len = random.randint(3, 6)
-        if home_key and home_key not in chars:
-            # Interleave: each practice char followed by the home row key
-            practice_chars = random.choices(chars, k=word_len)
-            parts = []
-            for ch in practice_chars:
-                parts.append(ch)
-                parts.append(home_key)
-            drills.append("".join(parts))
-        else:
-            drills.append("".join(random.choices(chars, k=word_len)))
-    return drills
+    return _generate_nonsense_drills(count, chars, home_key)
 
 
 JAMO_TO_KEY = {
@@ -337,9 +335,6 @@ def words_from_file(path: str, count: int = 25) -> list[str]:
     if p.is_symlink():
         raise ValueError(f"Refusing to read from symlink: {path}")
 
-    if not p.is_file():
-        raise ValueError(f"'{path}' is not a regular file")
-
     if count <= 0:
         return []
 
@@ -355,15 +350,17 @@ def words_from_file(path: str, count: int = 25) -> list[str]:
     except OSError as e:
         raise ValueError(f"Could not open file: {path}") from e
 
+    # Security: fstat the open file descriptor to verify it is a regular file
+    st = os.fstat(fd)
+    if not S_ISREG(st.st_mode):
+        os.close(fd)
+        raise ValueError(f"'{path}' is not a regular file")
+    if st.st_size > 10_000_000:
+        os.close(fd)
+        raise ValueError(f"'{path}' is too large (max 10MB)")
+
     # Optimization: Read file line by line and exit early once we have enough words.
     with os.fdopen(fd, "r", encoding="utf-8") as f:
-        # Security: fstat the open file descriptor to verify it is a regular file
-        st = os.fstat(f.fileno())
-        if not S_ISREG(st.st_mode):
-            raise ValueError(f"'{path}' is not a regular file")
-        if st.st_size > 10_000_000:
-            raise ValueError(f"'{path}' is too large (max 10MB)")
-
         for line in f:
             for word in line.split():
                 words.append(word)
@@ -478,13 +475,7 @@ def get_weak_drill(layout: str, weak_chars: str, count: int = 25) -> list[str]:
     Tries to find real words from the word list that contain those chars.
     Falls back to random character sequences if not enough real words found.
     """
-    sources: dict[str, list[str]] = {
-        "en_qwerty": EN_QWERTY,
-        "en_dvorak": EN_DVORAK,
-        "ko_2set": KO_2SET,
-        "ko_3set": KO_3SET,
-    }
-    all_words = sources.get(layout, EN_QWERTY)
+    all_words = LAYOUT_TO_WORDS.get(layout, EN_QWERTY)
 
     is_english = layout.startswith("en")
 
