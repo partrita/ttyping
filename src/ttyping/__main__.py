@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 
 
-def main() -> None:
+def parse_args(args: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="ttyping",
         description="A minimal terminal typing test",
@@ -54,7 +55,11 @@ def main() -> None:
         help="subcommand (history: view past results)",
     )
 
-    args = parser.parse_args()
+    return parser.parse_args(args)
+
+
+def main() -> None:
+    args = parse_args()
 
     # Security: Limit number of words to avoid excessive memory allocation
     if args.words and args.words > 1000:

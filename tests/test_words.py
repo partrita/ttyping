@@ -1,5 +1,5 @@
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
@@ -75,7 +75,7 @@ def test_words_from_file_symlink(tmp_path: Path) -> None:
 def test_get_practice_drill_en_dvorak() -> None:
     from ttyping.words import get_words
 
-    words = get_words("en_dvorak:home_row", 5)
+    words = get_words("practice:en_dvorak:home_row", 5)
     assert len(words) == 5
     # Home row Dvorak: aoeuidhtns
     allowed = set("aoeuidhtns")
@@ -205,3 +205,21 @@ def test_get_words_lorem_ipsum_fallback() -> None:
         words = get_words("ko_lorem_ipsum", count=1)
         # "No lorem ipsum found." splits into ["No", "lorem", "ipsum", "found."]
         assert words == ["No", "lorem", "ipsum", "found."]
+
+def test_load_resource_words_success() -> None:
+    mock_file_content = "word1\n  word2  \n\nword3\n"
+    mocked_open = mock_open(read_data=mock_file_content)
+
+    with patch("ttyping.words.resources.files") as mock_files:
+        mock_path = MagicMock()
+        mock_files.return_value.joinpath.return_value = mock_path
+        mock_path.open = mocked_open
+
+        words = _load_resource_words("dummy.txt")
+
+        # Verify the expected words are returned
+        assert words == ["word1", "word2", "word3"]
+
+        # Verify that joinpath and open were called correctly
+        mock_files.return_value.joinpath.assert_called_once_with("dummy.txt")
+        mock_path.open.assert_called_once_with(encoding="utf-8")
