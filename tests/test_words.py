@@ -206,6 +206,7 @@ def test_get_words_lorem_ipsum_fallback() -> None:
         # "No lorem ipsum found." splits into ["No", "lorem", "ipsum", "found."]
         assert words == ["No", "lorem", "ipsum", "found."]
 
+
 def test_load_resource_words_success() -> None:
     mock_file_content = "word1\n  word2  \n\nword3\n"
     mocked_open = mock_open(read_data=mock_file_content)

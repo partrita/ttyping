@@ -94,12 +94,14 @@ def _secure_append(file_path: Path, content: str) -> None:
     if file_path.is_symlink():
         raise OSError(f"Refusing to write to symlink: {file_path}")
 
-    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NONBLOCK", 0)
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
 
     fd = os.open(file_path, flags, 0o600)
     try:
+        if getattr(os, "O_NONBLOCK", 0):
+            os.set_blocking(fd, True)
         if hasattr(os, "fchmod") and hasattr(os, "fstat"):
             st = os.fstat(fd)
             if (st.st_mode & 0o777) != 0o600:
