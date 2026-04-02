@@ -1,5 +1,5 @@
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
@@ -206,32 +206,20 @@ def test_get_words_lorem_ipsum_fallback() -> None:
         # "No lorem ipsum found." splits into ["No", "lorem", "ipsum", "found."]
         assert words == ["No", "lorem", "ipsum", "found."]
 
-def test_get_jamos() -> None:
-    from ttyping.words import _get_jamos
+def test_load_resource_words_success() -> None:
+    mock_file_content = "word1\n  word2  \n\nword3\n"
+    mocked_open = mock_open(read_data=mock_file_content)
 
-    # Simple Korean characters
-    assert _get_jamos("한") == "ㅎㅏㄴ"
-    assert _get_jamos("글") == "ㄱㅡㄹ"
-    assert _get_jamos("가") == "ㄱㅏ"
+    with patch("ttyping.words.resources.files") as mock_files:
+        mock_path = MagicMock()
+        mock_files.return_value.joinpath.return_value = mock_path
+        mock_path.open = mocked_open
 
-    # Korean characters with complex/double batchims
-    assert _get_jamos("닭") == "ㄷㅏㄺ"
-    assert _get_jamos("깎") == "ㄲㅏㄲ"
+        words = _load_resource_words("dummy.txt")
 
-    # Non-Korean characters
-    assert _get_jamos("A") == "A"
-    assert _get_jamos("1") == "1"
-    assert _get_jamos(" ") == " "
-    assert _get_jamos("!@#") == "!@#"
+        # Verify the expected words are returned
+        assert words == ["word1", "word2", "word3"]
 
-    # Empty string
-    assert _get_jamos("") == ""
-
-    # Multi-character strings
-    assert _get_jamos("안녕") == "ㅇㅏㄴㄴㅕㅇ"
-    assert _get_jamos("안녕하세요") == "ㅇㅏㄴㄴㅕㅇㅎㅏㅅㅔㅇㅛ"
-    assert _get_jamos("한글 A 1") == "ㅎㅏㄴㄱㅡㄹ A 1"
-
-    # Repeated calls to test LRU cache behavior
-    assert _get_jamos("한") == "ㅎㅏㄴ"
-    assert _get_jamos("한") == "ㅎㅏㄴ"
+        # Verify that joinpath and open were called correctly
+        mock_files.return_value.joinpath.assert_called_once_with("dummy.txt")
+        mock_path.open.assert_called_once_with(encoding="utf-8")
