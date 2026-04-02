@@ -99,11 +99,16 @@ def _secure_append(file_path: Path, content: str) -> None:
         flags |= os.O_NOFOLLOW
 
     fd = os.open(file_path, flags, 0o600)
-    if hasattr(os, "fchmod") and hasattr(os, "fstat"):
-        st = os.fstat(fd)
-        if (st.st_mode & 0o777) != 0o600:
-            os.fchmod(fd, 0o600)
-    with os.fdopen(fd, "a", encoding="utf-8") as f:
+    try:
+        if hasattr(os, "fchmod") and hasattr(os, "fstat"):
+            st = os.fstat(fd)
+            if (st.st_mode & 0o777) != 0o600:
+                os.fchmod(fd, 0o600)
+        f = os.fdopen(fd, "a", encoding="utf-8")
+    except BaseException:
+        os.close(fd)
+        raise
+    with f:
         f.write(content)
     _fchmod_safe(file_path)
 
@@ -124,14 +129,19 @@ def _secure_write(file_path: Path, content: str) -> None:
         flags,
         0o600,
     )
-    if getattr(os, "O_NONBLOCK", 0):
-        os.set_blocking(fd, True)
-    # Security: Set permissions on the open file to prevent TOCTOU
-    if hasattr(os, "fchmod") and hasattr(os, "fstat"):
-        st = os.fstat(fd)
-        if (st.st_mode & 0o777) != 0o600:
-            os.fchmod(fd, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
+    try:
+        if getattr(os, "O_NONBLOCK", 0):
+            os.set_blocking(fd, True)
+        # Security: Set permissions on the open file to prevent TOCTOU
+        if hasattr(os, "fchmod") and hasattr(os, "fstat"):
+            st = os.fstat(fd)
+            if (st.st_mode & 0o777) != 0o600:
+                os.fchmod(fd, 0o600)
+        f = os.fdopen(fd, "w", encoding="utf-8")
+    except BaseException:
+        os.close(fd)
+        raise
+    with f:
         f.write(content)
     # Ensure permissions are correct even if file already existed
     _fchmod_safe(file_path)
@@ -147,9 +157,14 @@ def _secure_read(file_path: Path) -> str:
         flags |= os.O_NOFOLLOW
 
     fd = os.open(file_path, flags)
-    if getattr(os, "O_NONBLOCK", 0):
-        os.set_blocking(fd, True)
-    with os.fdopen(fd, "r", encoding="utf-8") as f:
+    try:
+        if getattr(os, "O_NONBLOCK", 0):
+            os.set_blocking(fd, True)
+        f = os.fdopen(fd, "r", encoding="utf-8")
+    except BaseException:
+        os.close(fd)
+        raise
+    with f:
         st = os.fstat(fd)
         if not S_ISREG(st.st_mode):
             raise OSError(f"Not a regular file: {file_path}")
@@ -193,14 +208,19 @@ def _ensure_storage() -> None:
 
                 # Use os.open to atomically create file with 0o600 permissions
                 fd = os.open(file_path, flags, 0o600)
-                if getattr(os, "O_NONBLOCK", 0):
-                    os.set_blocking(fd, True)
-                # Security: Set permissions on the open file to prevent TOCTOU
-                if hasattr(os, "fchmod") and hasattr(os, "fstat"):
-                    st = os.fstat(fd)
-                    if (st.st_mode & 0o777) != 0o600:
-                        os.fchmod(fd, 0o600)
-                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                try:
+                    if getattr(os, "O_NONBLOCK", 0):
+                        os.set_blocking(fd, True)
+                    # Security: Set permissions on the open file to prevent TOCTOU
+                    if hasattr(os, "fchmod") and hasattr(os, "fstat"):
+                        st = os.fstat(fd)
+                        if (st.st_mode & 0o777) != 0o600:
+                            os.fchmod(fd, 0o600)
+                    f = os.fdopen(fd, "w", encoding="utf-8")
+                except BaseException:
+                    os.close(fd)
+                    raise
+                with f:
                     f.write(default_content)
             except FileExistsError:
                 # File was created between the exists() check and os.open
