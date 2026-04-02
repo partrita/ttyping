@@ -87,6 +87,25 @@ def _fchmod_safe(file_path: Path, mode: int = 0o600) -> None:
         file_path.chmod(mode)
 
 
+def _secure_append(file_path: Path, content: str) -> None:
+    """Safely append content to a file, ensuring 0o600 permissions upon creation."""
+    if file_path.is_symlink():
+        raise OSError(f"Refusing to write to symlink: {file_path}")
+
+    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+
+    fd = os.open(file_path, flags, 0o600)
+    if hasattr(os, "fchmod") and hasattr(os, "fstat"):
+        st = os.fstat(fd)
+        if (st.st_mode & 0o777) != 0o600:
+            os.fchmod(fd, 0o600)
+    with os.fdopen(fd, "a", encoding="utf-8") as f:
+        f.write(content)
+    _fchmod_safe(file_path)
+
+
 def _secure_write(file_path: Path, content: str) -> None:
     """Safely write content to a file, ensuring 0o600 permissions upon creation."""
     # Security: Prevent TOCTOU symlink vulnerability
@@ -151,7 +170,7 @@ def _ensure_storage() -> None:
     _fchmod_safe(STORAGE_DIR, mode=0o700)
 
     for file_path, default_content in [
-        (RESULTS_FILE, "[]"),
+        (RESULTS_FILE, ""),
         (CONFIG_FILE, "{}"),
     ]:
         if not file_path.exists():
@@ -190,10 +209,13 @@ def save_result(result: TypingResult) -> None:
     results = load_results()
     if not result.date:
         result.date = datetime.now(timezone.utc).isoformat()
-    results.append(result)
 
-    data = [r.to_dict() for r in results]
-    _secure_write(RESULTS_FILE, json.dumps(data, indent=2, ensure_ascii=False))
+    # O(1) append
+    jsonl_line = json.dumps(result.to_dict(), ensure_ascii=False) + "\n"
+    _secure_append(RESULTS_FILE, jsonl_line)
+
+    # Update cache
+    results.append(result)
 
 
 def load_results() -> list[TypingResult]:
@@ -204,16 +226,47 @@ def load_results() -> list[TypingResult]:
 
     _ensure_storage()
     try:
-        text = _secure_read(RESULTS_FILE)
-        data = json.loads(text)
-        if not isinstance(data, list):
+        text = _secure_read(RESULTS_FILE).strip()
+        if not text:
             _RESULTS_CACHE = []
             return _RESULTS_CACHE
-        _RESULTS_CACHE = [
-            TypingResult.from_dict(r) for r in data if isinstance(r, dict)
-        ]
+
+        # Migration from legacy JSON array format
+        if text.startswith("[") and text.endswith("]"):
+            try:
+                data = json.loads(text)
+                if not isinstance(data, list):
+                    _RESULTS_CACHE = []
+                    return _RESULTS_CACHE
+                _RESULTS_CACHE = [
+                    TypingResult.from_dict(r) for r in data if isinstance(r, dict)
+                ]
+                # Convert to JSONL immediately
+                jsonl_data = "\n".join(
+                    json.dumps(r.to_dict(), ensure_ascii=False) for r in _RESULTS_CACHE
+                )
+                _secure_write(RESULTS_FILE, jsonl_data + "\n" if jsonl_data else "")
+                return _RESULTS_CACHE
+            except json.JSONDecodeError:
+                _RESULTS_CACHE = []
+                return _RESULTS_CACHE
+
+        # Handle JSONL format
+        results = []
+        for line in text.split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+                if isinstance(data, dict):
+                    results.append(TypingResult.from_dict(data))
+            except json.JSONDecodeError:
+                continue
+
+        _RESULTS_CACHE = results
         return _RESULTS_CACHE
-    except (json.JSONDecodeError, OSError):
+    except OSError:
         _RESULTS_CACHE = []
         return _RESULTS_CACHE
 
@@ -223,7 +276,7 @@ def clear_results() -> None:
     global _RESULTS_CACHE
     _ensure_storage()
     try:
-        _secure_write(RESULTS_FILE, "[]")
+        _secure_write(RESULTS_FILE, "")
         _RESULTS_CACHE = []
     except OSError:
         pass
@@ -235,8 +288,10 @@ def delete_result_by_index(index: int) -> None:
     results = load_results()
     if 0 <= index < len(results):
         results.pop(index)
-        data = [r.to_dict() for r in results]
-        _secure_write(RESULTS_FILE, json.dumps(data, indent=2, ensure_ascii=False))
+        jsonl_data = "\n".join(
+            json.dumps(r.to_dict(), ensure_ascii=False) for r in results
+        )
+        _secure_write(RESULTS_FILE, jsonl_data + "\n" if jsonl_data else "")
         _RESULTS_CACHE = results
 
 
