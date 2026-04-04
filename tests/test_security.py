@@ -245,3 +245,10 @@ def test_words_from_file_fifo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
     err_str = str(excinfo.value)
     assert "not a regular file" in err_str
+
+def test_secure_read_dir(tmp_path: Path) -> None:
+    import ttyping.storage
+    with pytest.raises(OSError) as excinfo:
+        ttyping.storage._secure_read(tmp_path)
+    err_str = str(excinfo.value)
+    assert "Not a regular file" in err_str

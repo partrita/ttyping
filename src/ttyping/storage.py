@@ -162,16 +162,16 @@ def _secure_read(file_path: Path) -> str:
     try:
         if getattr(os, "O_NONBLOCK", 0):
             os.set_blocking(fd, True)
-        f = os.fdopen(fd, "r", encoding="utf-8")
-    except BaseException:
-        os.close(fd)
-        raise
-    with f:
         st = os.fstat(fd)
         if not S_ISREG(st.st_mode):
             raise OSError(f"Not a regular file: {file_path}")
         if st.st_size > 10_000_000:
             raise OSError(f"'{file_path}' is too large (max 10MB)")
+        f = os.fdopen(fd, "r", encoding="utf-8")
+    except BaseException:
+        os.close(fd)
+        raise
+    with f:
         return f.read()
 
 
