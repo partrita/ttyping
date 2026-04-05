@@ -245,3 +245,36 @@ def test_words_from_file_fifo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
     err_str = str(excinfo.value)
     assert "not a regular file" in err_str
+
+@pytest.mark.skipif(os.name == 'nt', reason="pty not available on Windows")
+def test_secure_write_not_regular_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import pty
+    try:
+        master, slave = pty.openpty()
+        slave_name = os.ttyname(slave)
+        with pytest.raises(OSError) as excinfo:
+            ttyping.storage._secure_write(Path(slave_name), "hacked")
+        err_str = str(excinfo.value)
+        assert "Not a regular file" in err_str
+    finally:
+        os.close(master)
+        os.close(slave)
+
+
+@pytest.mark.skipif(os.name == 'nt', reason="pty not available on Windows")
+def test_secure_append_not_regular_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import pty
+    try:
+        master, slave = pty.openpty()
+        slave_name = os.ttyname(slave)
+        with pytest.raises(OSError) as excinfo:
+            ttyping.storage._secure_append(Path(slave_name), "hacked")
+        err_str = str(excinfo.value)
+        assert "Not a regular file" in err_str
+    finally:
+        os.close(master)
+        os.close(slave)
