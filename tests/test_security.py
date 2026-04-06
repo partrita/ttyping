@@ -278,3 +278,33 @@ def test_secure_append_not_regular_file(
     finally:
         os.close(master)
         os.close(slave)
+
+def test_fchmod_safe_wrong_type(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Test that _fchmod_safe does not modify a directory if is_dir=False
+    # and does not modify a file if is_dir=True
+    test_dir = tmp_path / "test_dir"
+    test_dir.mkdir()
+    test_dir.chmod(0o777)
+
+    test_file = tmp_path / "test_file.txt"
+    test_file.write_text("hello")
+    test_file.chmod(0o666)
+
+    # Try to fchmod a directory expecting a file
+    ttyping.storage._fchmod_safe(test_dir, mode=0o600, is_dir=False)
+    # The permissions should be unchanged
+    assert (test_dir.stat().st_mode & 0o777) == 0o777
+
+    # Try to fchmod a file expecting a directory
+    ttyping.storage._fchmod_safe(test_file, mode=0o700, is_dir=True)
+    # The permissions should be unchanged
+    assert (test_file.stat().st_mode & 0o777) == 0o666
+
+    # Correct type
+    ttyping.storage._fchmod_safe(test_dir, mode=0o700, is_dir=True)
+    assert (test_dir.stat().st_mode & 0o777) == 0o700
+
+    ttyping.storage._fchmod_safe(test_file, mode=0o600, is_dir=False)
+    assert (test_file.stat().st_mode & 0o777) == 0o600
