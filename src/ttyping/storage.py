@@ -102,8 +102,10 @@ def _secure_append(file_path: Path, content: str) -> None:
     try:
         if getattr(os, "O_NONBLOCK", 0):
             os.set_blocking(fd, True)
-        if hasattr(os, "fchmod") and hasattr(os, "fstat"):
-            st = os.fstat(fd)
+        st = os.fstat(fd)
+        if not S_ISREG(st.st_mode):
+            raise OSError(f"Not a regular file: {file_path}")
+        if hasattr(os, "fchmod"):
             if (st.st_mode & 0o777) != 0o600:
                 os.fchmod(fd, 0o600)
         f = os.fdopen(fd, "a", encoding="utf-8")
@@ -135,8 +137,10 @@ def _secure_write(file_path: Path, content: str) -> None:
         if getattr(os, "O_NONBLOCK", 0):
             os.set_blocking(fd, True)
         # Security: Set permissions on the open file to prevent TOCTOU
-        if hasattr(os, "fchmod") and hasattr(os, "fstat"):
-            st = os.fstat(fd)
+        st = os.fstat(fd)
+        if not S_ISREG(st.st_mode):
+            raise OSError(f"Not a regular file: {file_path}")
+        if hasattr(os, "fchmod"):
             if (st.st_mode & 0o777) != 0o600:
                 os.fchmod(fd, 0o600)
         f = os.fdopen(fd, "w", encoding="utf-8")
