@@ -65,6 +65,7 @@ class TypingResult:
 def _fchmod_safe(file_path: Path, mode: int = 0o600, is_dir: bool = False) -> None:
     """Use file descriptors to safely set permissions, preventing TOCTOU attacks."""
     from stat import S_ISDIR, S_ISREG
+
     if hasattr(os, "fchmod") and hasattr(os, "fstat"):
         flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0)
         if hasattr(os, "O_NOFOLLOW"):

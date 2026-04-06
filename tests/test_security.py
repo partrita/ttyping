@@ -246,11 +246,13 @@ def test_words_from_file_fifo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     err_str = str(excinfo.value)
     assert "not a regular file" in err_str
 
-@pytest.mark.skipif(os.name == 'nt', reason="pty not available on Windows")
+
+@pytest.mark.skipif(os.name == "nt", reason="pty not available on Windows")
 def test_secure_write_not_regular_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import pty
+
     try:
         master, slave = pty.openpty()
         slave_name = os.ttyname(slave)
@@ -263,11 +265,12 @@ def test_secure_write_not_regular_file(
         os.close(slave)
 
 
-@pytest.mark.skipif(os.name == 'nt', reason="pty not available on Windows")
+@pytest.mark.skipif(os.name == "nt", reason="pty not available on Windows")
 def test_secure_append_not_regular_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import pty
+
     try:
         master, slave = pty.openpty()
         slave_name = os.ttyname(slave)
@@ -278,6 +281,7 @@ def test_secure_append_not_regular_file(
     finally:
         os.close(master)
         os.close(slave)
+
 
 def test_fchmod_safe_wrong_type(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
