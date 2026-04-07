@@ -62,8 +62,10 @@ class TypingResult:
         )
 
 
-def _fchmod_safe(file_path: Path, mode: int = 0o600) -> None:
+def _fchmod_safe(file_path: Path, mode: int = 0o600, is_dir: bool = False) -> None:
     """Use file descriptors to safely set permissions, preventing TOCTOU attacks."""
+    from stat import S_ISDIR, S_ISREG
+
     if hasattr(os, "fchmod") and hasattr(os, "fstat"):
         flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0)
         if hasattr(os, "O_NOFOLLOW"):
@@ -74,6 +76,10 @@ def _fchmod_safe(file_path: Path, mode: int = 0o600) -> None:
                 os.set_blocking(fd, True)
             try:
                 st = os.fstat(fd)
+                if is_dir and not S_ISDIR(st.st_mode):
+                    return
+                elif not is_dir and not S_ISREG(st.st_mode):
+                    return
                 if (st.st_mode & 0o777) != mode:
                     os.fchmod(fd, mode)
                 return
@@ -85,8 +91,17 @@ def _fchmod_safe(file_path: Path, mode: int = 0o600) -> None:
 
     # Fallback for platforms without fchmod/fstat (e.g. Windows)
     is_symlink = file_path.is_symlink()
-    if not is_symlink and (file_path.stat().st_mode & 0o777) != mode:
-        file_path.chmod(mode)
+    if not is_symlink:
+        try:
+            st = file_path.stat()
+            if is_dir and not S_ISDIR(st.st_mode):
+                return
+            elif not is_dir and not S_ISREG(st.st_mode):
+                return
+            if (st.st_mode & 0o777) != mode:
+                file_path.chmod(mode)
+        except OSError:
+            pass
 
 
 def _secure_append(file_path: Path, content: str) -> None:
@@ -196,7 +211,7 @@ def _ensure_storage() -> None:
     # unintentionally restricting shared parent directories.
     STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
-    _fchmod_safe(STORAGE_DIR, mode=0o700)
+    _fchmod_safe(STORAGE_DIR, mode=0o700, is_dir=True)
 
     for file_path, default_content in [
         (RESULTS_FILE, ""),

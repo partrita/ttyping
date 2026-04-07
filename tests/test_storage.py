@@ -198,7 +198,8 @@ def test_save_result_corrupt_file(mock_storage: tuple[Path, Path, Path]) -> None
         errors=5,
     )
     # save_result calls load_results, which handles JSONDecodeError
-    # by returning []. So it should just overwrite the corrupt file, wait no, we changed to JSONL
+    # by returning []. So it should just overwrite the corrupt file,
+    # wait no, we changed to JSONL
     # it appends to JSONL. The corrupt line is ignored on load.
     storage.save_result(new_result)
 
@@ -436,9 +437,11 @@ def test_load_results_migrates_legacy_json(
 
     # Check that it migrated to JSONL
     new_data = results_file.read_text()
-    assert (
-        new_data
-        == '{"wpm": 60.0, "accuracy": 0.0, "time": 0.0, "lang": "en", "words": 0, "correct": 0, "keystrokes": 0, "errors": 0, "gross_wpm": 0.0, "top_char_errors": [], "char_timings": [], "text": "", "date": "2023-01-01T00:00:00Z"}\n'
+    assert new_data == (
+        '{"wpm": 60.0, "accuracy": 0.0, "time": 0.0, "lang": "en", '
+        '"words": 0, "correct": 0, "keystrokes": 0, "errors": 0, '
+        '"gross_wpm": 0.0, "top_char_errors": [], "char_timings": [], '
+        '"text": "", "date": "2023-01-01T00:00:00Z"}\n'
     )
 
 
