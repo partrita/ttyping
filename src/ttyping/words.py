@@ -207,10 +207,13 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
 
     # Handle practice sets (format: layout:set_name)
     if ":" in lang:
-        if lang.startswith("practice:"):
-            _, layout, set_name = lang.split(":", 2)
+        parts = lang.split(":")
+        if lang.startswith("practice:") and len(parts) == 3:
+            _, layout, set_name = parts
+        elif len(parts) == 2:
+            layout, set_name = parts
         else:
-            layout, set_name = lang.split(":", 1)
+            layout, set_name = "", ""
         if layout in PRACTICE_SETS and set_name in PRACTICE_SETS[layout]:
             return get_practice_drill(layout, set_name, count)
 
