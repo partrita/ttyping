@@ -300,7 +300,7 @@ def load_results() -> list[TypingResult]:
                 )
                 _secure_write(RESULTS_FILE, jsonl_data + "\n" if jsonl_data else "")
                 return _RESULTS_CACHE
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, ValueError, TypeError):
                 _RESULTS_CACHE = []
                 return _RESULTS_CACHE
 
@@ -314,7 +314,7 @@ def load_results() -> list[TypingResult]:
                 data = json.loads(line)
                 if isinstance(data, dict):
                     results.append(TypingResult.from_dict(data))
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, ValueError, TypeError):
                 continue
 
         _RESULTS_CACHE = results
