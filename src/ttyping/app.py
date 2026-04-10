@@ -150,8 +150,22 @@ class TypingApp(App):
 
         self._lang: str = lang or config.get("lang", "en_qwerty")
         self._file_path: str | None = file_path or config.get("file_path")
-        self._word_count: int = word_count or config.get("word_count", 25)
-        self._duration: int | None = duration or config.get("duration")
+
+        # Safe cast for word_count
+        saved_wc = config.get("word_count", 25)
+        try:
+            parsed_wc = int(saved_wc) if saved_wc is not None else 25
+        except (ValueError, TypeError):
+            parsed_wc = 25
+        self._word_count: int = word_count or parsed_wc
+
+        # Safe cast for duration
+        saved_dur = config.get("duration")
+        try:
+            parsed_dur = int(saved_dur) if saved_dur is not None else None
+        except (ValueError, TypeError):
+            parsed_dur = None
+        self._duration: int | None = duration or parsed_dur
         # Prefer explicit CLI arg, then saved config, then None
         saved_acc = config.get("target_accuracy")
         try:
