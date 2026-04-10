@@ -154,10 +154,13 @@ class TypingApp(App):
         self._duration: int | None = duration or config.get("duration")
         # Prefer explicit CLI arg, then saved config, then None
         saved_acc = config.get("target_accuracy")
+        try:
+            parsed_acc = float(saved_acc) if saved_acc is not None else None
+        except (ValueError, TypeError):
+            parsed_acc = None
+
         self._target_accuracy: float | None = (
-            target_accuracy
-            if target_accuracy is not None
-            else (float(saved_acc) if saved_acc is not None else None)
+            target_accuracy if target_accuracy is not None else parsed_acc
         )
         self._show_history: bool = show_history
         self._session_attempts: list[TypingResult] = []
