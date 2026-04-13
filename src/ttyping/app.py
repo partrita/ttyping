@@ -166,7 +166,7 @@ class TypingApp(App):
             parsed_dur = int(saved_dur) if saved_dur is not None else None
         except (ValueError, TypeError):
             parsed_dur = None
-        dur = duration or parsed_dur
+        dur = duration if duration is not None else parsed_dur
         self._duration: int | None = max(1, min(dur, 3600)) if dur is not None else None
         # Prefer explicit CLI arg, then saved config, then None
         saved_acc = config.get("target_accuracy")
