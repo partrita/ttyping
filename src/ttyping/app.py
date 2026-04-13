@@ -157,7 +157,8 @@ class TypingApp(App):
             parsed_wc = int(saved_wc) if saved_wc is not None else 25
         except (ValueError, TypeError):
             parsed_wc = 25
-        self._word_count: int = word_count or parsed_wc
+        wc = word_count or parsed_wc
+        self._word_count: int = max(1, min(wc, 1000))
 
         # Safe cast for duration
         saved_dur = config.get("duration")
@@ -165,7 +166,8 @@ class TypingApp(App):
             parsed_dur = int(saved_dur) if saved_dur is not None else None
         except (ValueError, TypeError):
             parsed_dur = None
-        self._duration: int | None = duration or parsed_dur
+        dur = duration or parsed_dur
+        self._duration: int | None = max(1, min(dur, 3600)) if dur is not None else None
         # Prefer explicit CLI arg, then saved config, then None
         saved_acc = config.get("target_accuracy")
         try:
@@ -173,8 +175,9 @@ class TypingApp(App):
         except (ValueError, TypeError):
             parsed_acc = None
 
+        acc = target_accuracy if target_accuracy is not None else parsed_acc
         self._target_accuracy: float | None = (
-            target_accuracy if target_accuracy is not None else parsed_acc
+            max(0.0, min(acc, 100.0)) if acc is not None else None
         )
         self._show_history: bool = show_history
         self._session_attempts: list[TypingResult] = []

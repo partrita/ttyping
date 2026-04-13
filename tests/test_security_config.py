@@ -1,6 +1,7 @@
-from ttyping.app import TypingApp
 import json
-import os
+
+from ttyping.app import TypingApp
+
 
 def test_malformed_config_types(tmp_path):
     import ttyping.storage as storage
@@ -14,16 +15,18 @@ def test_malformed_config_types(tmp_path):
     storage._CONFIG_CACHE = None
 
     import unittest.mock
-    with unittest.mock.patch("ttyping.storage.STORAGE_DIR", storage_dir), \
-         unittest.mock.patch("ttyping.storage.RESULTS_FILE", results_file), \
-         unittest.mock.patch("ttyping.storage.CONFIG_FILE", config_file):
 
-         storage._ensure_storage()
-         config_file.write_text(json.dumps({
-             "word_count": "not an int",
-             "duration": "not an int"
-         }), encoding="utf-8")
+    with (
+        unittest.mock.patch("ttyping.storage.STORAGE_DIR", storage_dir),
+        unittest.mock.patch("ttyping.storage.RESULTS_FILE", results_file),
+        unittest.mock.patch("ttyping.storage.CONFIG_FILE", config_file),
+    ):
+        storage._ensure_storage()
+        config_file.write_text(
+            json.dumps({"word_count": "not an int", "duration": "not an int"}),
+            encoding="utf-8",
+        )
 
-         app = TypingApp()
-         assert app._word_count == 25
-         assert app._duration is None
+        app = TypingApp()
+        assert app._word_count == 25
+        assert app._duration is None
