@@ -157,7 +157,7 @@ class TypingApp(App):
             parsed_wc = int(saved_wc) if saved_wc is not None else 25
         except (ValueError, TypeError):
             parsed_wc = 25
-        wc = word_count or parsed_wc
+        wc = word_count if word_count is not None else parsed_wc
         self._word_count: int = max(1, min(wc, 1000))
 
         # Safe cast for duration
