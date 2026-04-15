@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-import random
+import secrets
 import unicodedata
 from functools import lru_cache
 from importlib import resources
@@ -163,16 +163,16 @@ def _generate_nonsense_drills(
 ) -> list[str]:
     drills = []
     for _ in range(count):
-        word_len = random.randint(3, 6)
+        word_len = secrets.SystemRandom().randint(3, 6)
         if home_key and home_key not in chars:
-            practice_chars = random.choices(chars, k=word_len)
+            practice_chars = secrets.SystemRandom().choices(chars, k=word_len)
             parts = []
             for ch in practice_chars:
                 parts.append(ch)
                 parts.append(home_key)
             drills.append("".join(parts))
         else:
-            drills.append("".join(random.choices(chars, k=word_len)))
+            drills.append("".join(secrets.SystemRandom().choices(chars, k=word_len)))
     return drills
 
 
@@ -188,7 +188,7 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
         if not source:
             source = ["No sentences found."]
         words: list[str] = []
-        for s in random.choices(source, k=count):
+        for s in secrets.SystemRandom().choices(source, k=count):
             words.extend(s.split())
         return words
 
@@ -201,7 +201,7 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
         if not source:
             source = ["No lorem ipsum found."]
         words: list[str] = []
-        for s in random.choices(source, k=count):
+        for s in secrets.SystemRandom().choices(source, k=count):
             words.extend(s.split())
         return words
 
@@ -220,7 +220,7 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
     source = LAYOUT_TO_WORDS.get(lang, EN_QWERTY)
     if not source:
         source = EN_QWERTY
-    return random.choices(source, k=count)
+    return secrets.SystemRandom().choices(source, k=count)
 
 
 def get_practice_drill(
@@ -251,7 +251,7 @@ def get_practice_drill(
 
     # Optimization: Filter a random subset first to avoid O(N) full-list scanning
     subset_size = min(len(all_words), max(300, count * 5))
-    subset = random.sample(all_words, subset_size) if all_words else []
+    subset = secrets.SystemRandom().sample(all_words, subset_size) if all_words else []
     filtered = [w for w in subset if is_match(w)]
 
     if len(filtered) < count // 2 or len(filtered) <= 5:
@@ -260,7 +260,7 @@ def get_practice_drill(
 
     # If we have enough real words, use them
     if len(filtered) >= count // 2 and len(filtered) > 5:
-        return random.choices(filtered, k=count)
+        return secrets.SystemRandom().choices(filtered, k=count)
 
     # Otherwise, generate random character combinations (nonsense words)
     home_key: str | None = None
@@ -518,7 +518,7 @@ def get_weak_drill(layout: str, weak_chars: str, count: int = 25) -> list[str]:
 
     # Optimization: Filter a random subset first to avoid O(N) full-list scanning
     subset_size = min(len(all_words), max(300, count * 5))
-    subset = random.sample(all_words, subset_size) if all_words else []
+    subset = secrets.SystemRandom().sample(all_words, subset_size) if all_words else []
     filtered = [w for w in subset if has_weak_char(w)]
 
     if len(filtered) < count // 2 or len(filtered) <= 3:
@@ -526,11 +526,11 @@ def get_weak_drill(layout: str, weak_chars: str, count: int = 25) -> list[str]:
         filtered = [w for w in all_words if has_weak_char(w)]
 
     if len(filtered) >= count // 2 and len(filtered) > 3:
-        return random.choices(filtered, k=count)
+        return secrets.SystemRandom().choices(filtered, k=count)
 
     # Fallback: random combos mixing weak chars with common chars
     drills: list[str] = []
     for _ in range(count):
-        word_len = random.randint(3, 6)
-        drills.append("".join(random.choices(weak_chars, k=word_len)))
+        word_len = secrets.SystemRandom().randint(3, 6)
+        drills.append("".join(secrets.SystemRandom().choices(weak_chars, k=word_len)))
     return drills
