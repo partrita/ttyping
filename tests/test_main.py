@@ -58,3 +58,18 @@ def test_parse_args_invalid_command(capsys: pytest.CaptureFixture[str]) -> None:
 
     captured = capsys.readouterr()
     assert "invalid choice: 'invalid_command'" in captured.err
+
+
+def test_parse_args_negative_words() -> None:
+    from unittest.mock import patch
+
+    from ttyping.__main__ import main
+
+    with (
+        patch("sys.argv", ["ttyping", "--words", "-10"]),
+        patch("ttyping.app.TypingApp") as mock_app,
+    ):
+        main()
+        mock_app.assert_called_once()
+        _, kwargs = mock_app.call_args
+        assert kwargs["word_count"] == 1
