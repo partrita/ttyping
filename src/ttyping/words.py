@@ -148,7 +148,6 @@ LAYOUT_TO_WORDS: dict[str, list[str]] = {
 }
 
 
-
 def _generate_nonsense_drills(
     count: int, chars: str, home_key: str | None
 ) -> list[str]:
