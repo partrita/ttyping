@@ -150,10 +150,10 @@ LAYOUT_TO_WORDS: dict[str, list[str]] = {
 
 def _is_practice_match(word: str, fast_chars: set[str], layout: str) -> bool:
     if layout.startswith("en"):
-        return all(c.lower() in fast_chars for c in word)
+        return fast_chars.issuperset(word.lower())
     else:
         for char in word:
-            if any(k not in fast_chars for k in _get_jamos(char)):
+            if not fast_chars.issuperset(_get_jamos(char)):
                 return False
         return True
 
@@ -241,11 +241,11 @@ def get_practice_drill(
 
     def is_match(word: str) -> bool:
         if layout.startswith("en"):
-            return set(word.lower()).issubset(fast_chars)
+            return fast_chars.issuperset(word.lower())
         else:
             # Korean decomposition check
             for char in word:
-                if not set(_get_jamos(char)).issubset(fast_chars):
+                if not fast_chars.issuperset(_get_jamos(char)):
                     return False
             return True
 
@@ -510,9 +510,9 @@ def get_weak_drill(layout: str, weak_chars: str, count: int = 25) -> list[str]:
 
     def has_weak_char(word: str) -> bool:
         if is_english:
-            return not set(word.lower()).isdisjoint(fast_weak_chars)
+            return not fast_weak_chars.isdisjoint(word.lower())
         for char in word:
-            if not set(_get_jamos(char)).isdisjoint(fast_weak_chars):
+            if not fast_weak_chars.isdisjoint(_get_jamos(char)):
                 return True
         return False
 
