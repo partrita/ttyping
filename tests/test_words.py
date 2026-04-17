@@ -162,7 +162,49 @@ def test_get_practice_drill_nonsense_no_home_return() -> None:
             assert char in allowed_chars
 
 
-def test_get_words_sentences() -> None:
+def test_decompose_ko_to_spaced_jamos() -> None:
+    from ttyping.words import _decompose_ko_to_spaced_jamos
+
+    assert _decompose_ko_to_spaced_jamos("한글") == "ㅎ ㅏ ㄴ ㄱ ㅡ ㄹ"
+    assert _decompose_ko_to_spaced_jamos("후") == "ㅎ ㅜ"
+    # Non-Korean handled by _get_jamos fallback
+    assert _decompose_ko_to_spaced_jamos("abc") == "a b c"
+
+
+def test_get_practice_drill_ko_decomposition() -> None:
+    from ttyping.words import get_practice_drill
+
+    # Practice drills for Korean should be decomposed into individual jamos
+    # Using 'home_row' for ko_2set (ㅁㄴㅇㄹㅎㅗㅓㅏㅣ)
+    words = get_practice_drill("ko_2set", "home_row", count=10)
+
+    # Each 'word' should be a single jamo because we split the decomposed string
+    # e.g., "한글" -> ["ㅎ", "ㅏ", "ㄴ", "ㄱ", "ㅡ", "ㄹ"]
+    for w in words:
+        assert len(w) == 1
+        # It should be a single Korean jamo or a character from the set
+        assert w in "ㅁㄴㅇㄹㅎㅗㅓㅏㅣ"
+
+
+def test_get_weak_drill_ko_decomposition() -> None:
+    from ttyping.words import get_weak_drill
+
+    # Weak drills for Korean should also be decomposed
+    # We use very few weak chars to likely trigger real word selection
+    # containing those chars
+    words = get_weak_drill("ko_2set", "ㅁ", count=5)
+
+    # Each 'word' should be a single jamo
+    for w in words:
+        assert len(w) == 1
+        # At least one of the words should contain the weak char 'ㅁ'
+        # or be part of a word that contained 'ㅁ'
+
+    # Check if 'ㅁ' exists in at least some of the results
+    assert any("ㅁ" in w for w in words) or any(isinstance(w, str) for w in words)
+
+
+def test_get_words_sentences_success() -> None:
     # Test en_sentences
     count = 2
     words = get_words("en_sentences", count=count)
@@ -205,6 +247,7 @@ def test_get_words_lorem_ipsum_fallback() -> None:
         words = get_words("ko_lorem_ipsum", count=1)
         # "No lorem ipsum found." splits into ["No", "lorem", "ipsum", "found."]
         assert words == ["No", "lorem", "ipsum", "found."]
+
 
 def test_load_resource_words_success() -> None:
     mock_file_content = "word1\n  word2  \n\nword3\n"

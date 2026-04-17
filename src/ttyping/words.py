@@ -60,13 +60,13 @@ PRACTICE_SETS: dict[str, dict[str, str]] = {
         "right_pinky": "p;:/?\"'[]{}0)-_=+",
     },
     "ko_2set": {
-        "home_row": "ㅁㄴㅇㄹㅎㅗㅓㅏㅣ",
-        "top_row": "ㅂㅈㄷㄱㅅㅛㅕㅑㅐㅔ",
-        "bottom_row": "ㅋㅌㅊㅍㅠㅜㅡ",
+        "home_row": "ㅁㄴㅇㄹㅎㅗㅓㅏㅣ;':\"",
+        "top_row": "ㅂㅈㄷㄱㅅㅛㅕㅑㅐㅔ[]{}",
+        "bottom_row": "ㅋㅌㅊㅍㅠㅜㅡ,./<>?",
         "number_row": "1234567890",
-        "symbol_row": "!@#$%^&*()",
+        "symbol_row": "!@#$%^&*()-=_+",
         "left_hand": "ㅂㅈㄷㄱㅅㅁㄴㅇㄹㅎㅋㅌㅊㅍ",
-        "right_hand": "ㅛㅕㅑㅐㅔㅗㅓㅏㅣㅠㅜㅡ",
+        "right_hand": "ㅛㅕㅑㅐㅔㅗㅓㅏㅣㅠㅜㅡ[]{};:,./<>?",
         "left_index": "ㄱㅅㄹㅎㅊㅍ45$%",
         "right_index": "ㅛㅕㅗㅓㅠㅜ67^&",
         "left_middle": "ㄷㅇㅌ3#",
@@ -220,6 +220,16 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
     return random.choices(source, k=count)
 
 
+def _decompose_ko_to_spaced_jamos(word: str) -> str:
+    """Decompose a Korean word into jamos separated by spaces."""
+    result = []
+    for char in word:
+        jamos = _get_jamos(char)
+        for jamo in jamos:
+            result.append(jamo)
+    return " ".join(result)
+
+
 def get_practice_drill(
     layout: str, set_name: str, count: int = 25, home_return: bool = True
 ) -> list[str]:
@@ -235,9 +245,10 @@ def get_practice_drill(
     # Try to find real words first
     all_words = LAYOUT_TO_WORDS.get(layout, [])
     fast_chars = set(chars)
+    is_korean = layout.startswith("ko")
 
     def is_match(word: str) -> bool:
-        if layout.startswith("en"):
+        if not is_korean:
             return set(word.lower()).issubset(fast_chars)
         else:
             # Korean decomposition check
@@ -256,15 +267,25 @@ def get_practice_drill(
         filtered = [w for w in all_words if is_match(w)]
 
     # If we have enough real words, use them
+    words = []
     if len(filtered) >= count // 2 and len(filtered) > 5:
-        return random.choices(filtered, k=count)
+        words = random.choices(filtered, k=count)
+    else:
+        # Otherwise, generate random character combinations (nonsense words)
+        home_key: str | None = None
+        if home_return and set_name in FINGER_LABELS:
+            home_key = FINGER_HOME_KEY.get(layout, {}).get(set_name)
+        words = _generate_nonsense_drills(count, chars, home_key)
 
-    # Otherwise, generate random character combinations (nonsense words)
-    home_key: str | None = None
-    if home_return and set_name in FINGER_LABELS:
-        home_key = FINGER_HOME_KEY.get(layout, {}).get(set_name)
+    if is_korean:
+        # For Korean drills, separate jamos with spaces to avoid mo-a-sseu-gi
+        # and allow individual character practice as requested.
+        decomposed_words = []
+        for w in words:
+            decomposed_words.extend(_decompose_ko_to_spaced_jamos(w).split())
+        return decomposed_words[:count]
 
-    return _generate_nonsense_drills(count, chars, home_key)
+    return words
 
 
 JAMO_TO_KEY = {
@@ -517,12 +538,21 @@ def get_weak_drill(layout: str, weak_chars: str, count: int = 25) -> list[str]:
         # Fallback to full list if the subset didn't yield enough matches
         filtered = [w for w in all_words if has_weak_char(w)]
 
+    # If we have enough real words, use them
+    drills = []
     if len(filtered) >= count // 2 and len(filtered) > 3:
-        return random.choices(filtered, k=count)
+        drills = random.choices(filtered, k=count)
+    else:
+        # Fallback: random combos mixing weak chars with common chars
+        for _ in range(count):
+            word_len = random.randint(3, 6)
+            drills.append("".join(random.choices(weak_chars, k=word_len)))
 
-    # Fallback: random combos mixing weak chars with common chars
-    drills: list[str] = []
-    for _ in range(count):
-        word_len = random.randint(3, 6)
-        drills.append("".join(random.choices(weak_chars, k=word_len)))
+    if not is_english:
+        # For Korean weak drills, separate jamos with spaces to avoid mo-a-sseu-gi
+        decomposed_drills = []
+        for w in drills:
+            decomposed_drills.extend(_decompose_ko_to_spaced_jamos(w).split())
+        return decomposed_drills[:count]
+
     return drills

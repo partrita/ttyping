@@ -1,6 +1,5 @@
-from collections.abc import Generator
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from textual.app import App
@@ -10,18 +9,8 @@ from ttyping.screens import TypingScreen
 
 
 @pytest.fixture(autouse=True)
-def mock_storage(tmp_path: Path) -> Generator[None, None, None]:
-    storage_dir = tmp_path / ".ttyping"
-    results_file = storage_dir / "results.json"
-    config_file = storage_dir / "config.json"
-    storage._STORAGE_ENSURED = False
-    with (
-        patch("ttyping.storage.STORAGE_DIR", storage_dir),
-        patch("ttyping.storage.RESULTS_FILE", results_file),
-        patch("ttyping.storage.CONFIG_FILE", config_file),
-    ):
-        storage._ensure_storage()
-        yield
+def setup_storage(mock_storage: tuple[Path, Path, Path]) -> None:
+    storage._ensure_storage()
 
 
 @pytest.fixture

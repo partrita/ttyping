@@ -1,28 +1,9 @@
 import json
-from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from ttyping import storage
 from ttyping.storage import TypingResult
-
-
-@pytest.fixture
-def mock_storage(tmp_path: Path) -> Generator[tuple[Path, Path, Path], None, None]:
-    storage_dir = tmp_path / ".ttyping"
-    results_file = storage_dir / "results.json"
-    config_file = storage_dir / "config.json"
-    # Reset the ensured flag so each test actually runs _ensure_storage
-    storage._STORAGE_ENSURED = False
-    storage._RESULTS_CACHE = None
-    with (
-        patch("ttyping.storage.STORAGE_DIR", storage_dir),
-        patch("ttyping.storage.RESULTS_FILE", results_file),
-        patch("ttyping.storage.CONFIG_FILE", config_file),
-    ):
-        yield storage_dir, results_file, config_file
 
 
 def test_ensure_storage_creates_new(mock_storage: tuple[Path, Path, Path]) -> None:
@@ -87,11 +68,11 @@ def test_save_result(mock_storage: tuple[Path, Path, Path]) -> None:
     )
     storage.save_result(test_result)
 
-
     # Filter out corrupt lines that cannot be parsed
     data = []
     for line in results_file.read_text().strip().split("\n"):
-        if not line.strip(): continue
+        if not line.strip():
+            continue
         try:
             data.append(json.loads(line))
         except json.JSONDecodeError:
@@ -130,11 +111,11 @@ def test_save_multiple_results(mock_storage: tuple[Path, Path, Path]) -> None:
     storage.save_result(result1)
     storage.save_result(result2)
 
-
     # Filter out corrupt lines that cannot be parsed
     data = []
     for line in results_file.read_text().strip().split("\n"):
-        if not line.strip(): continue
+        if not line.strip():
+            continue
         try:
             data.append(json.loads(line))
         except json.JSONDecodeError:
@@ -150,7 +131,9 @@ def test_save_result_appends_to_existing(mock_storage: tuple[Path, Path, Path]) 
     storage_dir.mkdir(parents=True, exist_ok=True)
 
     existing_data = [{"wpm": 50, "accuracy": 90, "date": "2023-01-01T00:00:00Z"}]
-    results_file.write_text("\n".join(json.dumps(d) for d in existing_data) + "\n" if existing_data else "")
+    results_file.write_text(
+        "\n".join(json.dumps(d) for d in existing_data) + "\n" if existing_data else ""
+    )
 
     new_result = TypingResult(
         wpm=60,
@@ -164,11 +147,11 @@ def test_save_result_appends_to_existing(mock_storage: tuple[Path, Path, Path]) 
     )
     storage.save_result(new_result)
 
-
     # Filter out corrupt lines that cannot be parsed
     data = []
     for line in results_file.read_text().strip().split("\n"):
-        if not line.strip(): continue
+        if not line.strip():
+            continue
         try:
             data.append(json.loads(line))
         except json.JSONDecodeError:
@@ -196,15 +179,16 @@ def test_save_result_corrupt_file(mock_storage: tuple[Path, Path, Path]) -> None
         errors=5,
     )
     # save_result calls load_results, which handles JSONDecodeError
-    # by returning []. So it should just overwrite the corrupt file, wait no, we changed to JSONL
+    # by returning []. So it should just overwrite the corrupt file,
+    # wait no, we changed to JSONL
     # it appends to JSONL. The corrupt line is ignored on load.
     storage.save_result(new_result)
-
 
     # Filter out corrupt lines that cannot be parsed
     data = []
     for line in results_file.read_text().strip().split("\n"):
-        if not line.strip(): continue
+        if not line.strip():
+            continue
         try:
             data.append(json.loads(line))
         except json.JSONDecodeError:
@@ -223,7 +207,9 @@ def test_load_results(mock_storage: tuple[Path, Path, Path]) -> None:
     # Save some data manually
     results_file.parent.mkdir(parents=True, exist_ok=True)
     data = [{"wpm": 70, "date": "2023-01-01T00:00:00Z"}]
-    results_file.write_text("\n".join(json.dumps(d) for d in data) + "\n" if data else "")
+    results_file.write_text(
+        "\n".join(json.dumps(d) for d in data) + "\n" if data else ""
+    )
     storage._RESULTS_CACHE = None
 
     loaded = storage.load_results()
@@ -247,7 +233,7 @@ def test_load_results_wrong_type(mock_storage: tuple[Path, Path, Path]) -> None:
 
     storage_dir.mkdir(parents=True, exist_ok=True)
     # Valid JSON on a line but not a dict
-    results_file.write_text('[1, 2, 3]')
+    results_file.write_text("[1, 2, 3]")
 
     assert storage.load_results() == []
 
@@ -269,7 +255,9 @@ def test_load_error_stats_aggregates(
         {"top_char_errors": [["a", 2], ["d", 4]]},
         {"top_char_errors": []},
     ]
-    results_file.write_text("\n".join(json.dumps(d) for d in data) + "\n" if data else "")
+    results_file.write_text(
+        "\n".join(json.dumps(d) for d in data) + "\n" if data else ""
+    )
     storage._RESULTS_CACHE = None
 
     stats = storage.load_error_stats()
@@ -307,17 +295,24 @@ def test_delete_result_by_index(mock_storage: tuple[Path, Path, Path]) -> None:
     _, results_file, _ = mock_storage
     results_file.parent.mkdir(parents=True, exist_ok=True)
     data = [{"wpm": 60}, {"wpm": 70}, {"wpm": 80}]
-    results_file.write_text("\n".join(json.dumps(d) for d in data) + "\n" if data else "")
+    results_file.write_text(
+        "\n".join(json.dumps(d) for d in data) + "\n" if data else ""
+    )
     storage._RESULTS_CACHE = None
 
     # Delete middle item
     storage.delete_result_by_index(1)
 
-    updated_data = [json.loads(line) for line in results_file.read_text().strip().split('\n') if line.strip()]
+    updated_data = [
+        json.loads(line)
+        for line in results_file.read_text().strip().split("\n")
+        if line.strip()
+    ]
     # Filter out corrupt lines that cannot be parsed
     data = []
     for line in results_file.read_text().strip().split("\n"):
-        if not line.strip(): continue
+        if not line.strip():
+            continue
         try:
             data.append(json.loads(line))
         except json.JSONDecodeError:
@@ -334,18 +329,25 @@ def test_delete_result_by_index_out_of_bounds(
     _, results_file, _ = mock_storage
     results_file.parent.mkdir(parents=True, exist_ok=True)
     data = [{"wpm": 60}]
-    results_file.write_text("\n".join(json.dumps(d) for d in data) + "\n" if data else "")
+    results_file.write_text(
+        "\n".join(json.dumps(d) for d in data) + "\n" if data else ""
+    )
     storage._RESULTS_CACHE = None
 
     # Try deleting out of bounds
     storage.delete_result_by_index(5)
     storage.delete_result_by_index(-1)
 
-    updated_data = [json.loads(line) for line in results_file.read_text().strip().split('\n') if line.strip()]
+    updated_data = [
+        json.loads(line)
+        for line in results_file.read_text().strip().split("\n")
+        if line.strip()
+    ]
     # Filter out corrupt lines that cannot be parsed
     data = []
     for line in results_file.read_text().strip().split("\n"):
-        if not line.strip(): continue
+        if not line.strip():
+            continue
         try:
             data.append(json.loads(line))
         except json.JSONDecodeError:
@@ -400,7 +402,10 @@ def test_save_config_with_non_ascii(mock_storage: tuple[Path, Path, Path]) -> No
     saved_data = json.loads(text)
     assert saved_data == test_config
 
-def test_load_results_migrates_legacy_json(mock_storage: tuple[Path, Path, Path]) -> None:
+
+def test_load_results_migrates_legacy_json(
+    mock_storage: tuple[Path, Path, Path],
+) -> None:
     storage_dir, results_file, _ = mock_storage
     storage_dir.mkdir(parents=True, exist_ok=True)
     legacy_data = '[{"wpm": 60, "date": "2023-01-01T00:00:00Z"}]'
@@ -413,7 +418,15 @@ def test_load_results_migrates_legacy_json(mock_storage: tuple[Path, Path, Path]
 
     # Check that it migrated to JSONL
     new_data = results_file.read_text()
-    assert new_data == '{"wpm": 60.0, "accuracy": 0.0, "time": 0.0, "lang": "en", "words": 0, "correct": 0, "keystrokes": 0, "errors": 0, "gross_wpm": 0.0, "top_char_errors": [], "char_timings": [], "text": "", "date": "2023-01-01T00:00:00Z"}\n'
+    expected = (
+        '{"wpm": 60.0, "accuracy": 0.0, "time": 0.0, "lang": "en", '
+        '"words": 0, "correct": 0, "keystrokes": 0, "errors": 0, '
+        '"gross_wpm": 0.0, "top_char_errors": [], "char_timings": [], '
+        '"text": "", "date": "2023-01-01T00:00:00Z"}\n'
+    )
+    assert new_data == expected
+
+
 def test_typing_result_from_dict_complete() -> None:
     data = {
         "wpm": 80.5,
@@ -428,7 +441,7 @@ def test_typing_result_from_dict_complete() -> None:
         "top_char_errors": [["a", 2], ["e", 1]],
         "char_timings": [{"char": "a", "time": 0.1}],
         "text": "some typed text",
-        "date": "2023-10-27T10:00:00Z"
+        "date": "2023-10-27T10:00:00Z",
     }
     result = TypingResult.from_dict(data)
     assert result.wpm == 80.5
@@ -444,6 +457,7 @@ def test_typing_result_from_dict_complete() -> None:
     assert result.char_timings == [{"char": "a", "time": 0.1}]
     assert result.text == "some typed text"
     assert result.date == "2023-10-27T10:00:00Z"
+
 
 def test_typing_result_from_dict_missing_fields() -> None:
     data = {}
@@ -461,6 +475,7 @@ def test_typing_result_from_dict_missing_fields() -> None:
     assert result.char_timings == []
     assert result.text == ""
     assert result.date is None
+
 
 def test_typing_result_from_dict_type_conversion() -> None:
     data = {
