@@ -453,7 +453,7 @@ def test_typing_result_from_dict_complete() -> None:
     assert result.keystrokes == 200
     assert result.errors == 10
     assert result.gross_wpm == 85.0
-    assert result.top_char_errors == [["a", 2], ["e", 1]]
+    assert result.top_char_errors == [("a", 2), ("e", 1)]
     assert result.char_timings == [{"char": "a", "time": 0.1}]
     assert result.text == "some typed text"
     assert result.date == "2023-10-27T10:00:00Z"
@@ -511,3 +511,14 @@ def test_typing_result_from_dict_type_conversion() -> None:
     assert isinstance(result.gross_wpm, float)
     assert result.text == "456"
     assert isinstance(result.text, str)
+
+
+def test_typing_result_from_dict_malformed_nested() -> None:
+    data = {
+        "wpm": 80.5,
+        "top_char_errors": [["a", "not_int"], ["e", 1]],
+        "char_timings": [{"char": "a", "time": 0.1}, "not_dict"],
+    }
+    result = TypingResult.from_dict(data)
+    assert result.top_char_errors == [("e", 1)]
+    assert result.char_timings == [{"char": "a", "time": 0.1}]
