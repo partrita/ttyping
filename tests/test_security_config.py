@@ -3,7 +3,7 @@ import json
 from ttyping.app import TypingApp
 
 
-def test_malformed_config_types(tmp_path):
+def test_malformed_config_types(tmp_path: object) -> None:
     import ttyping.storage as storage
 
     storage_dir = tmp_path / ".ttyping"

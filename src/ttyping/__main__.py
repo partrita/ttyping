@@ -62,8 +62,8 @@ def main() -> None:
     args = parse_args()
 
     # Security: Limit number of words to avoid excessive memory allocation
-    if args.words and args.words > 1000:
-        args.words = 1000
+    if args.words is not None:
+        args.words = max(1, min(args.words, 1000))
 
     from ttyping.app import TypingApp
 
