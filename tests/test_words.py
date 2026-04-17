@@ -114,13 +114,13 @@ def test_get_practice_drill_en_real_words() -> None:
 
 
 def test_get_practice_drill_ko_real_words() -> None:
-    from ttyping.words import _get_jamos, get_practice_drill
+    from ttyping.words import _get_jamos, get_practice_drill, PRACTICE_SETS
 
     # Using 'left_hand' in ko_2set has enough words (only consonants)
     words = get_practice_drill("ko_2set", "right_hand", count=5)
     assert len(words) == 5
     # right hand characters in ko_2set are vowels mostly
-    allowed = set("ㅛㅕㅑㅐㅔㅗㅓㅏㅣㅠㅜㅡ")
+    allowed = set(PRACTICE_SETS["ko_2set"]["right_hand"])
     for word in words:
         for char in word:
             jamos = _get_jamos(char)
@@ -150,11 +150,11 @@ def test_get_practice_drill_nonsense_with_home_return() -> None:
 
 
 def test_get_practice_drill_nonsense_no_home_return() -> None:
-    from ttyping.words import get_practice_drill
+    from ttyping.words import get_practice_drill, PRACTICE_SETS
 
     words = get_practice_drill("ko_2set", "right_pinky", count=5, home_return=False)
     assert len(words) == 5
-    allowed_chars = set("ㅔ;:/?\"'[]{}0)-_=+")
+    allowed_chars = set(PRACTICE_SETS["ko_2set"]["right_pinky"])
     for word in words:
         # should not be interleaved with home key
         # should just be random characters from the set
@@ -172,18 +172,19 @@ def test_decompose_ko_to_spaced_jamos() -> None:
 
 
 def test_get_practice_drill_ko_decomposition() -> None:
-    from ttyping.words import get_practice_drill
+    from ttyping.words import get_practice_drill, PRACTICE_SETS
 
     # Practice drills for Korean should be decomposed into individual jamos
     # Using 'home_row' for ko_2set (ㅁㄴㅇㄹㅎㅗㅓㅏㅣ)
     words = get_practice_drill("ko_2set", "home_row", count=10)
+    allowed = set(PRACTICE_SETS["ko_2set"]["home_row"])
 
     # Each 'word' should be a single jamo because we split the decomposed string
     # e.g., "한글" -> ["ㅎ", "ㅏ", "ㄴ", "ㄱ", "ㅡ", "ㄹ"]
     for w in words:
         assert len(w) == 1
         # It should be a single Korean jamo or a character from the set
-        assert w in "ㅁㄴㅇㄹㅎㅗㅓㅏㅣ"
+        assert w in allowed
 
 
 def test_get_weak_drill_ko_decomposition() -> None:
