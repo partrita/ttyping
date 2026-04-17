@@ -45,25 +45,44 @@ class TypingResult:
     def from_dict(cls, data: dict[str, Any]) -> TypingResult:
         """Create a result from a dictionary."""
         # Handle cases where some fields might be missing in older results
-        return cls(
-            wpm=float(data.get("wpm", 0)),
-            accuracy=float(data.get("accuracy", 0)),
-            time=float(data.get("time", 0)),
-            lang=str(data.get("lang", "en")),
-            words=int(data.get("words", 0)),
-            correct=int(data.get("correct", 0)),
-            keystrokes=int(data.get("keystrokes", 0)),
-            errors=int(data.get("errors", 0)),
-            gross_wpm=float(data.get("gross_wpm", 0)),
-            top_char_errors=data.get("top_char_errors", []),
-            char_timings=data.get("char_timings", []),
-            text=str(data.get("text", "")),
-            date=data.get("date"),
-        )
+        try:
+            return cls(
+                wpm=float(data.get("wpm", 0)),
+                accuracy=float(data.get("accuracy", 0)),
+                time=float(data.get("time", 0)),
+                lang=str(data.get("lang", "en")),
+                words=int(data.get("words", 0)),
+                correct=int(data.get("correct", 0)),
+                keystrokes=int(data.get("keystrokes", 0)),
+                errors=int(data.get("errors", 0)),
+                gross_wpm=float(data.get("gross_wpm", 0)),
+                top_char_errors=data.get("top_char_errors", []),
+                char_timings=data.get("char_timings", []),
+                text=str(data.get("text", "")),
+                date=data.get("date"),
+            )
+        except (ValueError, TypeError):
+            return cls(
+                wpm=0.0,
+                accuracy=0.0,
+                time=0.0,
+                lang="en",
+                words=0,
+                correct=0,
+                keystrokes=0,
+                errors=0,
+                gross_wpm=0.0,
+                top_char_errors=[],
+                char_timings=[],
+                text="",
+                date=None,
+            )
 
 
-def _fchmod_safe(file_path: Path, mode: int = 0o600) -> None:
+def _fchmod_safe(file_path: Path, mode: int = 0o600, is_dir: bool = False) -> None:
     """Use file descriptors to safely set permissions, preventing TOCTOU attacks."""
+    from stat import S_ISDIR, S_ISREG
+
     if hasattr(os, "fchmod") and hasattr(os, "fstat"):
         flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0)
         if hasattr(os, "O_NOFOLLOW"):
@@ -74,6 +93,10 @@ def _fchmod_safe(file_path: Path, mode: int = 0o600) -> None:
                 os.set_blocking(fd, True)
             try:
                 st = os.fstat(fd)
+                if is_dir and not S_ISDIR(st.st_mode):
+                    return
+                elif not is_dir and not S_ISREG(st.st_mode):
+                    return
                 if (st.st_mode & 0o777) != mode:
                     os.fchmod(fd, mode)
                 return
@@ -85,8 +108,17 @@ def _fchmod_safe(file_path: Path, mode: int = 0o600) -> None:
 
     # Fallback for platforms without fchmod/fstat (e.g. Windows)
     is_symlink = file_path.is_symlink()
-    if not is_symlink and (file_path.stat().st_mode & 0o777) != mode:
-        file_path.chmod(mode)
+    if not is_symlink:
+        try:
+            st = file_path.stat()
+            if is_dir and not S_ISDIR(st.st_mode):
+                return
+            elif not is_dir and not S_ISREG(st.st_mode):
+                return
+            if (st.st_mode & 0o777) != mode:
+                file_path.chmod(mode)
+        except OSError:
+            pass
 
 
 def _secure_append(file_path: Path, content: str) -> None:
@@ -94,16 +126,25 @@ def _secure_append(file_path: Path, content: str) -> None:
     if file_path.is_symlink():
         raise OSError(f"Refusing to write to symlink: {file_path}")
 
-    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NONBLOCK", 0)
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
 
     fd = os.open(file_path, flags, 0o600)
-    if hasattr(os, "fchmod") and hasattr(os, "fstat"):
+    try:
+        if getattr(os, "O_NONBLOCK", 0):
+            os.set_blocking(fd, True)
         st = os.fstat(fd)
-        if (st.st_mode & 0o777) != 0o600:
-            os.fchmod(fd, 0o600)
-    with os.fdopen(fd, "a", encoding="utf-8") as f:
+        if not S_ISREG(st.st_mode):
+            raise OSError(f"Not a regular file: {file_path}")
+        if hasattr(os, "fchmod"):
+            if (st.st_mode & 0o777) != 0o600:
+                os.fchmod(fd, 0o600)
+        f = os.fdopen(fd, "a", encoding="utf-8")
+    except BaseException:
+        os.close(fd)
+        raise
+    with f:
         f.write(content)
     _fchmod_safe(file_path)
 
@@ -124,14 +165,21 @@ def _secure_write(file_path: Path, content: str) -> None:
         flags,
         0o600,
     )
-    if getattr(os, "O_NONBLOCK", 0):
-        os.set_blocking(fd, True)
-    # Security: Set permissions on the open file to prevent TOCTOU
-    if hasattr(os, "fchmod") and hasattr(os, "fstat"):
+    try:
+        if getattr(os, "O_NONBLOCK", 0):
+            os.set_blocking(fd, True)
+        # Security: Set permissions on the open file to prevent TOCTOU
         st = os.fstat(fd)
-        if (st.st_mode & 0o777) != 0o600:
-            os.fchmod(fd, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        if not S_ISREG(st.st_mode):
+            raise OSError(f"Not a regular file: {file_path}")
+        if hasattr(os, "fchmod"):
+            if (st.st_mode & 0o777) != 0o600:
+                os.fchmod(fd, 0o600)
+        f = os.fdopen(fd, "w", encoding="utf-8")
+    except BaseException:
+        os.close(fd)
+        raise
+    with f:
         f.write(content)
     # Ensure permissions are correct even if file already existed
     _fchmod_safe(file_path)
@@ -147,14 +195,21 @@ def _secure_read(file_path: Path) -> str:
         flags |= os.O_NOFOLLOW
 
     fd = os.open(file_path, flags)
-    if getattr(os, "O_NONBLOCK", 0):
-        os.set_blocking(fd, True)
-    with os.fdopen(fd, "r", encoding="utf-8") as f:
+    try:
+        if getattr(os, "O_NONBLOCK", 0):
+            os.set_blocking(fd, True)
+
         st = os.fstat(fd)
         if not S_ISREG(st.st_mode):
             raise OSError(f"Not a regular file: {file_path}")
         if st.st_size > 10_000_000:
             raise OSError(f"'{file_path}' is too large (max 10MB)")
+
+        f = os.fdopen(fd, "r", encoding="utf-8")
+    except BaseException:
+        os.close(fd)
+        raise
+    with f:
         return f.read()
 
 
@@ -173,7 +228,7 @@ def _ensure_storage() -> None:
     # unintentionally restricting shared parent directories.
     STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
-    _fchmod_safe(STORAGE_DIR, mode=0o700)
+    _fchmod_safe(STORAGE_DIR, mode=0o700, is_dir=True)
 
     for file_path, default_content in [
         (RESULTS_FILE, ""),
@@ -193,14 +248,19 @@ def _ensure_storage() -> None:
 
                 # Use os.open to atomically create file with 0o600 permissions
                 fd = os.open(file_path, flags, 0o600)
-                if getattr(os, "O_NONBLOCK", 0):
-                    os.set_blocking(fd, True)
-                # Security: Set permissions on the open file to prevent TOCTOU
-                if hasattr(os, "fchmod") and hasattr(os, "fstat"):
-                    st = os.fstat(fd)
-                    if (st.st_mode & 0o777) != 0o600:
-                        os.fchmod(fd, 0o600)
-                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                try:
+                    if getattr(os, "O_NONBLOCK", 0):
+                        os.set_blocking(fd, True)
+                    # Security: Set permissions on the open file to prevent TOCTOU
+                    if hasattr(os, "fchmod") and hasattr(os, "fstat"):
+                        st = os.fstat(fd)
+                        if (st.st_mode & 0o777) != 0o600:
+                            os.fchmod(fd, 0o600)
+                    f = os.fdopen(fd, "w", encoding="utf-8")
+                except BaseException:
+                    os.close(fd)
+                    raise
+                with f:
                     f.write(default_content)
             except FileExistsError:
                 # File was created between the exists() check and os.open
@@ -257,7 +317,7 @@ def load_results() -> list[TypingResult]:
                 )
                 _secure_write(RESULTS_FILE, jsonl_data + "\n" if jsonl_data else "")
                 return _RESULTS_CACHE
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, ValueError, TypeError):
                 _RESULTS_CACHE = []
                 return _RESULTS_CACHE
 
@@ -271,7 +331,7 @@ def load_results() -> list[TypingResult]:
                 data = json.loads(line)
                 if isinstance(data, dict):
                     results.append(TypingResult.from_dict(data))
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, ValueError, TypeError):
                 continue
 
         _RESULTS_CACHE = results

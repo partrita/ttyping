@@ -150,14 +150,34 @@ class TypingApp(App):
 
         self._lang: str = lang or config.get("lang", "en_qwerty")
         self._file_path: str | None = file_path or config.get("file_path")
-        self._word_count: int = word_count or config.get("word_count", 25)
-        self._duration: int | None = duration or config.get("duration")
+
+        # Safe cast for word_count
+        saved_wc = config.get("word_count", 25)
+        try:
+            parsed_wc = int(saved_wc) if saved_wc is not None else 25
+        except (ValueError, TypeError):
+            parsed_wc = 25
+        wc = word_count if word_count is not None else parsed_wc
+        self._word_count: int = max(1, min(wc, 1000))
+
+        # Safe cast for duration
+        saved_dur = config.get("duration")
+        try:
+            parsed_dur = int(saved_dur) if saved_dur is not None else None
+        except (ValueError, TypeError):
+            parsed_dur = None
+        dur = duration if duration is not None else parsed_dur
+        self._duration: int | None = max(1, min(dur, 3600)) if dur is not None else None
         # Prefer explicit CLI arg, then saved config, then None
         saved_acc = config.get("target_accuracy")
+        try:
+            parsed_acc = float(saved_acc) if saved_acc is not None else None
+        except (ValueError, TypeError):
+            parsed_acc = None
+
+        acc = target_accuracy if target_accuracy is not None else parsed_acc
         self._target_accuracy: float | None = (
-            target_accuracy
-            if target_accuracy is not None
-            else (float(saved_acc) if saved_acc is not None else None)
+            max(0.0, min(acc, 100.0)) if acc is not None else None
         )
         self._show_history: bool = show_history
         self._session_attempts: list[TypingResult] = []

@@ -64,3 +64,25 @@ def test_load_config_file_not_found(mock_storage: tuple[Path, Path, Path]) -> No
     # Mock read_text to raise FileNotFoundError directly, bypassing file creation
     with patch.object(Path, "read_text", side_effect=FileNotFoundError):
         assert load_config() == {}
+
+
+def test_malformed_target_accuracy_config(
+    mock_storage: tuple[Path, Path, Path],
+) -> None:
+    from ttyping.app import TypingApp
+
+    test_dir, test_results_file, test_config_file = mock_storage
+
+    # Write a malformed config with a string instead of a float for target_accuracy
+    import json
+
+    import ttyping.storage
+
+    ttyping.storage._ensure_storage()
+    test_config_file.write_text(
+        json.dumps({"target_accuracy": "not_a_float"}), encoding="utf-8"
+    )
+
+    # Instantiating the app should not raise ValueError
+    app = TypingApp()
+    assert getattr(app, "_target_accuracy", None) is None
