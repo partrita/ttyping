@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import os
 import secrets
-
-_rng = secrets.SystemRandom()
 import unicodedata
 from functools import lru_cache
 from importlib import resources
@@ -165,9 +163,9 @@ def _generate_nonsense_drills(
 ) -> list[str]:
     drills = []
     for _ in range(count):
-        word_len = _rng.randint(3, 6)
+        word_len = secrets.SystemRandom().randint(3, 6)
         if home_key and home_key not in chars:
-            practice_chars = _rng.choices(chars, k=word_len)
+            practice_chars = secrets.SystemRandom().choices(chars, k=word_len)
             parts = []
             for ch in practice_chars:
                 parts.append(ch)
@@ -190,7 +188,7 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
         if not source:
             source = ["No sentences found."]
         words: list[str] = []
-        for s in _rng.choices(source, k=count):
+        for s in secrets.SystemRandom().choices(source, k=count):
             words.extend(s.split())
         return words
 
