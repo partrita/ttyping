@@ -167,7 +167,7 @@ def _generate_nonsense_drills(
     for _ in range(count):
         word_len = _rng.randint(3, 6)
         if home_key and home_key not in chars:
-            practice_chars = secrets.SystemRandom().choices(chars, k=word_len)
+            practice_chars = _rng.choices(chars, k=word_len)
             parts = []
             for ch in practice_chars:
                 parts.append(ch)
