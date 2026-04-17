@@ -190,7 +190,7 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
         if not source:
             source = ["No sentences found."]
         words: list[str] = []
-        for s in secrets.SystemRandom().choices(source, k=count):
+        for s in _rng.choices(source, k=count):
             words.extend(s.split())
         return words
 
