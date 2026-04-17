@@ -148,16 +148,6 @@ LAYOUT_TO_WORDS: dict[str, list[str]] = {
 }
 
 
-def _is_practice_match(word: str, fast_chars: set[str], layout: str) -> bool:
-    if layout.startswith("en"):
-        return all(c.lower() in fast_chars for c in word)
-    else:
-        for char in word:
-            if any(k not in fast_chars for k in _get_jamos(char)):
-                return False
-        return True
-
-
 def _generate_nonsense_drills(
     count: int, chars: str, home_key: str | None
 ) -> list[str]:
