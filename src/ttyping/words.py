@@ -165,7 +165,7 @@ def _generate_nonsense_drills(
 ) -> list[str]:
     drills = []
     for _ in range(count):
-        word_len = secrets.SystemRandom().randint(3, 6)
+        word_len = _rng.randint(3, 6)
         if home_key and home_key not in chars:
             practice_chars = secrets.SystemRandom().choices(chars, k=word_len)
             parts = []
