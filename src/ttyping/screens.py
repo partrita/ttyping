@@ -663,10 +663,9 @@ class ResultScreen(Screen):
 
                 if r.top_char_errors:
                     yield Static("top missed characters", classes="result-title")
-                    yield Static(
-                        self._render_bar_graph(r.top_char_errors),
-                        id="top-errors-graph",
-                    )
+                    # Display as Python dictionary format string
+                    err_dict = {char: count for char, count in r.top_char_errors}
+                    yield Static(str(err_dict), id="top-errors-dict")
                 if self.session_attempts:
                     yield Static("session summary", classes="result-title")
                     table = DataTable(id="session-table")
@@ -744,56 +743,6 @@ class ResultScreen(Screen):
 
             t.append(char, style=style)
 
-        return t
-
-    def _render_bar_graph(self, data: list[tuple[str, int]]) -> Text:
-        from rich.cells import cell_len
-
-        if not data:
-            return Text()
-
-        max_val = max(count for _, count in data)
-        max_bar_width = 30
-
-        # Determine necessary label cell width
-        max_label_cell_len = 0
-        for label, _ in data:
-            max_label_cell_len = max(max_label_cell_len, cell_len(label))
-
-        # Cap label width and add padding
-        label_cell_width = min(max_label_cell_len, 15)
-
-        t = Text()
-        for i, (label, count) in enumerate(data):
-            if i > 0:
-                t.append("\n")
-
-            # Truncate and pad label based on cell width
-            curr_cell_len = cell_len(label)
-            if curr_cell_len > label_cell_width:
-                # Truncate label to fit within label_cell_width-1 cells and add '…'
-                display_label = ""
-                acc_len = 0
-                for char in label:
-                    char_len = cell_len(char)
-                    if acc_len + char_len > label_cell_width - 1:
-                        break
-                    display_label += char
-                    acc_len += char_len
-                display_label += "…"
-                padding = " " * (label_cell_width - cell_len(display_label))
-            else:
-                display_label = label
-                padding = " " * (label_cell_width - curr_cell_len)
-
-            bar_len = int((count / max_val) * max_bar_width) if max_val > 0 else 0
-            if count > 0 and bar_len == 0:
-                bar_len = 1
-
-            bar = "█" * bar_len
-            t.append(padding + display_label + " ", style=COL_DIM)
-            t.append(bar, style=COL_ERROR)
-            t.append(f" {count}", style=COL_TEXT)
         return t
 
     def action_retry(self) -> None:
@@ -1197,6 +1146,16 @@ class ActionSelectMixin:
             pass
 
 
+ASCII_LOGO = r"""
+ _   _               _             
+| |_| |_ _   _ _ __ (_)_ __   __ _ 
+| __| __| | | | '_ \| | '_ \ / _` |
+| |_| |_| |_| | |_) | | | | | (_| |
+ \__|\__|\__, | .__/|_|_| |_|\__, |
+         |___/|_|            |___/ 
+""".strip("\n")
+
+
 class MenuScreen(ActionSelectMixin, Screen):
     """Initial menu to select test parameters."""
 
@@ -1206,10 +1165,17 @@ class MenuScreen(ActionSelectMixin, Screen):
     }
 
     #menu-container {
-        width: 44;
+        width: 60;
         height: auto;
         padding: 1 2;
         align: center middle;
+    }
+
+    #menu-logo {
+        width: 100%;
+        text-align: center;
+        color: $accent;
+        margin-bottom: 1;
     }
 
     #menu-title {
@@ -1217,6 +1183,7 @@ class MenuScreen(ActionSelectMixin, Screen):
         text-align: center;
         text-style: bold;
         margin-bottom: 1;
+        display: none;
     }
 
     OptionList {
@@ -1256,6 +1223,7 @@ class MenuScreen(ActionSelectMixin, Screen):
     def compose(self) -> ComposeResult:
         with Center():
             with Vertical(id="menu-container"):
+                yield Static(ASCII_LOGO, id="menu-logo")
                 yield Static("ttyping", id="menu-title")
                 yield OptionList(
                     Option(
@@ -1990,7 +1958,7 @@ class TimeLimitInputScreen(Screen):
 
 
 class WeaknessScreen(ActionSelectMixin, Screen):
-    """Weak Key Analysis — aggregated error stats with targeted drill."""
+    """Weak Key Analysis - aggregated error stats with targeted drill."""
 
     DEFAULT_CSS = """
     WeaknessScreen {
