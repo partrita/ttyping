@@ -544,7 +544,8 @@ def get_weak_drill(layout: str, weak_chars: str, count: int = 25) -> list[str]:
         # Fallback: random combos mixing weak chars with common chars
         for _ in range(count):
             word_len = secrets.SystemRandom().randint(3, 6)
-            drills.append("".join(secrets.SystemRandom().choices(weak_chars, k=word_len)))
+            random_chars = secrets.SystemRandom().choices(weak_chars, k=word_len)
+            drills.append("".join(random_chars))
 
     if not is_english:
         # For Korean weak drills, separate jamos with spaces to avoid mo-a-sseu-gi
