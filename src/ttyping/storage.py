@@ -45,21 +45,38 @@ class TypingResult:
     def from_dict(cls, data: dict[str, Any]) -> TypingResult:
         """Create a result from a dictionary."""
         # Handle cases where some fields might be missing in older results
-        return cls(
-            wpm=float(data.get("wpm", 0)),
-            accuracy=float(data.get("accuracy", 0)),
-            time=float(data.get("time", 0)),
-            lang=str(data.get("lang", "en")),
-            words=int(data.get("words", 0)),
-            correct=int(data.get("correct", 0)),
-            keystrokes=int(data.get("keystrokes", 0)),
-            errors=int(data.get("errors", 0)),
-            gross_wpm=float(data.get("gross_wpm", 0)),
-            top_char_errors=data.get("top_char_errors", []),
-            char_timings=data.get("char_timings", []),
-            text=str(data.get("text", "")),
-            date=data.get("date"),
-        )
+        try:
+            return cls(
+                wpm=float(data.get("wpm", 0)),
+                accuracy=float(data.get("accuracy", 0)),
+                time=float(data.get("time", 0)),
+                lang=str(data.get("lang", "en")),
+                words=int(data.get("words", 0)),
+                correct=int(data.get("correct", 0)),
+                keystrokes=int(data.get("keystrokes", 0)),
+                errors=int(data.get("errors", 0)),
+                gross_wpm=float(data.get("gross_wpm", 0)),
+                top_char_errors=data.get("top_char_errors", []),
+                char_timings=data.get("char_timings", []),
+                text=str(data.get("text", "")),
+                date=data.get("date"),
+            )
+        except (ValueError, TypeError):
+            return cls(
+                wpm=0.0,
+                accuracy=0.0,
+                time=0.0,
+                lang="en",
+                words=0,
+                correct=0,
+                keystrokes=0,
+                errors=0,
+                gross_wpm=0.0,
+                top_char_errors=[],
+                char_timings=[],
+                text="",
+                date=None,
+            )
 
 
 def _fchmod_safe(file_path: Path, mode: int = 0o600, is_dir: bool = False) -> None:
