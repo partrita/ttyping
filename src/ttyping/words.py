@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-import random
+import secrets
 import unicodedata
 from functools import lru_cache
 from importlib import resources
@@ -60,13 +60,13 @@ PRACTICE_SETS: dict[str, dict[str, str]] = {
         "right_pinky": "p;:/?\"'[]{}0)-_=+",
     },
     "ko_2set": {
-        "home_row": "ㅁㄴㅇㄹㅎㅗㅓㅏㅣ",
-        "top_row": "ㅂㅈㄷㄱㅅㅛㅕㅑㅐㅔ",
-        "bottom_row": "ㅋㅌㅊㅍㅠㅜㅡ",
+        "home_row": "ㅁㄴㅇㄹㅎㅗㅓㅏㅣ;':\"",
+        "top_row": "ㅂㅈㄷㄱㅅㅛㅕㅑㅐㅔ[]{}",
+        "bottom_row": "ㅋㅌㅊㅍㅠㅜㅡ,./<>?",
         "number_row": "1234567890",
-        "symbol_row": "!@#$%^&*()",
+        "symbol_row": "!@#$%^&*()-=_+",
         "left_hand": "ㅂㅈㄷㄱㅅㅁㄴㅇㄹㅎㅋㅌㅊㅍ",
-        "right_hand": "ㅛㅕㅑㅐㅔㅗㅓㅏㅣㅠㅜㅡ",
+        "right_hand": "ㅛㅕㅑㅐㅔㅗㅓㅏㅣㅠㅜㅡ[]{};:,./<>?",
         "left_index": "ㄱㅅㄹㅎㅊㅍ45$%",
         "right_index": "ㅛㅕㅗㅓㅠㅜ67^&",
         "left_middle": "ㄷㅇㅌ3#",
@@ -163,16 +163,16 @@ def _generate_nonsense_drills(
 ) -> list[str]:
     drills = []
     for _ in range(count):
-        word_len = random.randint(3, 6)
+        word_len = secrets.SystemRandom().randint(3, 6)
         if home_key and home_key not in chars:
-            practice_chars = random.choices(chars, k=word_len)
+            practice_chars = secrets.SystemRandom().choices(chars, k=word_len)
             parts = []
             for ch in practice_chars:
                 parts.append(ch)
                 parts.append(home_key)
             drills.append("".join(parts))
         else:
-            drills.append("".join(random.choices(chars, k=word_len)))
+            drills.append("".join(secrets.SystemRandom().choices(chars, k=word_len)))
     return drills
 
 
@@ -188,7 +188,7 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
         if not source:
             source = ["No sentences found."]
         words: list[str] = []
-        for s in random.choices(source, k=count):
+        for s in secrets.SystemRandom().choices(source, k=count):
             words.extend(s.split())
         return words
 
@@ -201,7 +201,7 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
         if not source:
             source = ["No lorem ipsum found."]
         words: list[str] = []
-        for s in random.choices(source, k=count):
+        for s in secrets.SystemRandom().choices(source, k=count):
             words.extend(s.split())
         return words
 
@@ -220,7 +220,17 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
     source = LAYOUT_TO_WORDS.get(lang, EN_QWERTY)
     if not source:
         source = EN_QWERTY
-    return random.choices(source, k=count)
+    return secrets.SystemRandom().choices(source, k=count)
+
+
+def _decompose_ko_to_spaced_jamos(word: str) -> str:
+    """Decompose a Korean word into jamos separated by spaces."""
+    result = []
+    for char in word:
+        jamos = _get_jamos(char)
+        for jamo in jamos:
+            result.append(jamo)
+    return " ".join(result)
 
 
 def get_practice_drill(
@@ -238,9 +248,10 @@ def get_practice_drill(
     # Try to find real words first
     all_words = LAYOUT_TO_WORDS.get(layout, [])
     fast_chars = set(chars)
+    is_korean = layout.startswith("ko")
 
     def is_match(word: str) -> bool:
-        if layout.startswith("en"):
+        if not is_korean:
             return fast_chars.issuperset(word.lower())
         else:
             # Korean decomposition check
@@ -251,7 +262,7 @@ def get_practice_drill(
 
     # Optimization: Filter a random subset first to avoid O(N) full-list scanning
     subset_size = min(len(all_words), max(300, count * 5))
-    subset = random.sample(all_words, subset_size) if all_words else []
+    subset = secrets.SystemRandom().sample(all_words, subset_size) if all_words else []
     filtered = [w for w in subset if is_match(w)]
 
     if len(filtered) < count // 2 or len(filtered) <= 5:
@@ -259,15 +270,25 @@ def get_practice_drill(
         filtered = [w for w in all_words if is_match(w)]
 
     # If we have enough real words, use them
+    words = []
     if len(filtered) >= count // 2 and len(filtered) > 5:
-        return random.choices(filtered, k=count)
+        words = secrets.SystemRandom().choices(filtered, k=count)
+    else:
+        # Otherwise, generate random character combinations (nonsense words)
+        home_key: str | None = None
+        if home_return and set_name in FINGER_LABELS:
+            home_key = FINGER_HOME_KEY.get(layout, {}).get(set_name)
+        words = _generate_nonsense_drills(count, chars, home_key)
 
-    # Otherwise, generate random character combinations (nonsense words)
-    home_key: str | None = None
-    if home_return and set_name in FINGER_LABELS:
-        home_key = FINGER_HOME_KEY.get(layout, {}).get(set_name)
+    if is_korean:
+        # For Korean drills, separate jamos with spaces to avoid mo-a-sseu-gi
+        # and allow individual character practice as requested.
+        decomposed_words = []
+        for w in words:
+            decomposed_words.extend(_decompose_ko_to_spaced_jamos(w).split())
+        return decomposed_words[:count]
 
-    return _generate_nonsense_drills(count, chars, home_key)
+    return words
 
 
 JAMO_TO_KEY = {
@@ -518,19 +539,29 @@ def get_weak_drill(layout: str, weak_chars: str, count: int = 25) -> list[str]:
 
     # Optimization: Filter a random subset first to avoid O(N) full-list scanning
     subset_size = min(len(all_words), max(300, count * 5))
-    subset = random.sample(all_words, subset_size) if all_words else []
+    subset = secrets.SystemRandom().sample(all_words, subset_size) if all_words else []
     filtered = [w for w in subset if has_weak_char(w)]
 
     if len(filtered) < count // 2 or len(filtered) <= 3:
         # Fallback to full list if the subset didn't yield enough matches
         filtered = [w for w in all_words if has_weak_char(w)]
 
+    # If we have enough real words, use them
+    drills = []
     if len(filtered) >= count // 2 and len(filtered) > 3:
-        return random.choices(filtered, k=count)
+        drills = secrets.SystemRandom().choices(filtered, k=count)
+    else:
+        # Fallback: random combos mixing weak chars with common chars
+        for _ in range(count):
+            word_len = secrets.SystemRandom().randint(3, 6)
+            random_chars = secrets.SystemRandom().choices(weak_chars, k=word_len)
+            drills.append("".join(random_chars))
 
-    # Fallback: random combos mixing weak chars with common chars
-    drills: list[str] = []
-    for _ in range(count):
-        word_len = random.randint(3, 6)
-        drills.append("".join(random.choices(weak_chars, k=word_len)))
+    if not is_english:
+        # For Korean weak drills, separate jamos with spaces to avoid mo-a-sseu-gi
+        decomposed_drills = []
+        for w in drills:
+            decomposed_drills.extend(_decompose_ko_to_spaced_jamos(w).split())
+        return decomposed_drills[:count]
+
     return drills

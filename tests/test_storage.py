@@ -1,28 +1,9 @@
 import json
-from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from ttyping import storage
 from ttyping.storage import TypingResult
-
-
-@pytest.fixture
-def mock_storage(tmp_path: Path) -> Generator[tuple[Path, Path, Path], None, None]:
-    storage_dir = tmp_path / ".ttyping"
-    results_file = storage_dir / "results.json"
-    config_file = storage_dir / "config.json"
-    # Reset the ensured flag so each test actually runs _ensure_storage
-    storage._STORAGE_ENSURED = False
-    storage._RESULTS_CACHE = None
-    with (
-        patch("ttyping.storage.STORAGE_DIR", storage_dir),
-        patch("ttyping.storage.RESULTS_FILE", results_file),
-        patch("ttyping.storage.CONFIG_FILE", config_file),
-    ):
-        yield storage_dir, results_file, config_file
 
 
 def test_ensure_storage_creates_new(mock_storage: tuple[Path, Path, Path]) -> None:
@@ -437,12 +418,13 @@ def test_load_results_migrates_legacy_json(
 
     # Check that it migrated to JSONL
     new_data = results_file.read_text()
-    assert new_data == (
+    expected = (
         '{"wpm": 60.0, "accuracy": 0.0, "time": 0.0, "lang": "en", '
         '"words": 0, "correct": 0, "keystrokes": 0, "errors": 0, '
         '"gross_wpm": 0.0, "top_char_errors": [], "char_timings": [], '
         '"text": "", "date": "2023-01-01T00:00:00Z"}\n'
     )
+    assert new_data == expected
 
 
 def test_typing_result_from_dict_complete() -> None:
