@@ -6,3 +6,7 @@
 **Vulnerability:** In `src/ttyping/storage.py`, `TypingResult.from_dict` parsed data directly without handling explicit type casting errors on nested json items (e.g. `ValueError` on `int("abc")` or `TypeError` on `float(None)` if users tampered with `.ttyping/results.json`). This crash behavior would break application loading resulting in DoS.
 **Learning:** Similarly to the configuration file, parsing stored data fields requires defensive type casting using `try...except (ValueError, TypeError):` in order to gracefully handle malformed data rather than propagating exceptions up and crashing the entire application.
 **Prevention:** Wrap type casting in `from_dict` with `try...except` and provide a fallback default or ignore the malformed item.
+## 2025-02-26 - Prevent App Crash from Malformed Complex JSON Data Types
+**Vulnerability:** In src/ttyping/storage.py, TypingResult.from_dict only handled basic try/except but failed to recursively validate and cast complex fields like lists of tuples. This could cause later crashes (DoS) when iterating over malformed entries.
+**Learning:** Complex fields require structured validation and type casting rather than relying on top-level parsing.
+**Prevention:** Iteratively type-cast lists of complex items and handle exceptions per-item, falling back to empty lists where appropriate.

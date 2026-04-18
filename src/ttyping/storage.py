@@ -44,22 +44,57 @@ class TypingResult:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> TypingResult:
         """Create a result from a dictionary."""
-        # Handle cases where some fields might be missing in older results
         try:
+            # Parse simple fields
+            wpm = float(data.get("wpm", 0))
+            accuracy = float(data.get("accuracy", 0))
+            time_val = float(data.get("time", 0))
+            lang = str(data.get("lang", "en"))
+            words = int(data.get("words", 0))
+            correct = int(data.get("correct", 0))
+            keystrokes = int(data.get("keystrokes", 0))
+            errors = int(data.get("errors", 0))
+            gross_wpm = float(data.get("gross_wpm", 0))
+            text = str(data.get("text", ""))
+            date = data.get("date")
+
+            # Validate top_char_errors is a list of tuples/lists of (str, int)
+            raw_top_char_errors = data.get("top_char_errors", [])
+            if not isinstance(raw_top_char_errors, list):
+                raw_top_char_errors = []
+
+            top_char_errors = []
+            for item in raw_top_char_errors:
+                try:
+                    if isinstance(item, (list, tuple)) and len(item) == 2:
+                        top_char_errors.append((str(item[0]), int(item[1])))
+                except (ValueError, TypeError):
+                    pass
+
+            # Validate char_timings is a list of dicts
+            raw_char_timings = data.get("char_timings", [])
+            if not isinstance(raw_char_timings, list):
+                raw_char_timings = []
+
+            char_timings = []
+            for item in raw_char_timings:
+                if isinstance(item, dict):
+                    char_timings.append(item)
+
             return cls(
-                wpm=float(data.get("wpm", 0)),
-                accuracy=float(data.get("accuracy", 0)),
-                time=float(data.get("time", 0)),
-                lang=str(data.get("lang", "en")),
-                words=int(data.get("words", 0)),
-                correct=int(data.get("correct", 0)),
-                keystrokes=int(data.get("keystrokes", 0)),
-                errors=int(data.get("errors", 0)),
-                gross_wpm=float(data.get("gross_wpm", 0)),
-                top_char_errors=data.get("top_char_errors", []),
-                char_timings=data.get("char_timings", []),
-                text=str(data.get("text", "")),
-                date=data.get("date"),
+                wpm=wpm,
+                accuracy=accuracy,
+                time=time_val,
+                lang=lang,
+                words=words,
+                correct=correct,
+                keystrokes=keystrokes,
+                errors=errors,
+                gross_wpm=gross_wpm,
+                top_char_errors=top_char_errors,
+                char_timings=char_timings,
+                text=text,
+                date=date,
             )
         except (ValueError, TypeError):
             return cls(

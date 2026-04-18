@@ -114,7 +114,7 @@ def test_get_practice_drill_en_real_words() -> None:
 
 
 def test_get_practice_drill_ko_real_words() -> None:
-    from ttyping.words import _get_jamos, get_practice_drill, PRACTICE_SETS
+    from ttyping.words import PRACTICE_SETS, _get_jamos, get_practice_drill
 
     # Using 'left_hand' in ko_2set has enough words (only consonants)
     words = get_practice_drill("ko_2set", "right_hand", count=5)
@@ -150,7 +150,7 @@ def test_get_practice_drill_nonsense_with_home_return() -> None:
 
 
 def test_get_practice_drill_nonsense_no_home_return() -> None:
-    from ttyping.words import get_practice_drill, PRACTICE_SETS
+    from ttyping.words import PRACTICE_SETS, get_practice_drill
 
     words = get_practice_drill("ko_2set", "right_pinky", count=5, home_return=False)
     assert len(words) == 5
@@ -172,7 +172,7 @@ def test_decompose_ko_to_spaced_jamos() -> None:
 
 
 def test_get_practice_drill_ko_decomposition() -> None:
-    from ttyping.words import get_practice_drill, PRACTICE_SETS
+    from ttyping.words import PRACTICE_SETS, get_practice_drill
 
     # Practice drills for Korean should be decomposed into individual jamos
     # Using 'home_row' for ko_2set (ㅁㄴㅇㄹㅎㅗㅓㅏㅣ)
