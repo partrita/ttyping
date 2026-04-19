@@ -46,6 +46,23 @@ class TypingResult:
         """Create a result from a dictionary."""
         # Handle cases where some fields might be missing in older results
         try:
+            raw_top_errors = data.get("top_char_errors", [])
+            if not isinstance(raw_top_errors, list):
+                raw_top_errors = []
+
+            top_char_errors = []
+            for item in raw_top_errors:
+                if isinstance(item, (list, tuple)) and len(item) == 2:
+                    try:
+                        top_char_errors.append((str(item[0]), int(item[1])))
+                    except (ValueError, TypeError):
+                        pass
+
+            raw_timings = data.get("char_timings", [])
+            if not isinstance(raw_timings, list):
+                raw_timings = []
+            char_timings = [item for item in raw_timings if isinstance(item, dict)]
+
             return cls(
                 wpm=float(data.get("wpm", 0)),
                 accuracy=float(data.get("accuracy", 0)),
@@ -56,10 +73,10 @@ class TypingResult:
                 keystrokes=int(data.get("keystrokes", 0)),
                 errors=int(data.get("errors", 0)),
                 gross_wpm=float(data.get("gross_wpm", 0)),
-                top_char_errors=data.get("top_char_errors", []),
-                char_timings=data.get("char_timings", []),
+                top_char_errors=top_char_errors,
+                char_timings=char_timings,
                 text=str(data.get("text", "")),
-                date=data.get("date"),
+                date=str(val) if (val := data.get("date")) is not None else None,
             )
         except (ValueError, TypeError):
             return cls(
