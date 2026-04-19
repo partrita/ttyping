@@ -76,7 +76,7 @@ class TypingResult:
                 top_char_errors=top_char_errors,
                 char_timings=char_timings,
                 text=str(data.get("text", "")),
-                date=data.get("date"),
+                date=str(val) if (val := data.get("date")) is not None else None,
             )
         except (ValueError, TypeError):
             return cls(
