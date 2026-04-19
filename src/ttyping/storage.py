@@ -56,7 +56,8 @@ class TypingResult:
             errors = int(data.get("errors", 0))
             gross_wpm = float(data.get("gross_wpm", 0))
             text = str(data.get("text", ""))
-            date = data.get("date")
+            date_val = data.get("date")
+            date = str(date_val) if date_val is not None else None
 
             # Validate top_char_errors is a list of tuples/lists of (str, int)
             raw_top_char_errors = data.get("top_char_errors", [])
