@@ -61,7 +61,17 @@ class TypingResult:
             raw_timings = data.get("char_timings", [])
             if not isinstance(raw_timings, list):
                 raw_timings = []
-            char_timings = [item for item in raw_timings if isinstance(item, dict)]
+            char_timings = []
+            for item in raw_timings:
+                if isinstance(item, dict):
+                    if "time" in item:
+                        try:
+                            item["time"] = float(item["time"])
+                            char_timings.append(item)
+                        except (ValueError, TypeError):
+                            pass
+                    else:
+                        char_timings.append(item)
 
             return cls(
                 wpm=float(data.get("wpm", 0)),

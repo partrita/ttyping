@@ -522,3 +522,11 @@ def test_typing_result_from_dict_malformed_nested() -> None:
     result = TypingResult.from_dict(data)
     assert result.top_char_errors == [("e", 1)]
     assert result.char_timings == [{"char": "a", "time": 0.1}]
+
+def test_typing_result_from_dict_malformed_char_timings() -> None:
+    data = {
+        "wpm": 80.5,
+        "char_timings": [{"char": "a", "time": "not_float"}, {"char": "b", "time": 0.2}],
+    }
+    result = TypingResult.from_dict(data)
+    assert result.char_timings == [{"char": "b", "time": 0.2}]
