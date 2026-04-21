@@ -7,6 +7,7 @@ from collections import Counter
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, cast
 
+from rich.markup import escape
 from rich.text import Text
 from textual import events
 from textual.app import ComposeResult
@@ -665,7 +666,7 @@ class ResultScreen(Screen):
                     yield Static("top missed characters", classes="result-title")
                     # Display as Python dictionary format string
                     err_dict = {char: count for char, count in r.top_char_errors}
-                    yield Static(str(err_dict), id="top-errors-dict")
+                    yield Static(escape(str(err_dict)), id="top-errors-dict")
                 if self.session_attempts:
                     yield Static("session summary", classes="result-title")
                     table = DataTable(id="session-table")
