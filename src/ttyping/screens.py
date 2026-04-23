@@ -59,7 +59,8 @@ class TypingScreen(Screen):
     }
 
     #typing-container {
-        width: 76;
+        width: 95%;
+        max-width: 80;
         height: auto;
         max-height: 100%;
         align: center middle;
@@ -131,8 +132,13 @@ class TypingScreen(Screen):
 
     def on_mount(self) -> None:
         self._stats_widget = self.query_one("#stats", Static)
-        self._render_display()
         self.query_one("#input-area", Input).focus()
+        # Initial render will happen after layout
+
+    def on_resize(self, event: events.Resize) -> None:
+        """Force re-render when terminal size changes."""
+        self._cached_lines = None
+        self._render_display()
 
     def _shake_input(self) -> None:
         if self._shaking:
@@ -494,7 +500,11 @@ class TypingScreen(Screen):
         # 1. previous line
         # 2. current line (containing active word)
         # 3. next line
-        container_width = 72  # matches #typing-container width minus padding
+        display_widget = self.query_one("#text-display", Static)
+        container_width = display_widget.content_size.width
+        if container_width <= 0:
+            # Fallback for initial render if size not yet calculated
+            container_width = 72
 
         lines, active_word_line_idx = self._wrap_words(container_width)
 
@@ -597,16 +607,17 @@ class ResultScreen(Screen):
     }
 
     #result-container {
-        width: 72;
+        width: 95%;
+        max-width: 72;
         height: auto;
         align: center middle;
-        padding: 2 4;
+        padding: 1 2;
     }
 
     .result-big {
         width: 100%;
         text-align: center;
-        margin-bottom: 1;
+        margin-bottom: 0;
     }
 
     .result-detail {
@@ -624,7 +635,7 @@ class ResultScreen(Screen):
         width: 100%;
         height: auto;
         margin-top: 1;
-        padding: 1 2;
+        padding: 0 1;
         background: $boost;
         border: tall $surface;
     }
@@ -774,12 +785,13 @@ class ConfirmDeleteScreen(Screen):
     }
 
     #confirm-box {
-        width: 50;
+        width: 90%;
+        max-width: 50;
         height: auto;
         border: round """
         + COL_ERROR
         + """;
-        padding: 2 4;
+        padding: 1 2;
         background: """
         + COL_SUB_BG
         + """;
@@ -984,9 +996,10 @@ class HistoryScreen(Screen):
     }
 
     #history-container {
-        width: 82;
+        width: 98%;
+        max-width: 100;
         height: auto;
-        max-height: 90%;
+        max-height: 95%;
         align: center middle;
     }
 
@@ -1006,7 +1019,7 @@ class HistoryScreen(Screen):
         width: 100%;
         height: auto;
         margin-top: 1;
-        padding: 0 4;
+        padding: 0 2;
     }
 
     .chart-title {
@@ -1019,7 +1032,7 @@ class HistoryScreen(Screen):
         width: 100%;
         height: auto;
         max-height: 18;
-        margin-top: 2;
+        margin-top: 1;
     }
 
     .history-hint {
@@ -1166,7 +1179,8 @@ class MenuScreen(ActionSelectMixin, Screen):
     }
 
     #menu-container {
-        width: 60;
+        width: 90%;
+        max-width: 60;
         height: auto;
         padding: 1 2;
         align: center middle;
@@ -1184,7 +1198,6 @@ class MenuScreen(ActionSelectMixin, Screen):
         text-align: center;
         text-style: bold;
         margin-bottom: 1;
-        display: none;
     }
 
     OptionList {
@@ -1260,8 +1273,34 @@ class MenuScreen(ActionSelectMixin, Screen):
 
         yield Footer()
 
+    def on_mount(self) -> None:
+        self._update_logo_visibility()
+
+    def on_resize(self, event: events.Resize) -> None:
+        self._update_logo_visibility()
+
+    def _update_logo_visibility(self) -> None:
+        """Hide ASCII logo if terminal is too small."""
+        try:
+            logo = self.query_one("#menu-logo", Static)
+            title = self.query_one("#menu-title", Static)
+        except Exception:
+            return
+
+        width, height = self.size
+        # Fallback if size is not yet available
+        if width == 0 or height == 0:
+            return
+
+        if height < 20 or width < 40:
+            logo.display = False
+            title.display = True
+        else:
+            logo.display = True
+            title.display = False
+
     def on_resume(self) -> None:
-        pass  # no dynamic labels needed
+        self._update_logo_visibility()
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
@@ -1967,7 +2006,8 @@ class WeaknessScreen(ActionSelectMixin, Screen):
     }
 
     #weakness-container {
-        width: 70;
+        width: 95%;
+        max-width: 70;
         height: auto;
         align: center middle;
         padding: 1 2;
