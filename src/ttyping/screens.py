@@ -1103,10 +1103,10 @@ class HistoryScreen(Screen):
 
             table.add_row(
                 str(display_idx),
-                date_str,
+                escape(date_str),
                 f"{r.wpm:.0f}",
                 f"{r.accuracy:.1f}%",
-                r.lang,
+                escape(r.lang),
                 f"{r.time:.0f}s",
                 f"{r.correct}/{r.words}",
             )
@@ -2118,7 +2118,7 @@ class WeaknessScreen(ActionSelectMixin, Screen):
                         chars_list = finger_map.get(finger, [])
                         chars_display = " ".join(chars_list[:8])
                         label = labels.get(finger, finger)
-                        table.add_row(label, chars_display, str(total))
+                        table.add_row(escape(label), escape(chars_display), str(total))
                     yield table
 
                     # Top missed chars bar chart
