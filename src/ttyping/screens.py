@@ -654,7 +654,7 @@ class ResultScreen(Screen):
                 detail = Text()
                 detail.append(f"{r.time:.1f}s", style=COL_TEXT)
                 detail.append(f"  ·  {r.correct}/{r.words} words", style=COL_DIM)
-                detail.append(f"  ·  {escape(r.lang)}", style=COL_DIM)
+                detail.append(f"  ·  {r.lang}", style=COL_DIM)
                 yield Static(detail, classes="result-detail")
 
                 # Speed Map (New)
