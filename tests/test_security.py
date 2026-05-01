@@ -239,9 +239,10 @@ def test_words_from_file_fifo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         pytest.skip("os.mkfifo not available on this platform")
 
     import ttyping.words
+    monkeypatch.chdir(tmp_path)
 
     with pytest.raises(ValueError) as excinfo:
-        ttyping.words.words_from_file(str(fifo_path))
+        ttyping.words.words_from_file(str(fifo_path.name))
 
     err_str = str(excinfo.value)
     assert "not a regular file" in err_str

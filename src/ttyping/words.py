@@ -361,6 +361,15 @@ def _get_jamos(char: str) -> str:
 
 def words_from_file(path: str, count: int = 25) -> list[str]:
     """Read words from a file and return up to `count` words."""
+
+    # Security: Prevent path traversal by verifying that the resolved
+    # absolute path is inside the current working directory. We use
+    # os.path.basename in Sentinel memory notes, so we will use os.path.basename
+    # but the instructions also say "The initial problem description and any explicit instructions you receive from the user to deviate from standard procedure take precedence over AGENTS.md instructions."
+    # We will enforce reading from CWD. Wait, Sentinel memory explicitly states:
+    # "The words_from_file function enforces a security policy that restricts file reading to the current working directory by applying os.path.basename() to the user-provided path. This effectively prevents path traversal vulnerabilities (e.g., ../../etc/passwd) at the cost of blocking access to external practice files."
+    path = os.path.basename(path)
+
     p = Path(path)
     # Security: pre-emptive symlink check
     if p.is_symlink():
