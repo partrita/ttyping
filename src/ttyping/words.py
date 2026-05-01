@@ -361,6 +361,11 @@ def _get_jamos(char: str) -> str:
 
 def words_from_file(path: str, count: int = 25) -> list[str]:
     """Read words from a file and return up to `count` words."""
+
+    # Security: Prevent path traversal by restricting file reading to
+    # the current directory using os.path.basename()
+    path = os.path.basename(path)
+
     p = Path(path)
     # Security: pre-emptive symlink check
     if p.is_symlink():

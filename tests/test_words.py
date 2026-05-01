@@ -23,42 +23,42 @@ def test_get_words_ko() -> None:
     assert all(w in KO_2SET for w in words)
 
 
-def test_words_from_file(tmp_path: Path) -> None:
+def test_words_from_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     d = tmp_path / "test.txt"
     d.write_text("hello world typing test", encoding="utf-8")
-
-    words = words_from_file(str(d), count=2)
+    monkeypatch.chdir(tmp_path)
+    words = words_from_file(str(d.name), count=2)
     assert len(words) == 2
     assert words == ["hello", "world"]
 
 
-def test_words_from_file_empty(tmp_path: Path) -> None:
+def test_words_from_file_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     d = tmp_path / "empty.txt"
     d.write_text("", encoding="utf-8")
-
+    monkeypatch.chdir(tmp_path)
     with pytest.raises(ValueError, match="No words found"):
-        words_from_file(str(d))
+        words_from_file(str(d.name))
 
 
-def test_words_from_file_not_a_file(tmp_path: Path) -> None:
+def test_words_from_file_not_a_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     d = tmp_path / "subdir"
     d.mkdir()
-
+    monkeypatch.chdir(tmp_path)
     with pytest.raises(ValueError, match="is not a regular file"):
-        words_from_file(str(d))
+        words_from_file(str(d.name))
 
 
-def test_words_from_file_too_large(tmp_path: Path) -> None:
+def test_words_from_file_too_large(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     d = tmp_path / "large.txt"
     # Create a file slightly larger than 10MB
     with open(d, "wb") as f:
         f.write(b"a" * 10_000_001)
-
+    monkeypatch.chdir(tmp_path)
     with pytest.raises(ValueError, match="is too large"):
-        words_from_file(str(d))
+        words_from_file(str(d.name))
 
 
-def test_words_from_file_symlink(tmp_path: Path) -> None:
+def test_words_from_file_symlink(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     target = tmp_path / "target.txt"
     target.write_text("hello world", encoding="utf-8")
 
@@ -68,8 +68,9 @@ def test_words_from_file_symlink(tmp_path: Path) -> None:
     except OSError:
         pytest.skip("Symlinks not supported on this platform")
 
+    monkeypatch.chdir(tmp_path)
     with pytest.raises(ValueError, match="Refusing to read from symlink"):
-        words_from_file(str(symlink))
+        words_from_file(str(symlink.name))
 
 
 def test_get_practice_drill_en_dvorak() -> None:
