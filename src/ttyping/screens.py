@@ -1652,7 +1652,7 @@ class WordCountMenu(ActionSelectMixin, Screen):
     def compose(self) -> ComposeResult:
         with Center():
             with Vertical(id="menu-container"):
-                yield Static(f"{self.layout_id.upper()}", id="menu-title")
+                yield Static(escape(f"{self.layout_id.upper()}"), id="menu-title")
                 yield OptionList(
                     Option("Words", id=f"{self.layout_id}:words"),
                     Option("Sentences", id=f"{self.layout_id}:sentences"),
