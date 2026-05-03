@@ -2102,7 +2102,8 @@ class WeaknessScreen(ActionSelectMixin, Screen):
                             label = labels.get(finger, finger)
                             options.append(
                                 Option(
-                                    f"Practice {label} ({total} err) ▶",
+                                    # Security: Escape untrusted history input to prevent Rich Markup Injection (Local DoS)
+                                    escape(f"Practice {label} ({total} err) ▶"),
                                     id=f"drill:{finger}",
                                 )
                             )
