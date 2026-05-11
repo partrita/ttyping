@@ -1600,7 +1600,7 @@ class PracticeMenu(ActionSelectMixin, Screen):
             options = [Option("25 words", id="full:25")]
         with Center():
             with Vertical(id="menu-container"):
-                yield Static(title, id="menu-title")
+                yield Static(escape(title), id="menu-title")
                 yield OptionList(
                     *options,
                     Option("Back", id="back"),
