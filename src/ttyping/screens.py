@@ -1696,10 +1696,7 @@ class AccuracyMenu(ActionSelectMixin, Screen):
         with Center():
             with Vertical(id="menu-container"):
                 yield Static("Target Accuracy", id="menu-title")
-                yield Static(
-                    f"Current: {current_label}",
-                    classes="about-text",
-                )
+                yield Static(escape(f"Current: {current_label}"), classes="about-text")
                 yield OptionList(
                     Option("None (Free Practice)", id="none"),
                     Option("80%", id="80"),
@@ -1770,10 +1767,10 @@ class OptionsScreen(ActionSelectMixin, Screen):
             with Vertical(id="menu-container"):
                 yield Static("Options", id="menu-title")
                 yield OptionList(
-                    Option(f"Words: {words_label}", id="words"),
-                    Option(f"Time: {time_label}", id="time"),
-                    Option(f"Accuracy: {acc_label}", id="accuracy"),
-                    Option(f"Theme: {theme_label}", id="theme"),
+                    Option(escape(f"Words: {words_label}"), id="words"),
+                    Option(escape(f"Time: {time_label}"), id="time"),
+                    Option(escape(f"Accuracy: {acc_label}"), id="accuracy"),
+                    Option(escape(f"Theme: {theme_label}"), id="theme"),
                     Option("About", id="about"),
                     id="menu-options",
                 )
@@ -1818,7 +1815,7 @@ class ThemeScreen(ActionSelectMixin, Screen):
         with Center():
             with Vertical(id="menu-container"):
                 yield Static("Theme", id="menu-title")
-                yield Static(f"Current: {current}", classes="about-text")
+                yield Static(escape(f"Current: {current}"), classes="about-text")
                 yield OptionList(
                     Option("🌙  Dark", id="dark"),
                     Option("☀️  Light", id="light"),
