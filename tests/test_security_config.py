@@ -23,10 +23,12 @@ def test_malformed_config_types(tmp_path: object) -> None:
     ):
         storage._ensure_storage()
         config_file.write_text(
-            json.dumps({"word_count": "not an int", "duration": "not an int"}),
+            json.dumps({"word_count": "not an int", "duration": "not an int", "lang": 123, "file_path": 123}),
             encoding="utf-8",
         )
 
         app = TypingApp()
         assert app._word_count == 25
         assert app._duration is None
+        assert app._lang == "en_qwerty"
+        assert app._file_path is None
