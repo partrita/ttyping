@@ -148,8 +148,14 @@ class TypingApp(App):
         config = load_config()
         self.TITLE: str = "ttyping"
 
-        self._lang: str = lang or config.get("lang", "en_qwerty")
-        self._file_path: str | None = file_path or config.get("file_path")
+        # Safe type validation for string configs
+        saved_lang = config.get("lang")
+        parsed_lang = saved_lang if isinstance(saved_lang, str) else None
+        self._lang: str = (lang if isinstance(lang, str) else None) or parsed_lang or "en_qwerty"
+
+        saved_file = config.get("file_path")
+        parsed_file = saved_file if isinstance(saved_file, str) else None
+        self._file_path: str | None = (file_path if isinstance(file_path, str) else None) or parsed_file
 
         # Safe cast for word_count
         saved_wc = config.get("word_count", 25)
