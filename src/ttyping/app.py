@@ -151,7 +151,7 @@ class TypingApp(App):
         # Safe type validation for string configs
         saved_lang = config.get("lang")
         parsed_lang = saved_lang if isinstance(saved_lang, str) else None
-        self._lang: str = lang or parsed_lang or "en_qwerty"
+        self._lang: str = (lang if isinstance(lang, str) else None) or parsed_lang or "en_qwerty"
 
         saved_file = config.get("file_path")
         parsed_file = saved_file if isinstance(saved_file, str) else None
