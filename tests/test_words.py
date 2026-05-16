@@ -40,7 +40,9 @@ def test_words_from_file_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         words_from_file(str(d.name))
 
 
-def test_words_from_file_not_a_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_words_from_file_not_a_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     d = tmp_path / "subdir"
     d.mkdir()
     monkeypatch.chdir(tmp_path)
@@ -48,7 +50,9 @@ def test_words_from_file_not_a_file(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         words_from_file(str(d.name))
 
 
-def test_words_from_file_too_large(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_words_from_file_too_large(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     d = tmp_path / "large.txt"
     # Create a file slightly larger than 10MB
     with open(d, "wb") as f:
@@ -58,7 +62,9 @@ def test_words_from_file_too_large(tmp_path: Path, monkeypatch: pytest.MonkeyPat
         words_from_file(str(d.name))
 
 
-def test_words_from_file_symlink(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_words_from_file_symlink(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     target = tmp_path / "target.txt"
     target.write_text("hello world", encoding="utf-8")
 
