@@ -151,11 +151,15 @@ class TypingApp(App):
         # Safe type validation for string configs
         saved_lang = config.get("lang")
         parsed_lang = saved_lang if isinstance(saved_lang, str) else None
-        self._lang: str = (lang if isinstance(lang, str) else None) or parsed_lang or "en_qwerty"
+        self._lang: str = (
+            (lang if isinstance(lang, str) else None) or parsed_lang or "en_qwerty"
+        )
 
         saved_file = config.get("file_path")
         parsed_file = saved_file if isinstance(saved_file, str) else None
-        self._file_path: str | None = (file_path if isinstance(file_path, str) else None) or parsed_file
+        self._file_path: str | None = (
+            file_path if isinstance(file_path, str) else None
+        ) or parsed_file
 
         # Safe cast for word_count
         saved_wc = config.get("word_count", 25)
@@ -190,7 +194,8 @@ class TypingApp(App):
         self._current_session_words: list[str] | None = None
 
         # Apply persisted theme (dark by default)
-        is_dark = config.get("theme", "dark") == "dark"
+        saved_theme = config.get("theme", "dark")
+        is_dark = (saved_theme if isinstance(saved_theme, str) else "dark") == "dark"
         self.theme = "textual-dark" if is_dark else "textual-light"
 
     def compose(self) -> ComposeResult:
