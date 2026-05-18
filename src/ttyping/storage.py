@@ -63,15 +63,13 @@ class TypingResult:
                 raw_timings = []
             char_timings = []
             for item in raw_timings:
-                if isinstance(item, dict):
-                    if "time" in item:
-                        try:
-                            item["time"] = float(item["time"])
-                            char_timings.append(item)
-                        except (ValueError, TypeError):
-                            pass
-                    else:
+                if isinstance(item, dict) and "time" in item and "char" in item:
+                    try:
+                        item["time"] = float(item["time"])
+                        item["char"] = str(item["char"])
                         char_timings.append(item)
+                    except (ValueError, TypeError):
+                        pass
 
             return cls(
                 wpm=float(data.get("wpm", 0)),
