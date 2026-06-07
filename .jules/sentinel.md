@@ -54,3 +54,7 @@
 **Vulnerability:** Malformed `char_timings` entries from local storage without required keys (`time`, `char`) were blindly loaded, leading to `KeyError` crashes (Local DoS) when the UI accessed those missing keys.
 **Learning:** During JSON deserialization, partial validation (checking type or a single key) isn't enough. All accessed properties must be verified or explicitly try/except handled to ensure data safety.
 **Prevention:** Strictly enforce required keys (`in` checks) and type-cast dynamically loaded properties within a protective `try...except` block, discarding malformed objects.
+## 2025-02-27 - Prevent Data Corruption on File Write Failure
+**Vulnerability:** The application was modifying the global `_RESULTS_CACHE` in-place using `.pop(index)` in `delete_result_by_index` before executing the `_secure_write` operation. If `_secure_write` failed (e.g., due to an `OSError` such as disk full or permissions change), the in-memory state remained out of sync with the physical disk storage. This leads to data inconsistency and corruption within the session.
+**Learning:** Operations that modify persistent storage must only update in-memory caching *after* the I/O operation is confirmed successful, or perform the operation on a decoupled copy.
+**Prevention:** Modified `delete_result_by_index` to operate on `load_results().copy()`. This creates a temporary working list that is modified and serialized. The global `_RESULTS_CACHE` is only updated *after* the `_secure_write` completes successfully, maintaining data integrity.

@@ -1485,7 +1485,7 @@ class PracticeMenu(ActionSelectMixin, Screen):
         self.layout_id = layout_id
 
     def compose(self) -> ComposeResult:
-        title = "Practice"
+        title = f"{self.layout_id.upper()} Practice"
         if self.layout_id == "en_qwerty":
             title = "QWERTY Practice"
             options = [
