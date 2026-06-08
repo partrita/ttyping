@@ -380,7 +380,7 @@ def clear_results() -> None:
 def delete_result_by_index(index: int) -> None:
     """Delete a single result entry by its index in the stored list."""
     global _RESULTS_CACHE
-    results = load_results()
+    results = load_results().copy()
     if 0 <= index < len(results):
         results.pop(index)
         jsonl_data = "\n".join(
