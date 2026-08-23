@@ -978,6 +978,8 @@ class HistoryScreen(Screen):
             priority=True,
         ),
         Binding(key="D", action="delete_all", description="Delete All", priority=True),
+        Binding(key="x", action="export_csv", description="Export CSV", show=False),
+        Binding(key="j", action="export_json", description="Export JSON", show=False),
         # Korean IME support (2-set)
         Binding(key="ㅇ", action="delete_selected", show=False),
     ]
@@ -1143,6 +1145,28 @@ class HistoryScreen(Screen):
 
     def action_delete_all(self) -> None:
         self.app.push_screen(ConfirmDeleteScreen())
+
+    def action_export_csv(self) -> None:
+        from ttyping.storage import EXPORT_CSV_FILE, export_results_csv
+
+        count = export_results_csv(EXPORT_CSV_FILE)
+        msg = (
+            f"Exported {count} results to {EXPORT_CSV_FILE}"
+            if count
+            else "No results to export"
+        )
+        self.app.notify(msg, title="Export CSV", timeout=3)
+
+    def action_export_json(self) -> None:
+        from ttyping.storage import EXPORT_JSON_FILE, export_results_json
+
+        count = export_results_json(EXPORT_JSON_FILE)
+        msg = (
+            f"Exported {count} results to {EXPORT_JSON_FILE}"
+            if count
+            else "No results to export"
+        )
+        self.app.notify(msg, title="Export JSON", timeout=3)
 
 
 # ── MenuScreen ─────────────────────────────────────────────────────────────

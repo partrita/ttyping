@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import os
 from dataclasses import asdict, dataclass, field
@@ -13,6 +15,8 @@ from typing import Any
 STORAGE_DIR = Path.home() / ".ttyping"
 RESULTS_FILE = STORAGE_DIR / "results.json"
 CONFIG_FILE = STORAGE_DIR / "config.json"
+EXPORT_CSV_FILE = STORAGE_DIR / "results_export.csv"
+EXPORT_JSON_FILE = STORAGE_DIR / "results_export.json"
 
 _STORAGE_ENSURED: bool = False
 _CONFIG_CACHE: dict[str, Any] | None = None
@@ -429,3 +433,38 @@ def load_error_stats() -> dict[str, int]:
         for char, count in result.top_char_errors:
             totals[char] = totals.get(char, 0) + count
     return totals
+
+
+def export_results_csv(path: Path) -> int:
+    """Export all results to a CSV file. Returns the number of rows written."""
+    results = load_results()
+    if not results:
+        return 0
+
+    buf = io.StringIO()
+    fieldnames = list(TypingResult.__dataclass_fields__)
+    writer = csv.DictWriter(buf, fieldnames=fieldnames)
+    writer.writeheader()
+    for result in results:
+        row = result.to_dict()
+        # Serialize complex cells (lists/dicts) as compact JSON strings
+        for key, value in row.items():
+            if isinstance(value, (list, dict)):
+                row[key] = json.dumps(value, ensure_ascii=False)
+        writer.writerow(row)
+
+    _ensure_storage()
+    _secure_write(path, buf.getvalue())
+    return len(results)
+
+
+def export_results_json(path: Path) -> int:
+    """Export all results to a JSON array file. Returns the number of items."""
+    results = load_results()
+    if not results:
+        return 0
+
+    text = json.dumps([r.to_dict() for r in results], ensure_ascii=False, indent=2)
+    _ensure_storage()
+    _secure_write(path, text)
+    return len(results)

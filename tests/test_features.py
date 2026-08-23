@@ -9,6 +9,7 @@ from textual.widgets import OptionList
 from ttyping import storage
 from ttyping.app import TypingApp
 from ttyping.screens import (
+    HistoryScreen,
     OptionsScreen,
     TimeLimitInputScreen,
     TimeMenu,
@@ -158,5 +159,85 @@ def test_options_sound_toggle_persists() -> None:
             await pilot.pause()
             assert app._sound is False
             assert storage.load_config()["sound"] is False
+
+    asyncio.run(run_test())
+
+
+def test_export_csv_and_json(tmp_path: Path) -> None:
+    from ttyping.storage import (
+        TypingResult,
+        export_results_csv,
+        export_results_json,
+        save_result,
+    )
+
+    save_result(
+        TypingResult(
+            wpm=72.5,
+            accuracy=95.0,
+            time=30.0,
+            lang="en",
+            words=20,
+            correct=19,
+            keystrokes=100,
+            errors=2,
+            top_char_errors=[("a", 1)],
+            date="2026-08-23T00:00:00+00:00",
+        )
+    )
+    save_result(
+        TypingResult(wpm=80.0, accuracy=98.0, time=25.0, lang="ko", words=15,
+                     correct=15, keystrokes=90, errors=0)
+    )
+
+    csv_path = tmp_path / "out.csv"
+    assert export_results_csv(csv_path) == 2
+    import csv as _csv
+
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        rows = list(_csv.DictReader(f))
+    assert len(rows) == 2
+    assert float(rows[0]["wpm"]) == 72.5
+    assert '"a", 1' in rows[0]["top_char_errors"] or "'a', 1" in rows[0]["top_char_errors"]
+
+    json_path = tmp_path / "out.json"
+    assert export_results_json(json_path) == 2
+    import json as _json
+
+    data = _json.loads(json_path.read_text(encoding="utf-8"))
+    assert isinstance(data, list) and len(data) == 2
+    assert data[1]["lang"] == "ko"
+
+
+def test_export_empty_returns_zero(tmp_path: Path) -> None:
+    from ttyping.storage import export_results_csv, export_results_json
+
+    assert export_results_csv(tmp_path / "e.csv") == 0
+    assert export_results_json(tmp_path / "e.json") == 0
+
+
+def test_history_screen_export_actions() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        from ttyping.storage import EXPORT_CSV_FILE, TypingResult, save_result
+
+        save_result(
+            TypingResult(wpm=50.0, accuracy=90.0, time=10.0, lang="en",
+                         words=5, correct=5, keystrokes=30, errors=0)
+        )
+        app = TypingApp()
+        async with app.run_test() as pilot:
+            await app.push_screen(HistoryScreen())
+            await pilot.pause()
+            screen = app.screen
+            assert isinstance(screen, HistoryScreen)
+
+            EXPORT_CSV_FILE.parent.mkdir(parents=True, exist_ok=True)
+            screen.action_export_csv()
+            screen.action_export_json()
+            await pilot.pause()
+
+            assert EXPORT_CSV_FILE.exists()
 
     asyncio.run(run_test())
