@@ -1315,6 +1315,9 @@ class MenuScreen(ActionSelectMixin, Screen):
         Binding(key="o", action="select_options", description="Options", show=False),
         Binding(key="p", action="select_code", description="Code", show=False),
         Binding(key="z", action="start_zen", description="Zen Mode", show=False),
+        Binding(
+            key="d", action="start_daily", description="Daily Challenge", show=False
+        ),
         Binding(key="escape", action="quit_app", description="Quit"),
         Binding(key="q", action="quit_app", description="Quit", show=False),
         # Korean IME support (2-set)
@@ -1325,6 +1328,7 @@ class MenuScreen(ActionSelectMixin, Screen):
         Binding(key="ㅐ", action="select_options", show=False),
         Binding(key="ㅔ", action="select_code", show=False),
         Binding(key="ㅋ", action="start_zen", show=False),
+        Binding(key="ㄴ", action="start_daily", show=False),
         Binding(key="ㅂ", action="quit_app", show=False),
     ]
 
@@ -1353,6 +1357,10 @@ class MenuScreen(ActionSelectMixin, Screen):
                     Option(
                         Text.from_markup(r"Zen(젠 모드) [dim]\[z][/dim]"),
                         id="zen",
+                    ),
+                    Option(
+                        Text.from_markup(r"Daily(오늘의 연습) [dim]\[d][/dim]"),
+                        id="daily",
                     ),
                     Option(
                         Text.from_markup(r"View History(기록 보기) [dim]\[h][/dim]"),
@@ -1420,6 +1428,8 @@ class MenuScreen(ActionSelectMixin, Screen):
             app.push_screen(CodeSubMenu())
         elif opt_id == "zen":
             app.start_zen_test()
+        elif opt_id == "daily":
+            app.start_daily_test()
 
     def action_select_en(self) -> None:
         self.app.push_screen(ENSubMenu())
@@ -1441,6 +1451,9 @@ class MenuScreen(ActionSelectMixin, Screen):
 
     def action_start_zen(self) -> None:
         cast("TypingApp", self.app).start_zen_test()
+
+    def action_start_daily(self) -> None:
+        cast("TypingApp", self.app).start_daily_test()
 
     def action_quit_app(self) -> None:
         self.app.exit()

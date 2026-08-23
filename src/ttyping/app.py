@@ -315,6 +315,20 @@ class TypingApp(App):
         """Fetch a fresh word batch (used by zen mode streaming)."""
         return get_words(self._lang, max(self._word_count, 25))
 
+    def start_daily_test(self) -> None:
+        """Start today's deterministic challenge for the current language."""
+        from ttyping.words import get_daily_words
+
+        words = get_daily_words(self._lang, self._word_count)
+        self.push_screen(
+            TypingScreen(
+                words,
+                lang=self._lang,
+                duration=self._duration,
+                target_accuracy=self._target_accuracy,
+            )
+        )
+
     def start_zen_test(self) -> None:
         """Start an endless zen session ended manually with ctrl+d."""
         from ttyping.storage import load_config, save_config

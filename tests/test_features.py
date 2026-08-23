@@ -11,6 +11,7 @@ from ttyping.app import TypingApp
 from ttyping.screens import (
     CodeSubMenu,
     HistoryScreen,
+    MenuScreen,
     OptionsScreen,
     PracticeMenu,
     TimeLimitInputScreen,
@@ -584,9 +585,7 @@ class ZenApp(App):
         return ["beta", "gamma", "delta"]
 
     def on_mount(self) -> None:
-        self.push_screen(
-            TypingScreen(["alpha"], lang="en", zen=True)
-        )
+        self.push_screen(TypingScreen(["alpha"], lang="en", zen=True))
 
 
 def test_zen_mode_extends_words_instead_of_ending() -> None:
@@ -643,6 +642,55 @@ def test_menu_has_zen_option_and_binding() -> None:
             menu = app.screen
             ol = menu.query_one("#menu-options", OL)
             ids = [str(o.id) for o in ol.options]
+            assert "zen" in ids
+
+    asyncio.run(run_test())
+
+
+def test_daily_words_deterministic_per_day() -> None:
+    from ttyping.words import get_daily_words
+
+    a = get_daily_words("en", count=25)
+    b = get_daily_words("en", count=25)
+    assert a == b
+    assert len(a) == 25
+
+    # Different language yields a different set (different pools)
+    ko = get_daily_words("ko_2set", count=25)
+    assert ko != a
+
+
+def test_daily_test_pushes_typing_screen() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = TypingApp(lang="en_qwerty", word_count=10)
+        async with app.run_test() as pilot:
+            await app.push_screen(MenuScreen())
+            await pilot.pause()
+            app.start_daily_test()
+            await pilot.pause()
+
+            screen = app.screen
+            assert isinstance(screen, TypingScreen)
+            assert screen.zen is False
+            assert len(screen.words) == 10
+
+    asyncio.run(run_test())
+
+
+def test_menu_has_daily_option() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = TypingApp()
+        async with app.run_test() as pilot:
+            from textual.widgets import OptionList as OL
+
+            await pilot.pause()
+            ol = app.screen.query_one("#menu-options", OL)
+            ids = [str(o.id) for o in ol.options]
+            assert "daily" in ids
             assert "zen" in ids
 
     asyncio.run(run_test())

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import random
 import unicodedata
+from datetime import datetime, timezone
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
@@ -236,6 +237,21 @@ def get_words(lang: str = "en", count: int = 25) -> list[str]:
     if not source:
         source = EN_QWERTY
     return random.choices(source, k=count)
+
+
+def get_daily_words(lang: str = "en", count: int = 25) -> list[str]:
+    """Return a deterministic word set for today (UTC), same for all users.
+
+    Uses a date-seeded RNG restored afterwards so global randomness is
+    untouched.
+    """
+    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    state = random.getstate()
+    random.seed(f"ttyping-daily-{day}")
+    try:
+        return get_words(lang, count)
+    finally:
+        random.setstate(state)
 
 
 def _decompose_ko_to_spaced_jamos(word: str) -> str:
