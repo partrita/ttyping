@@ -680,6 +680,16 @@ class ResultScreen(Screen):
                 wpm_text.append(f"{r.wpm:.0f}", style=f"bold {COL_ACCENT}")
                 wpm_text.append(" wpm", style=COL_DIM)
                 yield Static(wpm_text, classes="result-big")
+                from ttyping.storage import get_personal_best
+
+                pb = get_personal_best(r.lang, exclude_date=r.date)
+                if pb > 0 and r.wpm > pb:
+                    yield Static(
+                        Text.from_markup(
+                            f"[{COL_ACCENT}]new personal best![/{COL_ACCENT}]"
+                        ),
+                        classes="result-title",
+                    )
                 acc_text = Text()
                 acc_text.append(f"{r.accuracy:.1f}%", style=f"bold {COL_TEXT}")
                 acc_text.append(" accuracy", style=COL_DIM)
@@ -689,6 +699,8 @@ class ResultScreen(Screen):
                 detail.append(f"  ·  {r.correct}/{r.words} words", style=COL_DIM)
                 if r.consistency:
                     detail.append(f"  ·  {r.consistency:.0f}% cons", style=COL_DIM)
+                if pb > 0 and r.wpm <= pb:
+                    detail.append(f"  ·  pb {pb:.0f}", style=COL_DIM)
                 detail.append(f"  ·  {r.lang}", style=COL_DIM)
                 yield Static(detail, classes="result-detail")
 

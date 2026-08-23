@@ -437,6 +437,22 @@ def load_error_stats() -> dict[str, int]:
     return totals
 
 
+def get_personal_best(lang: str, exclude_date: str | None = None) -> float:
+    """Return the best WPM recorded for a language.
+
+    *exclude_date* skips the result saved with that exact timestamp, which
+    lets callers compare a fresh result against prior history.
+    """
+    best = 0.0
+    for r in load_results():
+        if r.lang != lang:
+            continue
+        if exclude_date is not None and r.date == exclude_date:
+            continue
+        best = max(best, r.wpm)
+    return best
+
+
 def export_results_csv(path: Path) -> int:
     """Export all results to a CSV file. Returns the number of rows written."""
     results = load_results()

@@ -339,3 +339,138 @@ def test_history_table_has_consistency_column() -> None:
             assert "Cons" in columns
 
     asyncio.run(run_test())
+
+
+def test_get_personal_best_excludes_current() -> None:
+    from ttyping.storage import TypingResult, get_personal_best, save_result
+
+    save_result(
+        TypingResult(
+            wpm=50.0,
+            accuracy=90.0,
+            time=10.0,
+            lang="en",
+            words=5,
+            correct=5,
+            keystrokes=30,
+            errors=0,
+            date="2026-08-23T00:00:01+00:00",
+        )
+    )
+    save_result(
+        TypingResult(
+            wpm=70.0,
+            accuracy=95.0,
+            time=10.0,
+            lang="en",
+            words=5,
+            correct=5,
+            keystrokes=30,
+            errors=0,
+            date="2026-08-23T00:00:02+00:00",
+        )
+    )
+    save_result(
+        TypingResult(
+            wpm=99.0,
+            accuracy=95.0,
+            time=10.0,
+            lang="ko",
+            words=5,
+            correct=5,
+            keystrokes=30,
+            errors=0,
+            date="2026-08-23T00:00:03+00:00",
+        )
+    )
+
+    assert get_personal_best("en") == 70.0
+    # Excluding the newest en result leaves the older one
+    assert get_personal_best("en", exclude_date="2026-08-23T00:00:02+00:00") == 50.0
+    # Unknown lang / empty history
+    assert get_personal_best("fr") == 0.0
+
+
+def test_result_screen_shows_pb_badge() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        from textual.widget import Widget
+
+        from ttyping.screens import ResultScreen
+        from ttyping.storage import TypingResult, save_result
+
+        save_result(
+            TypingResult(
+                wpm=40.0,
+                accuracy=90.0,
+                time=10.0,
+                lang="en",
+                words=5,
+                correct=5,
+                keystrokes=30,
+                errors=0,
+            )
+        )
+        record = TypingResult(
+            wpm=80.0,
+            accuracy=95.0,
+            time=10.0,
+            lang="en",
+            words=5,
+            correct=5,
+            keystrokes=30,
+            errors=0,
+        )
+        app = TypingApp()
+        async with app.run_test() as pilot:
+            await app.push_screen(ResultScreen(record))
+            await pilot.pause()
+            texts = [str(w.render()) for w in app.screen.query(Widget)]
+            joined = " ".join(texts)
+            assert "new personal best!" in joined
+            assert "80" in joined
+
+    asyncio.run(run_test())
+
+
+def test_result_screen_shows_existing_pb() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        from textual.widget import Widget
+
+        from ttyping.screens import ResultScreen
+        from ttyping.storage import TypingResult, save_result
+
+        save_result(
+            TypingResult(
+                wpm=90.0,
+                accuracy=90.0,
+                time=10.0,
+                lang="en",
+                words=5,
+                correct=5,
+                keystrokes=30,
+                errors=0,
+            )
+        )
+        slower = TypingResult(
+            wpm=60.0,
+            accuracy=95.0,
+            time=10.0,
+            lang="en",
+            words=5,
+            correct=5,
+            keystrokes=30,
+            errors=0,
+        )
+        app = TypingApp()
+        async with app.run_test() as pilot:
+            await app.push_screen(ResultScreen(slower))
+            await pilot.pause()
+            joined = " ".join(str(w.render()) for w in app.screen.query(Widget))
+            assert "new personal best!" not in joined
+            assert "pb 90" in joined
+
+    asyncio.run(run_test())
