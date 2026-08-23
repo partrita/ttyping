@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import subprocess
-import tomllib
 from pathlib import Path
+
+import tomllib
 
 
 def get_pyproject_version() -> str:
@@ -26,7 +27,7 @@ def test_pyproject_version_format() -> None:
 
 
 def test_pyproject_version_matches_latest_git_tag() -> None:
-    """Verify that pyproject.toml version matches the latest git tag if git tags exist."""
+    """Verify pyproject.toml version matches the latest git tag if tags exist."""
     repo_root = Path(__file__).parent.parent
     try:
         result = subprocess.run(
@@ -47,7 +48,8 @@ def test_pyproject_version_matches_latest_git_tag() -> None:
     latest_tag = result.stdout.strip()
     tag_version = latest_tag.lstrip("v")
     pyproject_version = get_pyproject_version()
-    assert (
-        pyproject_version == tag_version
-    ), f"pyproject.toml version ({pyproject_version}) does not match latest git tag ({latest_tag})"
-
+    msg = (
+        f"pyproject.toml version ({pyproject_version}) "
+        f"does not match latest git tag ({latest_tag})"
+    )
+    assert pyproject_version == tag_version, msg

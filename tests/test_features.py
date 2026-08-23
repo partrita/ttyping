@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -13,8 +12,6 @@ from ttyping.app import TypingApp
 from ttyping.screens import (
     CodeSubMenu,
     HistoryScreen,
-    MenuScreen,
-    OptionsScreen,
     PracticeMenu,
     TimeLimitInputScreen,
     TimeMenu,
@@ -335,9 +332,6 @@ def test_get_personal_best_excludes_current() -> None:
     assert get_personal_best("fr") == 0.0
 
 
-
-
-
 def test_new_code_languages_loaded() -> None:
     from ttyping.words import C_WORDS, GO_WORDS, TS_WORDS, get_words
 
@@ -439,15 +433,12 @@ def test_daily_words_deterministic_per_day() -> None:
     assert ko != a
 
 
-
-
-
-
 def test_weakness_screen_compose() -> None:
     import asyncio
 
     async def run_test() -> None:
         from textual.widgets import DataTable, OptionList
+
         from ttyping.storage import TypingResult, save_result
 
         # Save results with error stats
@@ -478,11 +469,7 @@ def test_weakness_screen_compose() -> None:
     asyncio.run(run_test())
 
 
-
-
-
 def test_words_from_url_parses_and_caps() -> None:
-    from unittest.mock import patch
 
     from ttyping.words import words_from_url
 
@@ -514,7 +501,6 @@ def test_words_from_url_rejects_non_http() -> None:
 
 
 def test_words_from_url_count_cap() -> None:
-    from unittest.mock import patch
 
     from ttyping.words import words_from_url
 
@@ -537,7 +523,6 @@ def test_words_from_url_count_cap() -> None:
 
 def test_app_uses_url_words(monkeypatch: object) -> None:
     import asyncio
-    from unittest.mock import patch
 
     async def run_test() -> None:
         app = TypingApp(lang="en_qwerty", word_count=25, url="http://x.com/t.txt")
@@ -558,12 +543,35 @@ def test_target_wpm_option_and_progress_bar() -> None:
 
     async def run_test() -> None:
         from textual.widgets import Input, ProgressBar
-        from ttyping.screens import HistoryScreen, OptionsScreen, TargetWpmInputScreen
+
+        from ttyping.screens import HistoryScreen, TargetWpmInputScreen
         from ttyping.storage import TypingResult, save_result
 
         # Save some results to produce an average WPM of 50
-        save_result(TypingResult(wpm=40.0, accuracy=90.0, time=10.0, lang="en", words=5, correct=5, keystrokes=30, errors=0))
-        save_result(TypingResult(wpm=60.0, accuracy=90.0, time=10.0, lang="en", words=5, correct=5, keystrokes=30, errors=0))
+        save_result(
+            TypingResult(
+                wpm=40.0,
+                accuracy=90.0,
+                time=10.0,
+                lang="en",
+                words=5,
+                correct=5,
+                keystrokes=30,
+                errors=0,
+            )
+        )
+        save_result(
+            TypingResult(
+                wpm=60.0,
+                accuracy=90.0,
+                time=10.0,
+                lang="en",
+                words=5,
+                correct=5,
+                keystrokes=30,
+                errors=0,
+            )
+        )
 
         app = TypingApp()
         async with app.run_test() as pilot:
@@ -588,6 +596,3 @@ def test_target_wpm_option_and_progress_bar() -> None:
             assert pb.progress == 50.0
 
     asyncio.run(run_test())
-
-
-
