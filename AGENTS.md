@@ -43,8 +43,38 @@
 - UI styling is defined via Textual's CSS-like `DEFAULT_CSS` in screen classes or `TypingApp.CSS`.
 - Monkeytype-inspired color palette is defined as constants in `screens.py`.
 
+## Design Philosophy: Minimalist Typing Experience (미니멀 타자 연습)
+
+`ttyping`의 핵심 정체성은 **터미널 환경에서의 미니멀하고 몰입감 있는 타자 연습 경험(Minimalist & Focused Typing Experience)** 입니다. Monkeytype의 철학을 계승하여 불필요한 UI 장식과 복잡성을 배제하고 타이핑 본연의 집중과 반응성에 초점을 맞춥니다.
+
+- **극도의 집중 (Distraction-Free UI)**: 화면을 복잡하게 만드는 불필요한 테두리, 지나치게 화려한 애니메이션, 복잡한 메뉴 계층을 지양하고 타이핑할 텍스트와 핵심 피드백(WPM, 정확도, 오타 표시)에만 시각적 무게를 둡니다. 특히 타이핑 도중 실시간 그래프/차트가 노출되는 것은 미니멀한 몰입을 방해하므로 엄격히 금지합니다.
+- **키보드 중심 인터랙션 (Keyboard-First Flow)**: 마우스 조작 없이 모든 내비게이션(단일 키 숏컷 `e`, `k`, `p`, `w`, `z`, `d`, `h`, `o`, `q` 및 한글 2벌식 매핑), 재시작(`Tab`), 단어 삭제(`Ctrl+W`), 뒤로 가기(`Esc`)를 손가락의 자연스러운 흐름 안에서 완결합니다.
+- **빠른 피드백 & 경량성 (Instant Feedback & Low Latency)**: 입력 지연 없는 타건감, 뷰포트 기반 O(N) 렌더링 최적화로 가볍고 빠른 반응 속도를 유지합니다.
+- **로컬 우선 & 개인정보 보호 (Local-First)**: 외부 서버 연동이나 로그인 없이 로컬 파일(`~/.ttyping/results.json`)을 기반으로 동작하여 오프라인에서도 즉시 실행 가능합니다.
+
 ### UI/UX Rules
-- Main Menu Shortcuts: `e` (English), `k` (Korean), `w` (Weak Analysis), `h` (History), `o` (Options), `q` (Quit).
+- **미니멀 타이핑 화면 원칙 (No Live Graphs During Typing)**: 타이핑 진행 화면(`TypingScreen`)에는 오직 상단 핵심 텍스트 통계(WPM/정확도/진행도), 텍스트 디스플레이, 입력 필드만 유지하며 실시간 그래프 등 시각적 노이즈를 유발하는 위젯을 추가하지 않습니다.
+- **미니멀 히스토리 화면 레이아웃 원칙 (Clean History View & Centered 3-Tier Layout)**: 
+  - 기록 화면(`HistoryScreen`)에서 부정확하고 불필요한 WPM/Accuracy 트렌드 그래프 위젯과 잉여 텍스트 통계(Tests 수, Avg WPM)를 배제합니다.
+  - 화면 중앙에 위에서부터 아래로 다음 3개 요소를 차례대로 정렬합니다:
+    1. **목표 WPM 프로그레스 바 (`ProgressBar`)**: 가운데 맞춤(`align: center middle`, `max-width: 60`), 평균 WPM 달성율 표시.
+    2. **조작 안내 텍스트 (`Static`)**: `Press d to delete selected record · D to delete all · Esc to back` (표 위에 중앙 정렬).
+    3. **상세 데이터 테이블 (`DataTable`)**: 최근 50회 기록 상세 표.
+- **미니멀 취약점 분석 화면 원칙 (Clean Weakness View & No Graphs/Heatmaps)**: 취약점 분석 화면(`WeaknessScreen`)에서 불필요한 막대 차트(`Top Missed Keys`)와 키보드 히트맵(`Keyboard Heatmap`)을 배제하고, 손가락별 취약점 연습 메뉴(`OptionList`) 및 직관적인 오류 통계 표(`DataTable`)에만 집중합니다.
+- **기본 테마 & 컬러 팔레트 원칙 (Strict Serika & Serika Dark Color Palette)**: 
+  - Monkeytype의 시그니처 테마를 표준으로 채택하며, Textual 기본의 푸른빛 틴트 및 파란색 위젯 스타일을 전면 배제합니다.
+  - **다크 모드 (`Serika Dark`)**: Background `#323437`, Sub-Background `#2c2e31`, Text `#d1d0c5`, Dim/Sub `#646669`, Accent `#e2b714`, Error `#ca4754`.
+  - **라이트 모드 (`Serika`)**: Background `#e1e1e3`, Sub-Background `#d1d0c5`, Text `#323437`, Dim/Sub `#646669`, Accent `#e2b714`, Error `#ca4754`.
+  - **위젯 악센트 & 스크롤바 일관성**:
+    - 모든 `OptionList` 선택/하이라이트, `DataTable` 커서, `ProgressBar`, `Input` 포커스 테두리는 `#e2b714` (Serika Yellow)로 통일합니다.
+    - 모든 컨테이너/입력창/테이블의 기본 테두리는 차분한 `#646669`를 사용합니다.
+    - 스크롤바(`ScrollBar`, `DataTable` 스크롤바)는 배경을 테마 서브 컬러로, 썸(Thumb)을 `#646669`, 호버 및 활성 색상을 `#e2b714`로 지정하여 푸른색 잔재를 허용하지 않습니다.
+- **미니멀 결과 화면 원칙 (Clean Result View)**: 결과 화면(`ResultScreen`)에서 `top missed characters`, 불필요한 PB(Personal Best) 팝업/뱃지, 일관성(`cons`) 등의 과도한 통계 노이즈를 노출하지 않고 WPM, 정확도, 소요 시간, 타자 단어 수, 언어 등 핵심 지표만 간결하게 표시합니다.
+- **미니멀 모드 원칙 (No Zen/Daily/Endless Mode Overload)**: 불필요한 무한 스트리밍 Zen 모드 및 부가적인 데일리 챌린지 모드를 배제하고, 언어/단어 수/시간 기반의 표준 연습 세션에 집중합니다.
+- **미니멀 설정 원칙 (No Sound & Custom Keybinding Overload)**: 청각적 노이즈를 유발하는 사운드/벨 옵션 및 불필요한 단축키 매핑 변경 기능을 제공하지 않으며, 직관적이고 표준적인 기본 키바인딩(`Tab`, `Esc`, `Space`, `Ctrl+W`)만을 제공합니다.
+- **미니멀 메뉴 원칙 (No Redundant Quit Option in Menu)**: 메인 메뉴의 `OptionList`에 별도의 `Quit [q]` 항목을 두지 않습니다. 프로그램 종료는 전역 키보드 단축키(`Esc`, `q`, `ㅂ`)를 통해 직관적으로 처리합니다.
+- **미니멀 UI 푸터 원칙 (No Textual Footer Widget)**: 화면 하단에 고정된 Textual `Footer` 위젯을 일절 사용하지 않습니다. 하단 푸터 바는 시각적 집중을 분산시키므로, 모든 필수 단축키 안내는 메뉴 항목 내 인라인 태그(`[dim][key][/dim]`) 또는 화면 내 안내 텍스트로만 제공합니다.
+- Main Menu Shortcuts: `e` (English), `k` (Korean), `p` (Code), `w` (Weak Analysis), `h` (History), `o` (Options), `Esc`/`q` (Quit) and their 2-set Korean equivalents (`ㄷ`, `ㅏ`, `ㅔ`, `ㅈ`, `ㅗ`, `ㅐ`, `ㅂ`).
 - Tab: Restart the test.
 - Esc: Quit the application / go back to the previous screen.
 - Space: Proceed to the next word.

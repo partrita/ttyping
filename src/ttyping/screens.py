@@ -16,7 +16,7 @@ from textual.binding import Binding
 from textual.containers import Center, Vertical
 from textual.geometry import Offset
 from textual.screen import Screen
-from textual.widgets import DataTable, Footer, Input, OptionList, Static
+from textual.widgets import DataTable, Input, OptionList, ProgressBar, Static
 from textual.widgets.option_list import Option
 
 from ttyping.storage import (
@@ -34,42 +34,61 @@ from ttyping.words import PRACTICE_SETS, _get_jamos
 if TYPE_CHECKING:
     from ttyping.app import TypingApp
 
-# ── Colours (monkeytype-inspired) ─────────────────────────────────────────
+# ── Colours (Serika / Serika Dark) ─────────────────────────────────────────
 
-COL_BG = "#323437"
-COL_DIM = "#909294"
-COL_TEXT = "#d1d0c5"
-COL_CORRECT = "#d1d0c5"
-COL_ERROR = "#ca4754"
-COL_ACCENT = "#e2b714"
-COL_SUB_BG = "#2c2e31"
+# Serika Dark (Dark Theme)
+COL_SERIKA_DARK_BG = "#323437"
+COL_SERIKA_DARK_SUB_BG = "#2c2e31"
+COL_SERIKA_DARK_TEXT = "#d1d0c5"
+COL_SERIKA_DARK_DIM = "#646669"
+COL_SERIKA_DARK_ACCENT = "#e2b714"
+COL_SERIKA_DARK_ERROR = "#ca4754"
 
-# User-selectable accent color (defaults to the monkeytype yellow)
-_ACCENT: str = COL_ACCENT
+# Serika (Light Theme)
+COL_SERIKA_LIGHT_BG = "#e1e1e3"
+COL_SERIKA_LIGHT_SUB_BG = "#d1d0c5"
+COL_SERIKA_LIGHT_TEXT = "#323437"
+COL_SERIKA_LIGHT_DIM = "#646669"
+COL_SERIKA_LIGHT_ACCENT = "#e2b714"
+COL_SERIKA_LIGHT_ERROR = "#ca4754"
 
-ACCENT_CHOICES: list[tuple[str, str]] = [
-    ("Yellow", "#e2b714"),
-    ("Green", "#7bd88f"),
-    ("Blue", "#74b6ff"),
-    ("Pink", "#ff7597"),
-    ("Purple", "#c792ea"),
-]
+# Default aliases
+COL_BG = COL_SERIKA_DARK_BG
+COL_DIM = COL_SERIKA_DARK_DIM
+COL_TEXT = COL_SERIKA_DARK_TEXT
+COL_CORRECT = COL_SERIKA_DARK_TEXT
+COL_ERROR = COL_SERIKA_DARK_ERROR
+COL_ACCENT = COL_SERIKA_DARK_ACCENT
+COL_SUB_BG = COL_SERIKA_DARK_SUB_BG
 
 
 def get_accent() -> str:
     """Return the active accent color."""
-    return _ACCENT
+    return COL_ACCENT
 
 
-def set_accent(color: str) -> None:
-    """Set the accent color used for runtime-styled widgets.
-
-    Only strict hex colors are accepted to avoid Rich markup injection
-    from stored config values.
-    """
-    global _ACCENT
-    if isinstance(color, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", color):
-        _ACCENT = color
+def get_theme_colors(app: TypingApp | None = None) -> tuple[str, str, str, str, str, str]:
+    """Return (bg, sub_bg, text, dim, accent, error) for the current theme."""
+    is_dark = True
+    if app is not None:
+        is_dark = (app.theme == "textual-dark")
+    if is_dark:
+        return (
+            COL_SERIKA_DARK_BG,
+            COL_SERIKA_DARK_SUB_BG,
+            COL_SERIKA_DARK_TEXT,
+            COL_SERIKA_DARK_DIM,
+            COL_SERIKA_DARK_ACCENT,
+            COL_SERIKA_DARK_ERROR,
+        )
+    return (
+        COL_SERIKA_LIGHT_BG,
+        COL_SERIKA_LIGHT_SUB_BG,
+        COL_SERIKA_LIGHT_TEXT,
+        COL_SERIKA_LIGHT_DIM,
+        COL_SERIKA_LIGHT_ACCENT,
+        COL_SERIKA_LIGHT_ERROR,
+    )
 
 
 def compute_consistency(char_timings: list[dict[str, Any]]) -> float:
@@ -107,15 +126,6 @@ class TypingScreen(Screen):
         Binding(key="escape", action="go_back", description="Back", priority=True),
     ]
 
-    ZEN_BINDINGS = [
-        Binding(
-            key="ctrl+d",
-            action="finish_zen",
-            description="End Zen",
-            priority=True,
-        ),
-    ]
-
     DEFAULT_CSS = """
     TypingScreen {
         align: center middle;
@@ -145,11 +155,6 @@ class TypingScreen(Screen):
         padding: 0 2;
     }
 
-    #live-chart {
-        height: 2;
-        margin-top: 0;
-    }
-
     #input-area {
         width: 100%;
         margin-top: 1;
@@ -167,14 +172,12 @@ class TypingScreen(Screen):
         lang: str = "en",
         duration: int | None = None,
         target_accuracy: float | None = None,
-        zen: bool = False,
     ) -> None:
         super().__init__()
         self.words = words
         self.lang = lang
         self.duration = duration
         self.target_accuracy = target_accuracy
-        self.zen = zen
         self.current_word_idx = 0
         self.current_input = ""
         self.word_correct: list[bool | None] = [None] * len(words)
@@ -191,26 +194,20 @@ class TypingScreen(Screen):
         self._stats_widget: Static | None = None
         self._display_widget: Static | None = None
         self._input_widget: Input | None = None
-        self._live_chart: LineChart | None = None
-        self.wpm_samples: list[float] = []
         self._shaking: bool = False
 
     def compose(self) -> ComposeResult:
         with Center():
             with Vertical(id="typing-container"):
                 yield Static("", id="stats")
-                yield LineChart([], color=get_accent(), id="live-chart")
                 yield Static("", id="text-display")
                 yield Input(id="input-area", password=False)
 
-        yield Footer()
 
     def on_mount(self) -> None:
         self._stats_widget = self.query_one("#stats", Static)
         self._display_widget = self.query_one("#text-display", Static)
         self._input_widget = self.query_one("#input-area", Input)
-        self._live_chart = self.query_one("#live-chart", LineChart)
-        self._live_chart.display = False
         self._input_widget.focus()
         # Initial render will happen after layout
 
@@ -225,8 +222,6 @@ class TypingScreen(Screen):
         self._shaking = True
         inp = self._input_widget
         inp.add_class("typo")
-        if getattr(self.app, "_sound", False):
-            self.app.bell()
 
         # Shake: Move slightly to the right, then left, then back
         self.animate("offset", Offset(1, 0), duration=0.05)
@@ -238,19 +233,6 @@ class TypingScreen(Screen):
             inp.remove_class("typo")
 
         self.set_timer(0.2, reset_shaking)
-
-    def _sample_wpm(self) -> None:
-        """Record the current net WPM for the live graph."""
-        if self.start_time is None:
-            return
-        elapsed = time.time() - self.start_time
-        _, net_wpm, _ = self._wpm_parts(elapsed)
-        self.wpm_samples.append(net_wpm)
-        if len(self.wpm_samples) > 120:
-            del self.wpm_samples[: len(self.wpm_samples) - 120]
-        if self._live_chart is not None:
-            self._live_chart.display = True
-            self._live_chart.set_data(self.wpm_samples)
 
     # ── input handling ─────────────────────────────────────────────────
 
@@ -394,24 +376,6 @@ class TypingScreen(Screen):
         if self._finished:
             return
         inp = self._input_widget
-        # Configurable alternative shortcuts (bubbled keys like F-keys)
-        cfg = load_config()
-        alt_restart = cfg.get("key_restart")
-        alt_back = cfg.get("key_back")
-        if (
-            isinstance(alt_restart, str)
-            and event.key == alt_restart
-            and alt_restart != "tab"
-        ):
-            event.stop()
-            event.prevent_default()
-            self.action_restart()
-            return
-        if isinstance(alt_back, str) and event.key == alt_back and alt_back != "escape":
-            event.stop()
-            event.prevent_default()
-            self.action_go_back()
-            return
         # Enter also completes the current word (handy for last word)
         if event.key == "ctrl+w":
             event.prevent_default()
@@ -507,15 +471,8 @@ class TypingScreen(Screen):
                 return
 
         if self.current_word_idx >= len(self.words):
-            if self.zen:
-                # Zen mode: stream more words instead of ending
-                more = cast("TypingApp", self.app)._get_more_words()
-                self.words.extend(more)
-                self.word_correct.extend([None] * len(more))
-                self._cached_lines = None
-            else:
-                self._end_test()
-                return
+            self._end_test()
+            return
 
         self._render_display()
         self._update_stats()
@@ -561,28 +518,30 @@ class TypingScreen(Screen):
     def _get_word_text(self, i: int) -> Text:
         word = self.words[i]
         t = Text()
+        app = cast("TypingApp", self.app)
+        _, _, col_text, col_dim, col_accent, col_error = get_theme_colors(app)
 
         if i < self.current_word_idx:
             if self.word_correct[i]:
-                t.append(word, style=f"dim {COL_CORRECT}")
+                t.append(word, style=f"dim {col_text}")
             else:
-                t.append(word, style=f"{COL_ERROR} strike")
+                t.append(word, style=f"{col_error} strike")
         elif i == self.current_word_idx:
             typed = self.current_input
             for j, ch in enumerate(word):
                 if j < len(typed):
                     if self._is_char_correct(typed[j], ch):
-                        t.append(ch, style=f"bold {COL_CORRECT}")
+                        t.append(ch, style=f"bold {col_text}")
                     else:
-                        t.append(ch, style=f"bold {COL_ERROR}")
+                        t.append(ch, style=f"bold {col_error}")
                 elif j == len(typed):
-                    t.append(ch, style=f"underline {COL_TEXT}")
+                    t.append(ch, style=f"underline {col_text}")
                 else:
-                    t.append(ch, style=COL_TEXT)  # Focused word is more visible
+                    t.append(ch, style=col_text)  # Focused word is more visible
             if len(typed) > len(word):
-                t.append(typed[len(word) :], style=f"bold {COL_ERROR}")
+                t.append(typed[len(word) :], style=f"bold {col_error}")
         else:
-            t.append(word, style=COL_DIM)
+            t.append(word, style=col_dim)
         return t
 
     def _wrap_words(self, container_width: int) -> tuple[list[list[int]], int]:
@@ -660,17 +619,20 @@ class TypingScreen(Screen):
         elapsed = time.time() - self.start_time
         _, net_wpm, accuracy = self._wpm_parts(elapsed)
 
+        app = cast("TypingApp", self.app)
+        _, _, _, col_dim, col_accent, _ = get_theme_colors(app)
+
         t = Text()
-        t.append(f"{net_wpm:.0f}", style=f"bold {get_accent()}")
-        t.append(" wpm   ", style=COL_DIM)
-        t.append(f"{accuracy:.0f}%", style=f"bold {get_accent()}")
-        t.append(" acc   ", style=COL_DIM)
+        t.append(f"{net_wpm:.0f}", style=f"bold {col_accent}")
+        t.append(" wpm   ", style=col_dim)
+        t.append(f"{accuracy:.0f}%", style=f"bold {col_accent}")
+        t.append(" acc   ", style=col_dim)
 
         if self.duration:
             remaining = max(0, self.duration - elapsed)
-            t.append(f"{remaining:.0f}s", style=f"bold {get_accent()}")
+            t.append(f"{remaining:.0f}s", style=f"bold {col_accent}")
         else:
-            t.append(f"{elapsed:.0f}s", style=f"bold {get_accent()}")
+            t.append(f"{elapsed:.0f}s", style=f"bold {col_accent}")
 
         if self._stats_widget is not None:
             self._stats_widget.update(t)
@@ -683,24 +645,12 @@ class TypingScreen(Screen):
                 if elapsed >= self.duration:
                     self._end_test()
                     return
-            if self.start_time is not None:
-                self._sample_wpm()
             self._update_stats()
 
     # ── actions ────────────────────────────────────────────────────────
 
     def action_restart(self) -> None:
         cast("TypingApp", self.app).restart()
-
-    def action_finish_zen(self) -> None:
-        """Manually end a zen session."""
-        if not self.zen or self._finished:
-            return
-        if self.start_time is None:
-            # Nothing typed yet — simply go back
-            self.action_go_back()
-            return
-        self._end_test()
 
     def action_quit_app(self) -> None:
         self.app.exit()
@@ -759,8 +709,12 @@ class ResultScreen(Screen):
         height: auto;
         margin-top: 1;
         padding: 0 1;
-        background: $boost;
-        border: tall $surface;
+        background: #d1d0c5;
+        border: round #646669;
+    }
+    .-dark-mode #speed-map {
+        background: #2c2e31;
+        border: round #646669;
     }
     """
 
@@ -775,34 +729,23 @@ class ResultScreen(Screen):
 
     def compose(self) -> ComposeResult:
         r = self.result
+        app = cast("TypingApp", self.app)
+        _, _, col_text, col_dim, col_accent, _ = get_theme_colors(app)
+
         with Center():
             with Vertical(id="result-container"):
                 wpm_text = Text()
-                wpm_text.append(f"{r.wpm:.0f}", style=f"bold {get_accent()}")
-                wpm_text.append(" wpm", style=COL_DIM)
+                wpm_text.append(f"{r.wpm:.0f}", style=f"bold {col_accent}")
+                wpm_text.append(" wpm", style=col_dim)
                 yield Static(wpm_text, classes="result-big")
-                from ttyping.storage import get_personal_best
-
-                pb = get_personal_best(r.lang, exclude_date=r.date)
-                if pb > 0 and r.wpm > pb:
-                    yield Static(
-                        Text.from_markup(
-                            f"[{get_accent()}]new personal best![/{get_accent()}]"
-                        ),
-                        classes="result-title",
-                    )
                 acc_text = Text()
-                acc_text.append(f"{r.accuracy:.1f}%", style=f"bold {COL_TEXT}")
-                acc_text.append(" accuracy", style=COL_DIM)
+                acc_text.append(f"{r.accuracy:.1f}%", style=f"bold {col_text}")
+                acc_text.append(" accuracy", style=col_dim)
                 yield Static(acc_text, classes="result-big")
                 detail = Text()
-                detail.append(f"{r.time:.1f}s", style=COL_TEXT)
-                detail.append(f"  ·  {r.correct}/{r.words} words", style=COL_DIM)
-                if r.consistency:
-                    detail.append(f"  ·  {r.consistency:.0f}% cons", style=COL_DIM)
-                if pb > 0 and r.wpm <= pb:
-                    detail.append(f"  ·  pb {pb:.0f}", style=COL_DIM)
-                detail.append(f"  ·  {r.lang}", style=COL_DIM)
+                detail.append(f"{r.time:.1f}s", style=col_text)
+                detail.append(f"  ·  {r.correct}/{r.words} words", style=col_dim)
+                detail.append(f"  ·  {r.lang}", style=col_dim)
                 yield Static(detail, classes="result-detail")
 
                 # Speed Map (New)
@@ -810,11 +753,6 @@ class ResultScreen(Screen):
                     yield Static("typing speed map", classes="result-title")
                     yield Static(self._render_speed_map(), id="speed-map")
 
-                if r.top_char_errors:
-                    yield Static("top missed characters", classes="result-title")
-                    # Display as Python dictionary format string
-                    err_dict = {char: count for char, count in r.top_char_errors}
-                    yield Static(escape(str(err_dict)), id="top-errors-dict")
                 if self.session_attempts:
                     yield Static("session summary", classes="result-title")
                     table = DataTable(id="session-table")
@@ -835,7 +773,6 @@ class ResultScreen(Screen):
                     )
                     yield table
 
-        yield Footer()
 
     def _render_speed_map(self) -> Text:
         """Render the typed text with character-level speed visualization."""
@@ -987,7 +924,6 @@ class ConfirmDeleteScreen(Screen):
                     id="confirm-hints",
                 )
 
-        yield Footer()
 
     def action_confirm(self) -> None:
         clear_results()
@@ -997,116 +933,6 @@ class ConfirmDeleteScreen(Screen):
 
     def action_cancel(self) -> None:
         self.app.pop_screen()
-
-
-def _normalize_coord(val: float, min_v: float, extent: float) -> int:
-    """Normalize a value to an 8-row coordinate system."""
-    return int((val - min_v) / extent * 7.99)
-
-
-def _get_braille_char(l_row: int, r_row: int) -> str:
-    """Build braille char for two points in a 4-dot high cell."""
-    char = 0x2800
-    # Rows are 0,1,2,3 from BOTTOM of this cell
-    # Map 0 -> dot 7/8, 1 -> dot 3/6, 2 -> dot 2/5, 3 -> dot 1/4
-    l_dot_map = {0: 0x40, 1: 0x04, 2: 0x02, 3: 0x01}
-    r_dot_map = {0: 0x80, 1: 0x20, 2: 0x10, 3: 0x08}
-
-    # Fill dots from 0 to target row to make a solid-ish line/area
-    for r in range(min(l_row, 3) + 1):
-        char |= l_dot_map.get(r, 0)
-    for r in range(min(r_row, 3) + 1):
-        char |= r_dot_map.get(r, 0)
-    return chr(char)
-
-
-# ── LineChart ──────────────────────────────────────────────────────────────
-
-
-class LineChart(Static):
-    """A simple line chart using braille characters."""
-
-    DEFAULT_CSS = """
-    LineChart {
-        width: 100%;
-        height: 2;
-        content-align: center middle;
-    }
-    """
-
-    def __init__(
-        self,
-        data: list[float],
-        color: str,
-        **kwargs: Any,  # noqa: ANN401
-    ) -> None:
-        super().__init__(**kwargs)
-        self.chart_data = data
-        self.chart_color = color
-
-    def set_data(self, data: list[float]) -> None:
-        """Replace chart data and redraw at the current width."""
-        self.chart_data = list(data)
-        width = self.size.width if self.size.width > 0 else 40
-        self._update_chart(width)
-
-    def on_resize(self, event: events.Resize) -> None:
-        self._update_chart(event.size.width)
-
-    def on_mount(self) -> None:
-        self._update_chart(self.size.width if self.size.width > 0 else 40)
-
-    def _update_chart(self, width: int) -> None:
-        if width <= 0 or not self.chart_data:
-            self.update("")
-            return
-
-        data = self.chart_data
-        if len(data) == 1:
-            data = [data[0], data[0]]
-
-        # Braille dots for 8 rows (height=2 * 4 dots)
-
-        # Sample points
-        points = 2 * width
-        sampled = []
-        for i in range(points):
-            idx = (i / (points - 1)) * (len(data) - 1)
-            idx_int = int(idx)
-            rem = idx - idx_int
-            if idx_int + 1 < len(data):
-                val = data[idx_int] * (1 - rem) + data[idx_int + 1] * rem
-            else:
-                val = data[idx_int]
-            sampled.append(val)
-
-        min_v = min(sampled)
-        max_v = max(sampled)
-        extent = max_v - min_v if max_v > min_v else 1
-
-        # Braille patterns for 4-dot high cells
-        # We need to render 2 lines.
-        # Top line (row 4-7), Bottom line (row 0-3)
-
-        top_line = []
-        bot_line = []
-
-        for i in range(width):
-            l_val = sampled[i * 2]
-            r_val = sampled[i * 2 + 1]
-
-            # Overall row (0 to 7)
-            l_total_row = _normalize_coord(l_val, min_v, extent)
-            r_total_row = _normalize_coord(r_val, min_v, extent)
-
-            # Top cell (rows 4-7)
-            top_line.append(_get_braille_char(l_total_row - 4, r_total_row - 4))
-            # Bottom cell (rows 0-3)
-            bot_line.append(_get_braille_char(l_total_row, r_total_row))
-
-        res_text = Text("".join(top_line), style=self.chart_color) + "\n"
-        res_text += Text("".join(bot_line), style=self.chart_color)
-        self.update(res_text)
 
 
 # ── HistoryScreen ──────────────────────────────────────────────────────────
@@ -1141,50 +967,63 @@ class HistoryScreen(Screen):
     }
 
     #history-container {
-        width: 98%;
+        width: 95%;
         max-width: 100;
         height: auto;
-        max-height: 95%;
+        max-height: 100%;
         align: center middle;
+        content-align: center middle;
     }
 
     #history-title {
         width: 100%;
         text-align: center;
         text-style: bold;
+        margin-bottom: 1;
     }
 
-    #history-stats {
+    #history-progress-container {
+        width: 100%;
+        max-width: 60;
+        height: auto;
+        margin-top: 0;
+        margin-bottom: 1;
+        align: center middle;
+    }
+
+    #history-progress-label {
         width: 100%;
         text-align: center;
+        text-style: dim;
         margin-bottom: 0;
     }
 
-    .chart-container {
+    #history-progress-bar {
         width: 100%;
-        height: auto;
-        margin-top: 1;
-        padding: 0 2;
     }
 
-    .chart-title {
+    .history-hint {
         width: 100%;
         text-align: center;
+        margin-bottom: 1;
         text-style: dim;
     }
 
     #history-table {
         width: 100%;
         height: auto;
-        max-height: 18;
-        margin-top: 1;
+        max-height: 16;
+        scrollbar-gutter: stable;
+        scrollbar-background: #d1d0c5;
+        scrollbar-color: #646669;
+        scrollbar-color-hover: #e2b714;
+        scrollbar-color-active: #e2b714;
     }
-
-    .history-hint {
-        width: 100%;
-        text-align: center;
-        margin-top: 1;
-        text-style: dim;
+    .-dark-mode #history-table {
+        scrollbar-background: #2c2e31;
+        scrollbar-color: #646669;
+        scrollbar-color-hover: #e2b714;
+        scrollbar-color-active: #e2b714;
     }
     """
 
@@ -1195,6 +1034,8 @@ class HistoryScreen(Screen):
         display_count = min(n, 50)
         # storage indices newest-first
         self._row_to_storage_idx = list(range(n - 1, n - 1 - display_count, -1))
+        app = cast("TypingApp", self.app)
+
         with Center():
             with Vertical(id="history-container"):
                 yield Static("History", id="history-title")
@@ -1202,29 +1043,37 @@ class HistoryScreen(Screen):
                     yield Static("No results yet — go type!", id="history-empty")
                 else:
                     avg_wpm = sum(r.wpm for r in results) / n
+                    if app._target_wpm is not None and app._target_wpm > 0:
+                        target = float(app._target_wpm)
+                        pct = min(100.0, (avg_wpm / target) * 100.0) if target > 0 else 0.0
+                        with Vertical(id="history-progress-container"):
+                            yield Static(
+                                f"Goal WPM: {avg_wpm:.1f} / {app._target_wpm} ({pct:.1f}%)",
+                                id="history-progress-label",
+                            )
+                            yield ProgressBar(
+                                total=target,
+                                show_eta=False,
+                                id="history-progress-bar",
+                            )
+
                     yield Static(
-                        f"Tests: {n} · Avg WPM: {avg_wpm:.1f}",
-                        id="history-stats",
+                        "[dim]Press [bold]d[/bold] to delete selected record · [bold]D[/bold] to delete all · [bold]Esc[/bold] to back[/dim]",
+                        classes="history-hint",
                     )
-
-                    recent_results = results[-display_count:]
-                    with Vertical(classes="chart-container"):
-                        yield Static("wpm trend", classes="chart-title")
-                        yield LineChart(
-                            [r.wpm for r in recent_results],
-                            color=get_accent(),
-                        )
-
-                    with Vertical(classes="chart-container"):
-                        yield Static("accuracy trend", classes="chart-title")
-                        yield LineChart(
-                            [r.accuracy for r in recent_results],
-                            color=COL_TEXT,
-                        )
-
                     yield self._create_history_table(results, self._row_to_storage_idx)
 
-        yield Footer()
+    def on_mount(self) -> None:
+        app = cast("TypingApp", self.app)
+        if app._target_wpm is not None and app._target_wpm > 0:
+            results = load_results()
+            avg_wpm = sum(r.wpm for r in results) / len(results) if results else 0.0
+            try:
+                bar = self.query_one("#history-progress-bar", ProgressBar)
+                bar.progress = min(float(app._target_wpm), float(avg_wpm))
+            except Exception:
+                pass
+
 
     def _create_history_table(
         self,
@@ -1360,7 +1209,7 @@ class MenuScreen(ActionSelectMixin, Screen):
     #menu-logo {
         width: 100%;
         text-align: center;
-        color: $accent;
+        color: #e2b714;
         margin-bottom: 1;
     }
 
@@ -1368,6 +1217,7 @@ class MenuScreen(ActionSelectMixin, Screen):
         width: 100%;
         text-align: center;
         text-style: bold;
+        color: #e2b714;
         margin-bottom: 1;
     }
 
@@ -1393,10 +1243,6 @@ class MenuScreen(ActionSelectMixin, Screen):
         Binding(key="h", action="select_history", description="History", show=False),
         Binding(key="o", action="select_options", description="Options", show=False),
         Binding(key="p", action="select_code", description="Code", show=False),
-        Binding(key="z", action="start_zen", description="Zen Mode", show=False),
-        Binding(
-            key="d", action="start_daily", description="Daily Challenge", show=False
-        ),
         Binding(key="escape", action="quit_app", description="Quit"),
         Binding(key="q", action="quit_app", description="Quit", show=False),
         # Korean IME support (2-set)
@@ -1406,8 +1252,6 @@ class MenuScreen(ActionSelectMixin, Screen):
         Binding(key="ㅗ", action="select_history", show=False),
         Binding(key="ㅐ", action="select_options", show=False),
         Binding(key="ㅔ", action="select_code", show=False),
-        Binding(key="ㅋ", action="start_zen", show=False),
-        Binding(key="ㄴ", action="start_daily", show=False),
         Binding(key="ㅂ", action="quit_app", show=False),
     ]
 
@@ -1434,14 +1278,6 @@ class MenuScreen(ActionSelectMixin, Screen):
                         id="weakness",
                     ),
                     Option(
-                        Text.from_markup(r"Zen(젠 모드) [dim]\[z][/dim]"),
-                        id="zen",
-                    ),
-                    Option(
-                        Text.from_markup(r"Daily(오늘의 연습) [dim]\[d][/dim]"),
-                        id="daily",
-                    ),
-                    Option(
                         Text.from_markup(r"View History(기록 보기) [dim]\[h][/dim]"),
                         id="history",
                     ),
@@ -1449,14 +1285,9 @@ class MenuScreen(ActionSelectMixin, Screen):
                         Text.from_markup(r"Options [dim]\[o][/dim]"),
                         id="options",
                     ),
-                    Option(
-                        Text.from_markup(r"Quit [dim]\[q][/dim]"),
-                        id="quit",
-                    ),
                     id="menu-options",
                 )
 
-        yield Footer()
 
     def on_mount(self) -> None:
         self._update_logo_visibility()
@@ -1491,9 +1322,7 @@ class MenuScreen(ActionSelectMixin, Screen):
         opt_id = event.option_id
         app = cast("TypingApp", self.app)
 
-        if opt_id == "quit":
-            app.exit()
-        elif opt_id == "history":
+        if opt_id == "history":
             app.push_screen(HistoryScreen())
         elif opt_id == "weakness":
             app.push_screen(WeaknessScreen())
@@ -1505,10 +1334,6 @@ class MenuScreen(ActionSelectMixin, Screen):
             app.push_screen(KOSubMenu())
         elif opt_id == "code":
             app.push_screen(CodeSubMenu())
-        elif opt_id == "zen":
-            app.start_zen_test()
-        elif opt_id == "daily":
-            app.start_daily_test()
 
     def action_select_en(self) -> None:
         self.app.push_screen(ENSubMenu())
@@ -1527,12 +1352,6 @@ class MenuScreen(ActionSelectMixin, Screen):
 
     def action_select_options(self) -> None:
         self.app.push_screen(OptionsScreen())
-
-    def action_start_zen(self) -> None:
-        cast("TypingApp", self.app).start_zen_test()
-
-    def action_start_daily(self) -> None:
-        cast("TypingApp", self.app).start_daily_test()
 
     def action_quit_app(self) -> None:
         self.app.exit()
@@ -1563,12 +1382,10 @@ class CodeSubMenu(ActionSelectMixin, Screen):
                     Option("Julia", id="julia"),
                     Option("Typst", id="typst"),
                     Option("Markdown", id="markdown"),
-                    Option("Japanese Romaji(일본어 로마자)", id="ja_romaji"),
                     Option("Back", id="back"),
                     id="menu-options",
                 )
 
-        yield Footer()
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
@@ -1587,7 +1404,6 @@ class CodeSubMenu(ActionSelectMixin, Screen):
             "typescript",
             "go",
             "c",
-            "ja_romaji",
         ):
             app.start_custom_test(opt_id, app._word_count, app._duration)
 
@@ -1617,7 +1433,6 @@ class ENSubMenu(ActionSelectMixin, Screen):
                     id="menu-options",
                 )
 
-        yield Footer()
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
@@ -1657,7 +1472,6 @@ class KOSubMenu(ActionSelectMixin, Screen):
                     id="menu-options",
                 )
 
-        yield Footer()
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = event.option_id
@@ -1760,7 +1574,6 @@ class PracticeMenu(ActionSelectMixin, Screen):
                     name="Practice Set Selection",
                 )
 
-        yield Footer()
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = str(event.option_id)
@@ -1815,7 +1628,6 @@ class WordCountMenu(ActionSelectMixin, Screen):
                     id="menu-options",
                 )
 
-        yield Footer()
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         opt_id = str(event.option_id)
@@ -1861,7 +1673,6 @@ class AccuracyMenu(ActionSelectMixin, Screen):
                     id="menu-options",
                 )
 
-        yield Footer()
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         from ttyping.storage import load_config, save_config
@@ -1890,7 +1701,7 @@ class AccuracyMenu(ActionSelectMixin, Screen):
 
 
 class OptionsScreen(ActionSelectMixin, Screen):
-    """Options submenu: Words, Time, Accuracy, Theme, About."""
+    """Options submenu: Words, Target WPM, Time, Accuracy, Theme, About."""
 
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
 
@@ -1902,61 +1713,47 @@ class OptionsScreen(ActionSelectMixin, Screen):
     def _get_labels(self) -> tuple[str, str, str, str, str]:
         app = cast("TypingApp", self.app)
         words_label = str(app._word_count)
+        target_wpm = app._target_wpm
+        target_wpm_label = "None" if target_wpm is None else f"{target_wpm} WPM"
         time_label = "Off" if app._duration is None else f"{app._duration}s"
         acc = app._target_accuracy
         acc_label = "None" if acc is None else f"{int(acc)}%"
         theme_label = "Dark" if app.theme == "textual-dark" else "Light"
-        sound_label = "On" if getattr(app, "_sound", False) else "Off"
-        return words_label, time_label, acc_label, theme_label, sound_label
+        return words_label, target_wpm_label, time_label, acc_label, theme_label
 
     def compose(self) -> ComposeResult:
-        words_label, time_label, acc_label, theme_label, sound_label = (
-            self._get_labels()
-        )
+        words_label, target_wpm_label, time_label, acc_label, theme_label = self._get_labels()
+
         with Center():
             with Vertical(id="menu-container"):
                 yield Static("Options", id="menu-title")
                 yield OptionList(
                     Option(escape(f"Words: {words_label}"), id="words"),
+                    Option(escape(f"Target WPM: {target_wpm_label}"), id="target_wpm"),
                     Option(escape(f"Time: {time_label}"), id="time"),
                     Option(escape(f"Accuracy: {acc_label}"), id="accuracy"),
                     Option(escape(f"Theme: {theme_label}"), id="theme"),
-                    Option(escape(f"Sound: {sound_label}"), id="sound"),
-                    Option("Keybindings", id="keybindings"),
                     Option("About", id="about"),
                     id="menu-options",
                 )
-
-        yield Footer()
 
     def on_resume(self) -> None:
         """Refresh labels when returning from a nested screen."""
         self.refresh(recompose=True)
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
-        from ttyping.storage import load_config, save_config
-
         opt_id = str(event.option_id)
         app = cast("TypingApp", self.app)
         if opt_id == "words":
             app.push_screen(WordCountInputScreen())
+        elif opt_id == "target_wpm":
+            app.push_screen(TargetWpmInputScreen())
         elif opt_id == "time":
             app.push_screen(TimeMenu())
         elif opt_id == "accuracy":
             app.push_screen(AccuracyMenu())
         elif opt_id == "theme":
             app.push_screen(ThemeScreen())
-        elif opt_id == "sound":
-            app._sound = not getattr(app, "_sound", False)
-            cfg = load_config()
-            cfg["sound"] = app._sound
-            save_config(cfg)
-            label = "On" if app._sound else "Off"
-            app.notify(f"Sound set to {label}", title="Saved", timeout=2)
-            # Refresh label in place
-            self.refresh(recompose=True)
-        elif opt_id == "keybindings":
-            app.push_screen(KeybindingsMenu())
         elif opt_id == "about":
             app.push_screen(AboutScreen())
 
@@ -1964,126 +1761,73 @@ class OptionsScreen(ActionSelectMixin, Screen):
         self.app.pop_screen()
 
 
-KEY_RESTART_CHOICES: list[tuple[str, str | None]] = [
-    ("Tab (default)", None),
-    ("F2", "f2"),
-]
-KEY_BACK_CHOICES: list[tuple[str, str | None]] = [
-    ("Escape (default)", None),
-    ("F4", "f4"),
-]
-
-
-class KeybindingsMenu(ActionSelectMixin, Screen):
-    """Add alternative shortcuts for restart / back on the typing screen."""
+class TargetWpmInputScreen(Screen):
+    """Input screen to set the target WPM (or 0/empty to disable)."""
 
     DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+
     BINDINGS = [
-        Binding(key="enter", action="select", description="Select"),
-        Binding(key="escape", action="go_back", description="Back"),
+        Binding(key="enter", action="submit", description="Save"),
+        Binding(key="escape", action="go_back", description="Cancel"),
     ]
 
-    def _labels(self) -> tuple[str, str]:
-        cfg = load_config()
-        restart, back = cfg.get("key_restart"), cfg.get("key_back")
-        r_label = next(
-            (lbl for lbl, key in KEY_RESTART_CHOICES if key == restart),
-            "Tab (default)",
-        )
-        b_label = next(
-            (lbl for lbl, key in KEY_BACK_CHOICES if key == back),
-            "Escape (default)",
-        )
-        return r_label, b_label
-
     def compose(self) -> ComposeResult:
-        r_label, b_label = self._labels()
-        with Center():
-            with Vertical(id="menu-container"):
-                yield Static("Keybindings", id="menu-title")
-                yield OptionList(
-                    Option(escape(f"Restart: {r_label}"), id="kb:restart"),
-                    Option(escape(f"Back: {b_label}"), id="kb:back"),
-                    id="menu-options",
-                )
-
-        yield Footer()
-
-    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
-        opt_id = str(event.option_id)
         app = cast("TypingApp", self.app)
-        if not opt_id.startswith("kb:"):
-            return
-
-        action = opt_id.split(":", 1)[1]
-        cfg = load_config()
-        if action == "restart":
-            current = cfg.get("key_restart")
-            idx = next(
-                (i for i, (_, key) in enumerate(KEY_RESTART_CHOICES) if key is current),
-                0,
-            )
-            new_key = KEY_RESTART_CHOICES[(idx + 1) % len(KEY_RESTART_CHOICES)][1]
-            cfg["key_restart"] = new_key
-            label = KEY_RESTART_CHOICES[(idx + 1) % len(KEY_RESTART_CHOICES)][0]
-        else:
-            current = cfg.get("key_back")
-            idx = next(
-                (i for i, (_, key) in enumerate(KEY_BACK_CHOICES) if key is current),
-                0,
-            )
-            new_key = KEY_BACK_CHOICES[(idx + 1) % len(KEY_BACK_CHOICES)][1]
-            cfg["key_back"] = new_key
-            label = KEY_BACK_CHOICES[(idx + 1) % len(KEY_BACK_CHOICES)][0]
-
-        save_config(cfg)
-        which = "Restart" if action == "restart" else "Back"
-        app.notify(f"{which} key set to {label}", title="Saved", timeout=2)
-        self.refresh(recompose=True)
-
-    def action_go_back(self) -> None:
-        self.app.pop_screen()
-
-
-class AccentMenu(ActionSelectMixin, Screen):
-    """Pick the accent color used for stats and highlights."""
-
-    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
-    BINDINGS = [
-        Binding(key="enter", action="select", description="Select"),
-        Binding(key="escape", action="go_back", description="Back"),
-    ]
-
-    def compose(self) -> ComposeResult:
+        current_wpm = str(app._target_wpm) if app._target_wpm is not None else ""
         with Center():
             with Vertical(id="menu-container"):
-                yield Static("Accent Color", id="menu-title")
-                yield Static(escape(f"Current: {get_accent()}"), classes="about-text")
-                yield OptionList(
-                    *[
-                        Option(label, id=f"accent:{hex_color}")
-                        for label, hex_color in ACCENT_CHOICES
-                    ],
-                    id="menu-options",
+                yield Static("Set Target WPM", id="menu-title")
+                yield Static(
+                    escape("Enter target WPM (1-500) or 0 to disable:"),
+                    classes="about-text",
+                )
+                yield Input(
+                    value=current_wpm,
+                    placeholder="Target WPM (e.g. 80, 0 to disable)",
+                    id="wpm-input",
+                    type="integer",
+                    max_length=4,
                 )
 
-        yield Footer()
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Clear the error border when the user types."""
+        self.query_one("#wpm-input", Input).border_title = ""
 
-    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+    def on_input_submitted(self, event: Input.Submitted) -> None:
         from ttyping.storage import load_config, save_config
 
-        opt_id = str(event.option_id)
+        value = event.value.strip()
         app = cast("TypingApp", self.app)
-        if not opt_id.startswith("accent:"):
+
+        if not value or value == "0":
+            app._target_wpm = None
+            cfg = load_config()
+            cfg["target_wpm"] = None
+            save_config(cfg)
+            app.notify("Target WPM disabled", title="Saved", timeout=2)
+            app.pop_screen()
             return
 
-        hex_color = opt_id.split(":", 1)[1]
-        set_accent(hex_color)
+        try:
+            target = int(value)
+            if not 1 <= target <= 500:
+                raise ValueError
+        except ValueError:
+            self.query_one(
+                "#wpm-input", Input
+            ).border_title = "⚠ Enter a number from 1 to 500 (or 0)"
+            return
+
+        app._target_wpm = target
         cfg = load_config()
-        cfg["accent"] = get_accent()
+        cfg["target_wpm"] = target
         save_config(cfg)
-        app.notify(f"Accent set to {get_accent()}", title="Saved", timeout=2)
+        app.notify(f"Target WPM set to {target}", title="Saved", timeout=2)
         app.pop_screen()
+
+    def action_submit(self) -> None:
+        val = self.query_one("#wpm-input", Input).value
+        self.on_input_submitted(Input.Submitted(self.query_one("#wpm-input", Input), val))
 
     def action_go_back(self) -> None:
         self.app.pop_screen()
@@ -2109,20 +1853,15 @@ class ThemeScreen(ActionSelectMixin, Screen):
                 yield OptionList(
                     Option("🌙  Dark", id="dark"),
                     Option("☀️  Light", id="light"),
-                    Option("Accent Color ▶", id="accent"),
                     id="menu-options",
                 )
 
-        yield Footer()
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         from ttyping.storage import load_config, save_config
 
         opt_id = str(event.option_id)
         app = cast("TypingApp", self.app)
-        if opt_id == "accent":
-            app.push_screen(AccentMenu())
-            return
         app.theme = "textual-dark" if opt_id == "dark" else "textual-light"
 
         cfg = load_config()
@@ -2166,7 +1905,6 @@ class AboutScreen(Screen):
                 yield Static("About ttyping", id="menu-title")
                 yield Static("\n".join(about_text), classes="about-text")
 
-        yield Footer()
 
     def action_go_back(self) -> None:
         self.app.pop_screen()
@@ -2195,7 +1933,6 @@ class WordCountInputScreen(Screen):
                     max_length=4,
                 )
 
-        yield Footer()
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """Clear the error border when the user types."""
@@ -2260,7 +1997,6 @@ class TimeMenu(ActionSelectMixin, Screen):
                     id="menu-options",
                 )
 
-        yield Footer()
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         from ttyping.storage import load_config, save_config
@@ -2313,7 +2049,6 @@ class TimeLimitInputScreen(Screen):
                     max_length=4,
                 )
 
-        yield Footer()
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """Clear the error border when the user types."""
@@ -2382,14 +2117,8 @@ class WeaknessScreen(ActionSelectMixin, Screen):
     #weakness-table {
         width: 100%;
         height: auto;
-        max-height: 10;
+        max-height: 12;
         margin-top: 0;
-    }
-
-    #weakness-graph {
-        width: 100%;
-        margin-top: 0;
-        content-align: center middle;
     }
 
     #weakness-options {
@@ -2476,69 +2205,6 @@ class WeaknessScreen(ActionSelectMixin, Screen):
                         label = labels.get(finger, finger)
                         table.add_row(escape(label), escape(chars_display), str(total))
                     yield table
-
-                    # Top missed chars bar chart
-                    yield Static("▸ Top Missed Keys", classes="weakness-section")
-                    yield Static(
-                        self._render_char_bars(sorted_chars[:6]),
-                        id="weakness-graph",
-                    )
-
-                    # Keyboard heatmap (layout-aware)
-                    if layout in PRACTICE_SETS:
-                        yield Static("▸ Keyboard Heatmap", classes="weakness-section")
-                        yield Static(
-                            self._render_heatmap(layout, stats),
-                            id="keyboard-heatmap",
-                        )
-        yield Footer()
-
-    def _render_heatmap(self, layout: str, stats: dict[str, int]) -> Text:
-        """Render keyboard rows colored by per-key cumulative errors."""
-        rows = ["number_row", "top_row", "home_row", "bottom_row"]
-        layout_sets = PRACTICE_SETS.get(layout)
-        if layout_sets is None:
-            return Text()
-
-        max_err = max(stats.values()) if stats else 0
-        heat_levels = [("#8f4148", False), ("#d94f5c", True), ("#ff6b76", True)]
-
-        t = Text()
-        for r_idx, row_name in enumerate(rows):
-            for ch in layout_sets.get(row_name, ""):
-                err = stats.get(ch, 0)
-                if err and max_err:
-                    ratio = err / max_err
-                    color, bold = (
-                        heat_levels[2]
-                        if ratio > 0.66
-                        else heat_levels[1]
-                        if ratio > 0.33
-                        else heat_levels[0]
-                    )
-                    style = f"bold {color}" if bold else color
-                else:
-                    style = COL_DIM
-                t.append(ch, style=style)
-            if r_idx < len(rows) - 1:
-                t.append("\n")
-        return t
-
-    def _render_char_bars(self, data: list[tuple[str, int]]) -> Text:
-        from rich.cells import cell_len
-
-        if not data:
-            return Text()
-        max_val = max(c for _, c in data)
-        max_bar = 22
-        t = Text()
-        for char, count in data:
-            bar_len = int((count / max(max_val, 1)) * max_bar)
-            pad = " " * (4 - cell_len(char))
-            t.append(pad + char + " ", style=COL_TEXT)
-            t.append("█" * bar_len, style=COL_ERROR)
-            t.append(f" {count}\n", style=COL_DIM)
-        return t
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         from ttyping.words import chars_to_finger

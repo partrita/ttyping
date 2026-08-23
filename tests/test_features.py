@@ -99,12 +99,11 @@ def test_time_menu_custom_opens_input_screen() -> None:
     asyncio.run(run_test())
 
 
-class SoundTypingApp(App):
+class MockTypingApp(App):
     last_result: object = None
 
     def __init__(self, **kwargs: object) -> None:
         super().__init__()
-        self._sound = True
 
     def show_result(self, result: object) -> None:
         self.last_result = result
@@ -117,67 +116,6 @@ class SoundTypingApp(App):
 
     def on_mount(self) -> None:
         self.push_screen(TypingScreen(["apple", "banana"], lang="en"))
-
-
-def test_bell_rings_on_error_when_sound_enabled() -> None:
-    import asyncio
-
-    async def run_test() -> None:
-        app = SoundTypingApp()
-        async with app.run_test() as pilot:
-            screen = app.screen
-            assert isinstance(screen, TypingScreen)
-            with patch.object(app, "bell") as mock_bell:
-                await pilot.press("b", "p", "p", "l", "e")
-                assert mock_bell.called
-            assert screen.total_errors > 0
-
-    asyncio.run(run_test())
-
-
-def test_no_bell_on_correct_input() -> None:
-    import asyncio
-
-    async def run_test() -> None:
-        app = SoundTypingApp()
-        async with app.run_test() as pilot:
-            screen = app.screen
-            assert isinstance(screen, TypingScreen)
-            with patch.object(app, "bell") as mock_bell:
-                await pilot.press("a", "p", "p", "l", "e")
-                assert not mock_bell.called
-            assert screen.total_errors == 0
-
-    asyncio.run(run_test())
-
-
-def test_options_sound_toggle_persists() -> None:
-    import asyncio
-
-    async def run_test() -> None:
-        app = TypingApp()
-        assert app._sound is False
-        async with app.run_test() as pilot:
-            await app.push_screen(OptionsScreen())
-            await pilot.pause()
-            screen = app.screen
-
-            screen.on_option_list_option_selected(
-                SimpleNamespace(option_id="sound")  # type: ignore[arg-type]
-            )
-            await pilot.pause()
-            assert app._sound is True
-            assert storage.load_config()["sound"] is True
-
-            # Toggle back off
-            screen.on_option_list_option_selected(
-                SimpleNamespace(option_id="sound")  # type: ignore[arg-type]
-            )
-            await pilot.pause()
-            assert app._sound is False
-            assert storage.load_config()["sound"] is False
-
-    asyncio.run(run_test())
 
 
 def test_export_csv_and_json(tmp_path: Path) -> None:
@@ -302,7 +240,7 @@ def test_end_test_stores_consistency() -> None:
     import asyncio
 
     async def run_test() -> None:
-        app = SoundTypingApp()
+        app = MockTypingApp()
         async with app.run_test() as pilot:
             screen = app.screen
             assert isinstance(screen, TypingScreen)
@@ -397,89 +335,7 @@ def test_get_personal_best_excludes_current() -> None:
     assert get_personal_best("fr") == 0.0
 
 
-def test_result_screen_shows_pb_badge() -> None:
-    import asyncio
 
-    async def run_test() -> None:
-        from textual.widget import Widget
-
-        from ttyping.screens import ResultScreen
-        from ttyping.storage import TypingResult, save_result
-
-        save_result(
-            TypingResult(
-                wpm=40.0,
-                accuracy=90.0,
-                time=10.0,
-                lang="en",
-                words=5,
-                correct=5,
-                keystrokes=30,
-                errors=0,
-            )
-        )
-        record = TypingResult(
-            wpm=80.0,
-            accuracy=95.0,
-            time=10.0,
-            lang="en",
-            words=5,
-            correct=5,
-            keystrokes=30,
-            errors=0,
-        )
-        app = TypingApp()
-        async with app.run_test() as pilot:
-            await app.push_screen(ResultScreen(record))
-            await pilot.pause()
-            texts = [str(w.render()) for w in app.screen.query(Widget)]
-            joined = " ".join(texts)
-            assert "new personal best!" in joined
-            assert "80" in joined
-
-    asyncio.run(run_test())
-
-
-def test_result_screen_shows_existing_pb() -> None:
-    import asyncio
-
-    async def run_test() -> None:
-        from textual.widget import Widget
-
-        from ttyping.screens import ResultScreen
-        from ttyping.storage import TypingResult, save_result
-
-        save_result(
-            TypingResult(
-                wpm=90.0,
-                accuracy=90.0,
-                time=10.0,
-                lang="en",
-                words=5,
-                correct=5,
-                keystrokes=30,
-                errors=0,
-            )
-        )
-        slower = TypingResult(
-            wpm=60.0,
-            accuracy=95.0,
-            time=10.0,
-            lang="en",
-            words=5,
-            correct=5,
-            keystrokes=30,
-            errors=0,
-        )
-        app = TypingApp()
-        async with app.run_test() as pilot:
-            await app.push_screen(ResultScreen(slower))
-            await pilot.pause()
-            joined = " ".join(str(w.render()) for w in app.screen.query(Widget))
-            assert "new personal best!" not in joined
-            assert "pb 90" in joined
-
-    asyncio.run(run_test())
 
 
 def test_new_code_languages_loaded() -> None:
@@ -570,86 +426,6 @@ def test_practice_menu_ko_quotes_selection() -> None:
     asyncio.run(run_test())
 
 
-class ZenApp(App):
-    """Minimal host for zen TypingScreen with stubbed app hooks."""
-
-    last_result: object = None
-
-    def show_result(self, result: object) -> None:
-        self.last_result = result
-
-    def restart(self) -> None:
-        pass
-
-    def reset_session_attempt(self, stats: object) -> None:
-        pass
-
-    def _get_more_words(self) -> list[str]:
-        return ["beta", "gamma", "delta"]
-
-    def on_mount(self) -> None:
-        self.push_screen(TypingScreen(["alpha"], lang="en", zen=True))
-
-
-def test_zen_mode_extends_words_instead_of_ending() -> None:
-    import asyncio
-
-    async def run_test() -> None:
-        app = ZenApp()
-        async with app.run_test() as pilot:
-            screen = app.screen
-            assert isinstance(screen, TypingScreen)
-            assert screen.zen is True
-
-            # Complete the only word — screen should stream more, not end
-            await pilot.press("a", "l", "p", "h", "a", "space")
-            await pilot.pause()
-
-            assert screen.current_word_idx == 1
-            assert len(screen.words) == 4  # alpha + beta gamma delta
-            assert screen._finished is False
-
-    asyncio.run(run_test())
-
-
-def test_zen_mode_manual_finish_saves_result() -> None:
-    import asyncio
-
-    async def run_test() -> None:
-        app = ZenApp()
-        async with app.run_test() as pilot:
-            screen = app.screen
-            assert isinstance(screen, TypingScreen)
-
-            await pilot.press("a", "l", "p", "h", "a", "space")
-            await pilot.pause()
-            screen.action_finish_zen()
-            await pilot.pause()
-
-            assert screen._finished is True
-            assert app.last_result is not None
-            assert app.last_result.lang == "en"
-
-    asyncio.run(run_test())
-
-
-def test_menu_has_zen_option_and_binding() -> None:
-    import asyncio
-
-    async def run_test() -> None:
-        app = TypingApp()
-        async with app.run_test() as pilot:
-            from textual.widgets import OptionList as OL
-
-            await pilot.pause()
-            menu = app.screen
-            ol = menu.query_one("#menu-options", OL)
-            ids = [str(o.id) for o in ol.options]
-            assert "zen" in ids
-
-    asyncio.run(run_test())
-
-
 def test_daily_words_deterministic_per_day() -> None:
     from ttyping.words import get_daily_words
 
@@ -663,76 +439,32 @@ def test_daily_words_deterministic_per_day() -> None:
     assert ko != a
 
 
-def test_daily_test_pushes_typing_screen() -> None:
+
+
+
+
+def test_weakness_screen_compose() -> None:
     import asyncio
 
     async def run_test() -> None:
-        app = TypingApp(lang="en_qwerty", word_count=10)
-        async with app.run_test() as pilot:
-            await app.push_screen(MenuScreen())
-            await pilot.pause()
-            app.start_daily_test()
-            await pilot.pause()
+        from textual.widgets import DataTable, OptionList
+        from ttyping.storage import TypingResult, save_result
 
-            screen = app.screen
-            assert isinstance(screen, TypingScreen)
-            assert screen.zen is False
-            assert len(screen.words) == 10
+        # Save results with error stats
+        save_result(
+            TypingResult(
+                wpm=50.0,
+                accuracy=90.0,
+                time=10.0,
+                lang="en_qwerty",
+                words=5,
+                correct=4,
+                keystrokes=25,
+                errors=1,
+                top_char_errors=[("f", 5), ("j", 3)],
+            )
+        )
 
-    asyncio.run(run_test())
-
-
-def test_menu_has_daily_option() -> None:
-    import asyncio
-
-    async def run_test() -> None:
-        app = TypingApp()
-        async with app.run_test() as pilot:
-            from textual.widgets import OptionList as OL
-
-            await pilot.pause()
-            ol = app.screen.query_one("#menu-options", OL)
-            ids = [str(o.id) for o in ol.options]
-            assert "daily" in ids
-            assert "zen" in ids
-
-    asyncio.run(run_test())
-
-
-def test_live_wpm_chart_samples() -> None:
-    import asyncio
-
-    async def run_test() -> None:
-        app = SoundTypingApp()
-        async with app.run_test() as pilot:
-            screen = app.screen
-            assert isinstance(screen, TypingScreen)
-
-            chart = screen.query_one("#live-chart")
-            from ttyping.screens import LineChart
-
-            assert isinstance(chart, LineChart)
-            # Hidden before typing starts
-            assert chart.display is False
-
-            await pilot.press("a", "p", "p", "l", "e", "space")
-
-            # Simulate timer ticks (real 0.5s timer may also fire)
-            screen._tick_stats()
-            screen._tick_stats()
-
-            assert len(screen.wpm_samples) >= 2
-            assert all(s >= 0 for s in screen.wpm_samples)
-            assert chart.display is True
-            assert len(chart.chart_data) == len(screen.wpm_samples)
-
-    asyncio.run(run_test())
-
-
-def test_keyboard_heatmap_render() -> None:
-    import asyncio
-
-    async def run_test() -> None:
         app = TypingApp(lang="en_qwerty")
         async with app.run_test() as pilot:
             await app.push_screen(WeaknessScreen())
@@ -740,101 +472,13 @@ def test_keyboard_heatmap_render() -> None:
 
             screen = app.screen
             assert isinstance(screen, WeaknessScreen)
-
-            # Render function: plain text preserves row structure
-            stats = {"f": 10, "j": 5, "a": 1}
-            text = screen._render_heatmap("en_qwerty", stats)
-            lines = text.plain.split("\n")
-            assert len(lines) == 4  # number/top/home/bottom rows
-            assert "f" in lines[2] and "j" in lines[2]  # home row
-
-            def style_at(t: object, ch: str) -> list[str]:
-                idx = t.plain.find(ch)
-                return [str(s.style) for s in t.spans if s.start <= idx < s.end]
-
-            # Hot key styled with strongest heat color
-            assert any("ff6b76" in st for st in style_at(text, "f"))
-            # Cold key stays dim
-            assert any("909294" in st for st in style_at(text, "q"))
+            assert len(screen.query(DataTable)) == 1
+            assert len(screen.query(OptionList)) == 1
 
     asyncio.run(run_test())
 
 
-def test_keyboard_heatmap_unknown_layout_empty() -> None:
-    import asyncio
 
-    async def run_test() -> None:
-        app = TypingApp(lang="python")  # not a keyboard layout
-        async with app.run_test() as pilot:
-            from rich.text import Text
-
-            await app.push_screen(WeaknessScreen())
-            await pilot.pause()
-            screen = app.screen
-            assert isinstance(screen, WeaknessScreen)
-            result = screen._render_heatmap("nonexistent_layout", {"a": 3})
-            assert isinstance(result, Text)
-
-    asyncio.run(run_test())
-
-
-def test_set_accent_validates_hex() -> None:
-    from ttyping.screens import get_accent, set_accent
-
-    set_accent("#7bd88f")
-    assert get_accent() == "#7bd88f"
-    # Invalid values ignored (markup-injection safe)
-    set_accent("[red]evil[/]")
-    assert get_accent() == "#7bd88f"
-    set_accent("not-a-color")
-    set_accent("#12345")  # too short
-    assert get_accent() == "#7bd88f"
-    # Restore default
-    set_accent("#e2b714")
-    assert get_accent() == "#e2b714"
-
-
-def test_app_loads_accent_from_config() -> None:
-    import asyncio
-
-    async def run_test() -> None:
-        storage.save_config({"accent": "#74b6ff"})
-        from ttyping.screens import get_accent
-
-        app = TypingApp()
-        async with app.run_test():
-            assert get_accent() == "#74b6ff"
-
-        # Invalid stored accent falls back without crash
-        storage.save_config({"accent": "javascript:alert(1)"})
-        app2 = TypingApp()
-        async with app2.run_test():
-            assert get_accent() in {"#e2b714", "#74b6ff"}
-
-    asyncio.run(run_test())
-
-
-def test_accent_menu_selection_persists() -> None:
-    import asyncio
-    from types import SimpleNamespace
-
-    async def run_test() -> None:
-        app = TypingApp()
-        async with app.run_test() as pilot:
-            from ttyping.screens import AccentMenu, get_accent
-
-            await app.push_screen(AccentMenu())
-            await pilot.pause()
-            screen = app.screen
-            screen.on_option_list_option_selected(
-                SimpleNamespace(option_id="accent:#ff7597")
-            )
-            await pilot.pause()
-
-            assert get_accent() == "#ff7597"
-            assert storage.load_config()["accent"] == "#ff7597"
-
-    asyncio.run(run_test())
 
 
 def test_words_from_url_parses_and_caps() -> None:
@@ -909,118 +553,41 @@ def test_app_uses_url_words(monkeypatch: object) -> None:
     asyncio.run(run_test())
 
 
-def test_alt_restart_key_triggers_restart() -> None:
+def test_target_wpm_option_and_progress_bar() -> None:
     import asyncio
 
     async def run_test() -> None:
-        storage.save_config({"key_restart": "f2"})
-        restarted: list[bool] = []
+        from textual.widgets import Input, ProgressBar
+        from ttyping.screens import HistoryScreen, OptionsScreen, TargetWpmInputScreen
+        from ttyping.storage import TypingResult, save_result
 
-        class RApp(App):
-            def show_result(self, r: object) -> None:
-                pass
+        # Save some results to produce an average WPM of 50
+        save_result(TypingResult(wpm=40.0, accuracy=90.0, time=10.0, lang="en", words=5, correct=5, keystrokes=30, errors=0))
+        save_result(TypingResult(wpm=60.0, accuracy=90.0, time=10.0, lang="en", words=5, correct=5, keystrokes=30, errors=0))
 
-            def restart(self) -> None:
-                restarted.append(True)
-
-            def reset_session_attempt(self, s: object) -> None:
-                pass
-
-            def on_mount(self) -> None:
-                self.push_screen(TypingScreen(["alpha", "beta"], lang="en"))
-
-        app = RApp()
-        async with app.run_test() as pilot:
-            await pilot.press("f2")
-            await pilot.pause()
-            assert restarted == [True]
-
-    asyncio.run(run_test())
-
-
-def test_default_keys_unchanged_without_config() -> None:
-    import asyncio
-
-    async def run_test() -> None:
-        restarted: list[bool] = []
-
-        class R2App(App):
-            def show_result(self, r: object) -> None:
-                pass
-
-            def restart(self) -> None:
-                restarted.append(True)
-
-            def reset_session_attempt(self, s: object) -> None:
-                pass
-
-            def on_mount(self) -> None:
-                self.push_screen(TypingScreen(["alpha"], lang="en"))
-
-        app = R2App()
-        async with app.run_test() as pilot:
-            screen = app.screen
-            assert isinstance(screen, TypingScreen)
-            await pilot.press("tab")  # default priority binding
-            await pilot.pause()
-            assert restarted == [True]
-            # F2 does nothing without config
-            await pilot.press("f2")
-            await pilot.pause()
-            assert restarted == [True]
-
-    asyncio.run(run_test())
-
-
-def test_keybindings_menu_cycles_and_persists() -> None:
-    import asyncio
-    from types import SimpleNamespace
-
-    async def run_test() -> None:
         app = TypingApp()
         async with app.run_test() as pilot:
-            from ttyping.screens import KeybindingsMenu
-
-            await app.push_screen(KeybindingsMenu())
+            # Set target WPM to 100 via TargetWpmInputScreen
+            target_screen = TargetWpmInputScreen()
+            await app.push_screen(target_screen)
             await pilot.pause()
-            screen = app.screen
-
-            screen.on_option_list_option_selected(
-                SimpleNamespace(option_id="kb:restart")
-            )
+            input_widget = target_screen.query_one("#wpm-input", Input)
+            target_screen.on_input_submitted(Input.Submitted(input_widget, "100"))
             await pilot.pause()
-            assert storage.load_config()["key_restart"] == "f2"
 
-            screen.on_option_list_option_selected(
-                SimpleNamespace(option_id="kb:restart")
-            )
+            assert app._target_wpm == 100
+            assert storage.load_config()["target_wpm"] == 100
+
+            # View History screen -> should display ProgressBar showing 50/100
+            history_screen = HistoryScreen()
+            await app.push_screen(history_screen)
             await pilot.pause()
-            assert storage.load_config()["key_restart"] is None
+
+            pb = history_screen.query_one(ProgressBar)
+            assert pb.total == 100.0
+            assert pb.progress == 50.0
 
     asyncio.run(run_test())
 
 
-def test_japanese_romaji_language() -> None:
-    from ttyping.words import JA_ROMAJI_WORDS, get_words
 
-    assert len(JA_ROMAJI_WORDS) > 50
-    picked = get_words("ja_romaji", count=10)
-    assert len(picked) == 10
-    assert all(w in JA_ROMAJI_WORDS for w in picked)
-    # Romaji is plain ASCII so it types on any layout
-    assert all(w.isascii() for w in picked)
-
-
-def test_code_submenu_includes_japanese() -> None:
-    import asyncio
-
-    async def run_test() -> None:
-        app = TypingApp()
-        async with app.run_test() as pilot:
-            await app.push_screen(CodeSubMenu())
-            await pilot.pause()
-            ol = app.screen.query_one("#menu-options", OptionList)
-            ids = [str(o.id) for o in ol.options]
-            assert "ja_romaji" in ids
-
-    asyncio.run(run_test())

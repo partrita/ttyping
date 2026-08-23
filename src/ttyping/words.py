@@ -44,7 +44,6 @@ MD_WORDS: list[str] = _load_resource_words("markdown.txt")
 GO_WORDS: list[str] = _load_resource_words("go.txt")
 C_WORDS: list[str] = _load_resource_words("c.txt")
 TS_WORDS: list[str] = _load_resource_words("typescript.txt")
-JA_ROMAJI_WORDS: list[str] = _load_resource_words("ja_romaji.txt")
 
 
 # Practice character sets for different layouts
@@ -155,7 +154,6 @@ LAYOUT_TO_WORDS: dict[str, list[str]] = {
     "go": GO_WORDS,
     "c": C_WORDS,
     "typescript": TS_WORDS,
-    "ja_romaji": JA_ROMAJI_WORDS,
 }
 
 

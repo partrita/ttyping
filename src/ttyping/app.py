@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from textual.app import App, ComposeResult
+from textual.app import App
 from textual.binding import Binding
-from textual.widgets import Footer
 
 from ttyping.screens import HistoryScreen, TypingScreen
 from ttyping.storage import TypingResult
@@ -21,76 +20,182 @@ class TypingApp(App):
     ]
 
     # ── Dual-theme CSS ─────────────────────────────────────────────────────
-    # Light mode rules (no class). Dark overrides use .-dark-mode prefix.
+    # Light mode (Serika): bg #e1e1e3, sub-bg #d1d0c5, text #323437, dim #646669, accent #e2b714
+    # Dark mode (Serika Dark): bg #323437, sub-bg #2c2e31, text #d1d0c5, dim #646669, accent #e2b714
     CSS = """
     /* ── Base ───────────────────────────────────────── */
-    Screen               { background: #eff1f5; }
-    .-dark-mode Screen { background: #323437; }
+    Screen               { background: #e1e1e3; color: #323437; }
+    .-dark-mode Screen { background: #323437; color: #d1d0c5; }
+
+    /* ── Scrollbars ─────────────────────────────────── */
+    ScrollBar {
+        background: #e1e1e3;
+        color: #646669;
+    }
+    ScrollBar .scrollbar--thumb {
+        background: #646669 50%;
+        color: #e2b714;
+    }
+    ScrollBar .scrollbar--thumb:hover {
+        background: #e2b714;
+    }
+    .-dark-mode ScrollBar {
+        background: #323437;
+        color: #646669;
+    }
+    .-dark-mode ScrollBar .scrollbar--thumb {
+        background: #646669 50%;
+        color: #e2b714;
+    }
+    .-dark-mode ScrollBar .scrollbar--thumb:hover {
+        background: #e2b714;
+    }
+
+    /* ── OptionList & Selection ─────────────────────── */
+    OptionList {
+        border: none;
+    }
+    OptionList:focus > .option-list--option-highlighted {
+        background: #e2b714;
+        color: #323437;
+        text-style: bold;
+    }
+    OptionList > .option-list--option-highlighted {
+        background: #e2b714 30%;
+        color: #323437;
+    }
+    .-dark-mode OptionList:focus > .option-list--option-highlighted {
+        background: #e2b714;
+        color: #323437;
+        text-style: bold;
+    }
+    .-dark-mode OptionList > .option-list--option-highlighted {
+        background: #e2b714 30%;
+        color: #d1d0c5;
+    }
+
+    /* ── Input (All inputs in modals/menus) ─────────── */
+    Input {
+        border: round #646669;
+        background: #e1e1e3;
+        color: #323437;
+    }
+    Input:focus {
+        border: round #e2b714;
+    }
+    .-dark-mode Input {
+        border: round #646669;
+        background: #323437;
+        color: #d1d0c5;
+    }
+    .-dark-mode Input:focus {
+        border: round #e2b714;
+    }
+
+    /* ── ProgressBar ────────────────────────────────── */
+    ProgressBar .bar--bar {
+        color: #e2b714;
+        background: #646669 40%;
+    }
+    ProgressBar .bar--complete {
+        color: #e2b714;
+    }
+    .-dark-mode ProgressBar .bar--bar {
+        color: #e2b714;
+        background: #646669 40%;
+    }
+    .-dark-mode ProgressBar .bar--complete {
+        color: #e2b714;
+    }
+
+    /* ── DataTable ──────────────────────────────────── */
+    DataTable {
+        border: round #646669;
+    }
+    .-dark-mode DataTable {
+        border: round #646669;
+    }
+    DataTable:focus {
+        border: round #e2b714;
+    }
+    .-dark-mode DataTable:focus {
+        border: round #e2b714;
+    }
+    DataTable > .datatable--cursor {
+        background: #e2b714;
+        color: #323437;
+        text-style: bold;
+    }
+    .-dark-mode DataTable > .datatable--cursor {
+        background: #e2b714;
+        color: #323437;
+        text-style: bold;
+    }
 
     /* ── Typing screen ──────────────────────────────── */
-    #stats               { color: #c8a010; }
+    #stats               { color: #e2b714; }
     .-dark-mode #stats { color: #e2b714; }
 
     #input-area {
-        border: round #7a7b7e;
-        background: #e0e1e5;
+        border: round #646669;
+        background: #d1d0c5;
         color: #323437;
     }
     .-dark-mode #input-area {
-        border: round #909294;
+        border: round #646669;
         background: #2c2e31;
         color: #d1d0c5;
     }
-    #input-area:focus          { border: round #c8a010; }
+    #input-area:focus          { border: round #e2b714; }
     .-dark-mode #input-area:focus { border: round #e2b714; }
 
-    #hints               { color: #7a7b7e; }
-    .-dark-mode #hints { color: #909294; }
+    #hints               { color: #646669; }
+    .-dark-mode #hints { color: #646669; }
 
     /* ── Result screen ──────────────────────────────── */
-    .result-detail       { color: #7a7b7e; }
-    .result-title        { color: #7a7b7e; }
-    #result-hints        { color: #7a7b7e; }
-    .-dark-mode .result-detail { color: #909294; }
-    .-dark-mode .result-title  { color: #909294; }
-    .-dark-mode #result-hints  { color: #909294; }
+    .result-detail       { color: #646669; }
+    .result-title        { color: #646669; }
+    #result-hints        { color: #646669; }
+    .-dark-mode .result-detail { color: #646669; }
+    .-dark-mode .result-title  { color: #646669; }
+    .-dark-mode #result-hints  { color: #646669; }
 
     /* ── History screen ─────────────────────────────── */
-    #history-title { color: #c8a010; }
+    #history-title { color: #e2b714; }
     .-dark-mode #history-title { color: #e2b714; }
 
-    #history-stats  { color: #7a7b7e; }
-    #history-hints  { color: #7a7b7e; }
-    .-dark-mode #history-stats { color: #909294; }
-    .-dark-mode #history-hints { color: #909294; }
+    #history-stats  { color: #646669; }
+    #history-hints  { color: #646669; }
+    .-dark-mode #history-stats { color: #646669; }
+    .-dark-mode #history-hints { color: #646669; }
 
-    #history-table  { background: #e0e1e5; }
+    #history-table  { background: #d1d0c5; }
     .-dark-mode #history-table { background: #2c2e31; }
 
-    #history-empty  { color: #7a7b7e; }
-    .-dark-mode #history-empty { color: #909294; }
+    #history-empty  { color: #646669; }
+    .-dark-mode #history-empty { color: #646669; }
 
     /* ── Menu / sub-menu containers ─────────────────── */
     #menu-container {
-        border: round #c8a010;
-        background: #e0e1e5;
+        border: round #e2b714;
+        background: #d1d0c5;
     }
     .-dark-mode #menu-container {
         border: round #e2b714;
         background: #2c2e31;
     }
 
-    #menu-title { color: #c8a010; }
+    #menu-title { color: #e2b714; }
     .-dark-mode #menu-title { color: #e2b714; }
 
     #menu-hints  { display: none; }
 
-    #menu-options { background: #e0e1e5; }
+    #menu-options { background: #d1d0c5; }
     .-dark-mode #menu-options { background: #2c2e31; }
 
     /* ── Confirm delete modal ────────────────────────── */
     #confirm-box {
-        background: #e0e1e5;
+        background: #d1d0c5;
         border: round #ca4754;
     }
     .-dark-mode #confirm-box {
@@ -99,38 +204,52 @@ class TypingApp(App):
     }
     #confirm-title  { color: #ca4754; }
     #confirm-body   { color: #323437; }
-    #confirm-hints  { color: #7a7b7e; }
+    #confirm-hints  { color: #646669; }
     .-dark-mode #confirm-body  { color: #d1d0c5; }
-    .-dark-mode #confirm-hints { color: #909294; }
+    .-dark-mode #confirm-hints { color: #646669; }
 
     /* ── Weakness screen ─────────────────────────────── */
     #weakness-container {
-        border: round #c8a010;
-        background: #e0e1e5;
+        border: round #e2b714;
+        background: #d1d0c5;
     }
     .-dark-mode #weakness-container {
         border: round #e2b714;
         background: #2c2e31;
     }
-    #weakness-title   { color: #c8a010; }
+    #weakness-title   { color: #e2b714; }
     .-dark-mode #weakness-title { color: #e2b714; }
 
-    .weakness-section { color: #7a7b7e; }
-    .-dark-mode .weakness-section { color: #909294; }
+    .weakness-section { color: #646669; }
+    .-dark-mode .weakness-section { color: #646669; }
 
-    #weakness-options { background: #e0e1e5; }
+    #weakness-options { background: #d1d0c5; }
     .-dark-mode #weakness-options { background: #2c2e31; }
 
-    #weakness-hints  { color: #7a7b7e; }
-    .-dark-mode #weakness-hints { color: #909294; }
+    #weakness-hints  { color: #646669; }
+    .-dark-mode #weakness-hints { color: #646669; }
 
     /* ── About screen ────────────────────────────────── */
-    .about-text  { color: #7a7b7e; }
-    .-dark-mode .about-text { color: #909294; }
+    .about-text  { color: #646669; }
+    .-dark-mode .about-text { color: #646669; }
 
     /* ── DataTable global ────────────────────────────── */
-    DataTable          { background: #e0e1e5; color: #323437; }
-    .-dark-mode DataTable { background: #2c2e31; color: #d1d0c5; }
+    DataTable {
+        background: #d1d0c5;
+        color: #323437;
+        scrollbar-background: #d1d0c5;
+        scrollbar-color: #646669;
+        scrollbar-color-hover: #e2b714;
+        scrollbar-color-active: #e2b714;
+    }
+    .-dark-mode DataTable {
+        background: #2c2e31;
+        color: #d1d0c5;
+        scrollbar-background: #2c2e31;
+        scrollbar-color: #646669;
+        scrollbar-color-hover: #e2b714;
+        scrollbar-color-active: #e2b714;
+    }
     """
 
     def __init__(
@@ -190,26 +309,24 @@ class TypingApp(App):
         self._target_accuracy: float | None = (
             max(0.0, min(acc, 100.0)) if acc is not None else None
         )
+
+        saved_wpm = config.get("target_wpm")
+        try:
+            parsed_target_wpm = int(saved_wpm) if saved_wpm is not None else None
+        except (ValueError, TypeError):
+            parsed_target_wpm = None
+        self._target_wpm: int | None = (
+            max(1, min(parsed_target_wpm, 500)) if parsed_target_wpm is not None else None
+        )
+
         self._show_history: bool = show_history
         self._session_attempts: list[TypingResult] = []
         self._current_session_words: list[str] | None = None
-
-        # Optional keypress sound feedback (terminal bell on errors)
-        self._sound: bool = bool(config.get("sound", False))
 
         # Apply persisted theme (dark by default)
         saved_theme = config.get("theme", "dark")
         is_dark = (saved_theme if isinstance(saved_theme, str) else "dark") == "dark"
         self.theme = "textual-dark" if is_dark else "textual-light"
-
-        # Apply persisted accent color (validated inside set_accent)
-        from ttyping.screens import set_accent
-
-        set_accent(config.get("accent", ""))
-
-    def compose(self) -> ComposeResult:
-        """Yield the global footer."""
-        yield Footer()
 
     def on_mount(self) -> None:
         if self._show_history:
@@ -318,42 +435,5 @@ class TypingApp(App):
                 lang=layout,
                 duration=None,
                 target_accuracy=self._target_accuracy,
-            )
-        )
-
-    def _get_more_words(self) -> list[str]:
-        """Fetch a fresh word batch (used by zen mode streaming)."""
-        return get_words(self._lang, max(self._word_count, 25))
-
-    def start_daily_test(self) -> None:
-        """Start today's deterministic challenge for the current language."""
-        from ttyping.words import get_daily_words
-
-        words = get_daily_words(self._lang, self._word_count)
-        self.push_screen(
-            TypingScreen(
-                words,
-                lang=self._lang,
-                duration=self._duration,
-                target_accuracy=self._target_accuracy,
-            )
-        )
-
-    def start_zen_test(self) -> None:
-        """Start an endless zen session ended manually with ctrl+d."""
-        from ttyping.storage import load_config, save_config
-
-        config = load_config()
-        config.update({"lang": self._lang})
-        save_config(config)
-
-        words = self._get_more_words()
-        self.push_screen(
-            TypingScreen(
-                words,
-                lang=self._lang,
-                duration=None,
-                target_accuracy=None,
-                zen=True,
             )
         )
