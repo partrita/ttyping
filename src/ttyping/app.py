@@ -200,6 +200,11 @@ class TypingApp(App):
         is_dark = (saved_theme if isinstance(saved_theme, str) else "dark") == "dark"
         self.theme = "textual-dark" if is_dark else "textual-light"
 
+        # Apply persisted accent color (validated inside set_accent)
+        from ttyping.screens import set_accent
+
+        set_accent(config.get("accent", ""))
+
     def compose(self) -> ComposeResult:
         """Yield the global footer."""
         yield Footer()

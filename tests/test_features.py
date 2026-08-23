@@ -733,7 +733,6 @@ def test_keyboard_heatmap_render() -> None:
     async def run_test() -> None:
         app = TypingApp(lang="en_qwerty")
         async with app.run_test() as pilot:
-
             await app.push_screen(WeaknessScreen())
             await pilot.pause()
 
@@ -749,11 +748,7 @@ def test_keyboard_heatmap_render() -> None:
 
             def style_at(t: object, ch: str) -> list[str]:
                 idx = t.plain.find(ch)
-                return [
-                    str(s.style)
-                    for s in t.spans
-                    if s.start <= idx < s.end
-                ]
+                return [str(s.style) for s in t.spans if s.start <= idx < s.end]
 
             # Hot key styled with strongest heat color
             assert any("ff6b76" in st for st in style_at(text, "f"))
@@ -777,5 +772,64 @@ def test_keyboard_heatmap_unknown_layout_empty() -> None:
             assert isinstance(screen, WeaknessScreen)
             result = screen._render_heatmap("nonexistent_layout", {"a": 3})
             assert isinstance(result, Text)
+
+    asyncio.run(run_test())
+
+
+def test_set_accent_validates_hex() -> None:
+    from ttyping.screens import get_accent, set_accent
+
+    set_accent("#7bd88f")
+    assert get_accent() == "#7bd88f"
+    # Invalid values ignored (markup-injection safe)
+    set_accent("[red]evil[/]")
+    assert get_accent() == "#7bd88f"
+    set_accent("not-a-color")
+    set_accent("#12345")  # too short
+    assert get_accent() == "#7bd88f"
+    # Restore default
+    set_accent("#e2b714")
+    assert get_accent() == "#e2b714"
+
+
+def test_app_loads_accent_from_config() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        storage.save_config({"accent": "#74b6ff"})
+        from ttyping.screens import get_accent
+
+        app = TypingApp()
+        async with app.run_test():
+            assert get_accent() == "#74b6ff"
+
+        # Invalid stored accent falls back without crash
+        storage.save_config({"accent": "javascript:alert(1)"})
+        app2 = TypingApp()
+        async with app2.run_test():
+            assert get_accent() in {"#e2b714", "#74b6ff"}
+
+    asyncio.run(run_test())
+
+
+def test_accent_menu_selection_persists() -> None:
+    import asyncio
+    from types import SimpleNamespace
+
+    async def run_test() -> None:
+        app = TypingApp()
+        async with app.run_test() as pilot:
+            from ttyping.screens import AccentMenu, get_accent
+
+            await app.push_screen(AccentMenu())
+            await pilot.pause()
+            screen = app.screen
+            screen.on_option_list_option_selected(
+                SimpleNamespace(option_id="accent:#ff7597")
+            )
+            await pilot.pause()
+
+            assert get_accent() == "#ff7597"
+            assert storage.load_config()["accent"] == "#ff7597"
 
     asyncio.run(run_test())

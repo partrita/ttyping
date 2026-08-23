@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from collections import Counter
 from datetime import datetime
@@ -40,6 +41,33 @@ COL_CORRECT = "#d1d0c5"
 COL_ERROR = "#ca4754"
 COL_ACCENT = "#e2b714"
 COL_SUB_BG = "#2c2e31"
+
+# User-selectable accent color (defaults to the monkeytype yellow)
+_ACCENT: str = COL_ACCENT
+
+ACCENT_CHOICES: list[tuple[str, str]] = [
+    ("Yellow", "#e2b714"),
+    ("Green", "#7bd88f"),
+    ("Blue", "#74b6ff"),
+    ("Pink", "#ff7597"),
+    ("Purple", "#c792ea"),
+]
+
+
+def get_accent() -> str:
+    """Return the active accent color."""
+    return _ACCENT
+
+
+def set_accent(color: str) -> None:
+    """Set the accent color used for runtime-styled widgets.
+
+    Only strict hex colors are accepted to avoid Rich markup injection
+    from stored config values.
+    """
+    global _ACCENT
+    if isinstance(color, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+        _ACCENT = color
 
 
 def compute_consistency(char_timings: list[dict[str, Any]]) -> float:
@@ -169,7 +197,7 @@ class TypingScreen(Screen):
         with Center():
             with Vertical(id="typing-container"):
                 yield Static("", id="stats")
-                yield LineChart([], color=COL_ACCENT, id="live-chart")
+                yield LineChart([], color=get_accent(), id="live-chart")
                 yield Static("", id="text-display")
                 yield Input(id="input-area", password=False)
 
@@ -613,16 +641,16 @@ class TypingScreen(Screen):
         _, net_wpm, accuracy = self._wpm_parts(elapsed)
 
         t = Text()
-        t.append(f"{net_wpm:.0f}", style=f"bold {COL_ACCENT}")
+        t.append(f"{net_wpm:.0f}", style=f"bold {get_accent()}")
         t.append(" wpm   ", style=COL_DIM)
-        t.append(f"{accuracy:.0f}%", style=f"bold {COL_ACCENT}")
+        t.append(f"{accuracy:.0f}%", style=f"bold {get_accent()}")
         t.append(" acc   ", style=COL_DIM)
 
         if self.duration:
             remaining = max(0, self.duration - elapsed)
-            t.append(f"{remaining:.0f}s", style=f"bold {COL_ACCENT}")
+            t.append(f"{remaining:.0f}s", style=f"bold {get_accent()}")
         else:
-            t.append(f"{elapsed:.0f}s", style=f"bold {COL_ACCENT}")
+            t.append(f"{elapsed:.0f}s", style=f"bold {get_accent()}")
 
         if self._stats_widget is not None:
             self._stats_widget.update(t)
@@ -730,7 +758,7 @@ class ResultScreen(Screen):
         with Center():
             with Vertical(id="result-container"):
                 wpm_text = Text()
-                wpm_text.append(f"{r.wpm:.0f}", style=f"bold {COL_ACCENT}")
+                wpm_text.append(f"{r.wpm:.0f}", style=f"bold {get_accent()}")
                 wpm_text.append(" wpm", style=COL_DIM)
                 yield Static(wpm_text, classes="result-big")
                 from ttyping.storage import get_personal_best
@@ -739,7 +767,7 @@ class ResultScreen(Screen):
                 if pb > 0 and r.wpm > pb:
                     yield Static(
                         Text.from_markup(
-                            f"[{COL_ACCENT}]new personal best![/{COL_ACCENT}]"
+                            f"[{get_accent()}]new personal best![/{get_accent()}]"
                         ),
                         classes="result-title",
                     )
@@ -1164,7 +1192,7 @@ class HistoryScreen(Screen):
                         yield Static("wpm trend", classes="chart-title")
                         yield LineChart(
                             [r.wpm for r in recent_results],
-                            color=COL_ACCENT,
+                            color=get_accent(),
                         )
 
                     with Vertical(classes="chart-container"):
@@ -1911,6 +1939,50 @@ class OptionsScreen(ActionSelectMixin, Screen):
         self.app.pop_screen()
 
 
+class AccentMenu(ActionSelectMixin, Screen):
+    """Pick the accent color used for stats and highlights."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+    BINDINGS = [
+        Binding(key="enter", action="select", description="Select"),
+        Binding(key="escape", action="go_back", description="Back"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static("Accent Color", id="menu-title")
+                yield Static(escape(f"Current: {get_accent()}"), classes="about-text")
+                yield OptionList(
+                    *[
+                        Option(label, id=f"accent:{hex_color}")
+                        for label, hex_color in ACCENT_CHOICES
+                    ],
+                    id="menu-options",
+                )
+
+        yield Footer()
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        from ttyping.storage import load_config, save_config
+
+        opt_id = str(event.option_id)
+        app = cast("TypingApp", self.app)
+        if not opt_id.startswith("accent:"):
+            return
+
+        hex_color = opt_id.split(":", 1)[1]
+        set_accent(hex_color)
+        cfg = load_config()
+        cfg["accent"] = get_accent()
+        save_config(cfg)
+        app.notify(f"Accent set to {get_accent()}", title="Saved", timeout=2)
+        app.pop_screen()
+
+    def action_go_back(self) -> None:
+        self.app.pop_screen()
+
+
 class ThemeScreen(ActionSelectMixin, Screen):
     """Select dark or light theme."""
 
@@ -1931,6 +2003,7 @@ class ThemeScreen(ActionSelectMixin, Screen):
                 yield OptionList(
                     Option("🌙  Dark", id="dark"),
                     Option("☀️  Light", id="light"),
+                    Option("Accent Color ▶", id="accent"),
                     id="menu-options",
                 )
 
@@ -1941,6 +2014,9 @@ class ThemeScreen(ActionSelectMixin, Screen):
 
         opt_id = str(event.option_id)
         app = cast("TypingApp", self.app)
+        if opt_id == "accent":
+            app.push_screen(AccentMenu())
+            return
         app.theme = "textual-dark" if opt_id == "dark" else "textual-light"
 
         cfg = load_config()
@@ -2304,9 +2380,7 @@ class WeaknessScreen(ActionSelectMixin, Screen):
 
                     # Keyboard heatmap (layout-aware)
                     if layout in PRACTICE_SETS:
-                        yield Static(
-                            "▸ Keyboard Heatmap", classes="weakness-section"
-                        )
+                        yield Static("▸ Keyboard Heatmap", classes="weakness-section")
                         yield Static(
                             self._render_heatmap(layout, stats),
                             id="keyboard-heatmap",
