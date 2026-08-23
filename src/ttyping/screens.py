@@ -1724,7 +1724,7 @@ class OptionsScreen(ActionSelectMixin, Screen):
         if opt_id == "words":
             app.push_screen(WordCountInputScreen())
         elif opt_id == "time":
-            app.push_screen(TimeLimitInputScreen())
+            app.push_screen(TimeMenu())
         elif opt_id == "accuracy":
             app.push_screen(AccuracyMenu())
         elif opt_id == "theme":
@@ -1864,6 +1864,68 @@ class WordCountInputScreen(Screen):
         cfg["word_count"] = count
         save_config(cfg)
         app.notify(f"Words set to {count}", title="Saved", timeout=2)
+        app.pop_screen()
+
+    def action_go_back(self) -> None:
+        self.app.pop_screen()
+
+
+class TimeMenu(ActionSelectMixin, Screen):
+    """Quick-select menu for common time limit presets."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+    BINDINGS = [
+        Binding(key="enter", action="select", description="Select"),
+        Binding(key="escape", action="go_back", description="Back"),
+    ]
+
+    PRESETS: list[tuple[str, int | None]] = [
+        ("Off (Free Practice)", 0),
+        ("15 seconds", 15),
+        ("30 seconds", 30),
+        ("60 seconds", 60),
+        ("120 seconds", 120),
+    ]
+
+    def compose(self) -> ComposeResult:
+        app = cast("TypingApp", self.app)
+        current = "Off" if app._duration is None else f"{app._duration}s"
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static("Time Limit", id="menu-title")
+                yield Static(escape(f"Current: {current}"), classes="about-text")
+                options = [
+                    Option(label, id=f"time:{value}") for label, value in self.PRESETS
+                ]
+                yield OptionList(
+                    *options,
+                    Option("Custom…", id="time:custom"),
+                    id="menu-options",
+                )
+
+        yield Footer()
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        from ttyping.storage import load_config, save_config
+
+        opt_id = str(event.option_id)
+        app = cast("TypingApp", self.app)
+
+        if opt_id == "time:custom":
+            app.push_screen(TimeLimitInputScreen())
+            return
+        if not opt_id.startswith("time:"):
+            return
+
+        raw = opt_id.split(":", 1)[1]
+        duration: int | None = None if raw == "0" else int(raw)
+
+        app._duration = duration
+        cfg = load_config()
+        cfg["duration"] = duration
+        save_config(cfg)
+        msg = "Time limit cleared" if duration is None else f"Time set to {duration}s"
+        app.notify(msg, title="Saved", timeout=2)
         app.pop_screen()
 
     def action_go_back(self) -> None:
