@@ -9,6 +9,7 @@ from textual.widgets import OptionList
 from ttyping import storage
 from ttyping.app import TypingApp
 from ttyping.screens import (
+    CodeSubMenu,
     HistoryScreen,
     OptionsScreen,
     TimeLimitInputScreen,
@@ -472,5 +473,34 @@ def test_result_screen_shows_existing_pb() -> None:
             joined = " ".join(str(w.render()) for w in app.screen.query(Widget))
             assert "new personal best!" not in joined
             assert "pb 90" in joined
+
+    asyncio.run(run_test())
+
+
+def test_new_code_languages_loaded() -> None:
+    from ttyping.words import C_WORDS, GO_WORDS, TS_WORDS, get_words
+
+    assert len(GO_WORDS) > 20
+    assert len(C_WORDS) > 20
+    assert len(TS_WORDS) > 20
+
+    for lang, words in [("go", GO_WORDS), ("c", C_WORDS), ("typescript", TS_WORDS)]:
+        picked = get_words(lang, count=10)
+        assert len(picked) == 10
+        assert all(w in words for w in picked)
+
+
+def test_code_submenu_includes_new_languages() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = TypingApp()
+        async with app.run_test() as pilot:
+            await app.push_screen(CodeSubMenu())
+            await pilot.pause()
+            screen = app.screen
+            ol = screen.query_one("#menu-options", OptionList)
+            ids = [str(o.id) for o in ol.options]
+            assert {"go", "c", "typescript"} <= set(ids)
 
     asyncio.run(run_test())

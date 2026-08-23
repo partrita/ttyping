@@ -38,6 +38,9 @@ JS_WORDS: list[str] = _load_resource_words("javascript.txt")
 JL_WORDS: list[str] = _load_resource_words("julia.txt")
 TY_WORDS: list[str] = _load_resource_words("typst.txt")
 MD_WORDS: list[str] = _load_resource_words("markdown.txt")
+GO_WORDS: list[str] = _load_resource_words("go.txt")
+C_WORDS: list[str] = _load_resource_words("c.txt")
+TS_WORDS: list[str] = _load_resource_words("typescript.txt")
 
 
 # Practice character sets for different layouts
@@ -145,6 +148,9 @@ LAYOUT_TO_WORDS: dict[str, list[str]] = {
     "julia": JL_WORDS,
     "typst": TY_WORDS,
     "markdown": MD_WORDS,
+    "go": GO_WORDS,
+    "c": C_WORDS,
+    "typescript": TS_WORDS,
 }
 
 

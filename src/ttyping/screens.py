@@ -1426,6 +1426,9 @@ class CodeSubMenu(ActionSelectMixin, Screen):
                     Option("Rust", id="rust"),
                     Option("R", id="r"),
                     Option("JavaScript", id="javascript"),
+                    Option("TypeScript", id="typescript"),
+                    Option("Go", id="go"),
+                    Option("C", id="c"),
                     Option("Julia", id="julia"),
                     Option("Typst", id="typst"),
                     Option("Markdown", id="markdown"),
@@ -1449,6 +1452,9 @@ class CodeSubMenu(ActionSelectMixin, Screen):
             "r",
             "rust",
             "typst",
+            "typescript",
+            "go",
+            "c",
         ):
             app.start_custom_test(opt_id, app._word_count, app._duration)
 
