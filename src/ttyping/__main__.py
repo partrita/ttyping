@@ -16,6 +16,7 @@ def parse_args(args: Sequence[str] | None = None) -> argparse.Namespace:
         choices=[
             "en_qwerty",
             "en_dvorak",
+            "en_colemak",
             "ko_2set",
             "ko_3set",
             "en",
@@ -23,6 +24,14 @@ def parse_args(args: Sequence[str] | None = None) -> argparse.Namespace:
             "python",
             "rust",
             "r",
+            "javascript",
+            "julia",
+            "typst",
+            "markdown",
+            "en_sentences",
+            "ko_sentences",
+            "en_lorem_ipsum",
+            "ko_lorem_ipsum",
         ],
         help="language for random words",
     )

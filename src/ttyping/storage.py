@@ -301,16 +301,16 @@ def save_result(result: TypingResult) -> None:
     """Append a result to the local storage."""
     global _RESULTS_CACHE
     _ensure_storage()
-    results = load_results()
+    results = load_results().copy()
     if not result.date:
         result.date = datetime.now(timezone.utc).isoformat()
 
-    # O(1) append
+    # O(1) append; only update the cache after the write succeeds
     jsonl_line = json.dumps(result.to_dict(), ensure_ascii=False) + "\n"
     _secure_append(RESULTS_FILE, jsonl_line)
 
-    # Update cache
     results.append(result)
+    _RESULTS_CACHE = results
 
 
 def load_results() -> list[TypingResult]:

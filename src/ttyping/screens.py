@@ -119,6 +119,8 @@ class TypingScreen(Screen):
         self._cached_lines: list[list[int]] | None = None
         self._last_container_width: int = 0
         self._stats_widget: Static | None = None
+        self._display_widget: Static | None = None
+        self._input_widget: Input | None = None
         self._shaking: bool = False
 
     def compose(self) -> ComposeResult:
@@ -132,7 +134,9 @@ class TypingScreen(Screen):
 
     def on_mount(self) -> None:
         self._stats_widget = self.query_one("#stats", Static)
-        self.query_one("#input-area", Input).focus()
+        self._display_widget = self.query_one("#text-display", Static)
+        self._input_widget = self.query_one("#input-area", Input)
+        self._input_widget.focus()
         # Initial render will happen after layout
 
     def on_resize(self, event: events.Resize) -> None:
@@ -141,10 +145,10 @@ class TypingScreen(Screen):
         self._render_display()
 
     def _shake_input(self) -> None:
-        if self._shaking:
+        if self._shaking or self._input_widget is None:
             return
         self._shaking = True
-        inp = self.query_one("#input-area", Input)
+        inp = self._input_widget
         inp.add_class("typo")
 
         # Shake: Move slightly to the right, then left, then back
@@ -160,7 +164,26 @@ class TypingScreen(Screen):
 
     # ── input handling ─────────────────────────────────────────────────
 
+    def _is_char_correct(self, typed_char: str, target_char: str) -> bool:
+        """Compare typed vs target char with Korean IME partial-match support.
+
+        A partially composed syllable (e.g. typing 'ㄱ' toward '가') counts
+        as correct so intermediate IME states are not penalized.
+        """
+        if typed_char == target_char:
+            return True
+        if self.lang.startswith("ko"):
+            c_jamo = _get_jamos(target_char)
+            if c_jamo.startswith(_get_jamos(typed_char)):
+                return True
+        return False
+
     def _handle_ime_update(self, value: str) -> bool:
+        """Handle an IME composition step (length unchanged, content changed).
+
+        Each composition step is one physical keystroke, so it must be
+        counted to keep Korean WPM/accuracy accurate.
+        """
         has_error = False
         # We update the last timing entry if it's the same position
         if (
@@ -172,10 +195,16 @@ class TypingScreen(Screen):
             target_word = self.words[self.current_word_idx]
             char = value[last_idx]
             is_correct = (
-                char == target_word[last_idx]
+                self._is_char_correct(char, target_word[last_idx])
                 if last_idx < len(target_word)
                 else (char == " ")
             )
+
+            # Count the physical keystroke behind this composition step
+            self.total_keystrokes += 1
+            if not is_correct:
+                self.total_errors += 1
+                has_error = True
 
             self.char_timings[-1].update(
                 {
@@ -184,9 +213,6 @@ class TypingScreen(Screen):
                     "correct": is_correct,
                 }
             )
-            # Re-check error for shaking
-            if not is_correct:
-                has_error = True
         return has_error
 
     def _handle_normal_addition(self, added: str) -> bool:
@@ -197,7 +223,7 @@ class TypingScreen(Screen):
             idx = len(self.current_input) + i
             is_correct = True
             if idx < len(target_word):
-                if char != target_word[idx]:
+                if not self._is_char_correct(char, target_word[idx]):
                     self.total_errors += 1
                     has_error = True
                     is_correct = False
@@ -277,20 +303,21 @@ class TypingScreen(Screen):
     def on_key(self, event: events.Key) -> None:
         if self._finished:
             return
+        inp = self._input_widget
         # Enter also completes the current word (handy for last word)
         if event.key == "ctrl+w":
             event.prevent_default()
-            self.query_one("#input-area", Input).value = ""
+            if inp is not None:
+                inp.value = ""
         elif event.key == "enter":
             event.prevent_default()
-            inp = self.query_one("#input-area", Input)
-            if inp.value:
+            if inp is not None and inp.value:
                 self.total_keystrokes += 1
                 self._complete_word(inp.value)
                 inp.value = ""
 
-    def _get_current_stats(self) -> dict[str, Any]:
-        elapsed = time.time() - self.start_time if self.start_time else 0.01
+    def _wpm_parts(self, elapsed: float) -> tuple[float, float, float]:
+        """Compute (gross_wpm, net_wpm, accuracy) from the current counters."""
         minutes = elapsed / 60
         if minutes <= 0:
             minutes = 0.001
@@ -305,6 +332,11 @@ class TypingScreen(Screen):
             )
             * 100
         )
+        return gross_wpm, net_wpm, accuracy
+
+    def _get_current_stats(self) -> dict[str, Any]:
+        elapsed = time.time() - self.start_time if self.start_time else 0.01
+        gross_wpm, net_wpm, accuracy = self._wpm_parts(elapsed)
         return {
             "wpm": round(net_wpm, 1),
             "gross_wpm": round(gross_wpm, 1),
@@ -384,20 +416,7 @@ class TypingScreen(Screen):
             self._timer_handle.stop()
 
         elapsed = time.time() - self.start_time if self.start_time else 0.01
-        minutes = elapsed / 60
-        if minutes <= 0:
-            minutes = 0.001
-
-        gross_wpm = (self.total_keystrokes / 5) / minutes
-        net_wpm = max(0, gross_wpm - (self.uncorrected_errors / minutes))
-        accuracy = (
-            max(
-                0,
-                (self.total_keystrokes - self.total_errors)
-                / max(self.total_keystrokes, 1),
-            )
-            * 100
-        )
+        gross_wpm, net_wpm, accuracy = self._wpm_parts(elapsed)
         correct_words = self.current_word_idx - self.uncorrected_errors
 
         # Get top errors
@@ -426,7 +445,6 @@ class TypingScreen(Screen):
     def _get_word_text(self, i: int) -> Text:
         word = self.words[i]
         t = Text()
-        is_ko = self.lang.startswith("ko")
 
         if i < self.current_word_idx:
             if self.word_correct[i]:
@@ -437,17 +455,7 @@ class TypingScreen(Screen):
             typed = self.current_input
             for j, ch in enumerate(word):
                 if j < len(typed):
-                    typed_char = typed[j]
-                    correct = typed_char == ch
-                    if not correct and is_ko:
-                        # For Korean, handle IME composition states
-                        # (e.g. typing 'ㄱ' for '가' should be bold correct)
-                        t_jamo = _get_jamos(typed_char)
-                        c_jamo = _get_jamos(ch)
-                        if c_jamo.startswith(t_jamo):
-                            correct = True
-
-                    if correct:
+                    if self._is_char_correct(typed[j], ch):
                         t.append(ch, style=f"bold {COL_CORRECT}")
                     else:
                         t.append(ch, style=f"bold {COL_ERROR}")
@@ -500,7 +508,7 @@ class TypingScreen(Screen):
         # 1. previous line
         # 2. current line (containing active word)
         # 3. next line
-        display_widget = self.query_one("#text-display", Static)
+        display_widget = self._display_widget or self.query_one("#text-display", Static)
         container_width = display_widget.content_size.width
         if container_width <= 0:
             # Fallback for initial render if size not yet calculated
@@ -525,7 +533,7 @@ class TypingScreen(Screen):
                 display_text.append(self._get_word_text(word_idx))
             display_text.append("\n")
 
-        self.query_one("#text-display", Static).update(display_text)
+        display_widget.update(display_text)
 
     def _update_stats(self) -> None:
         if self.start_time is None:
@@ -534,20 +542,7 @@ class TypingScreen(Screen):
             return
 
         elapsed = time.time() - self.start_time
-        minutes = elapsed / 60
-        if minutes <= 0:
-            minutes = 0.001
-
-        gross_wpm = (self.total_keystrokes / 5) / minutes
-        net_wpm = max(0, gross_wpm - (self.uncorrected_errors / minutes))
-        accuracy = (
-            max(
-                0,
-                (self.total_keystrokes - self.total_errors)
-                / max(self.total_keystrokes, 1),
-            )
-            * 100
-        )
+        _, net_wpm, accuracy = self._wpm_parts(elapsed)
 
         t = Text()
         t.append(f"{net_wpm:.0f}", style=f"bold {COL_ACCENT}")
@@ -1122,10 +1117,13 @@ class HistoryScreen(Screen):
                 self.app.push_screen(ResultScreen(results[storage_idx]))
 
     def action_go_back(self) -> None:
-        if len(self.app.screen_stack) > 1:
-            self.app.pop_screen()
-        else:
+        stack = self.app.screen_stack
+        # Opened directly (e.g. `ttyping history`): the only screen beneath
+        # is the app's blank default Screen, so exiting is more natural.
+        if len(stack) <= 2 and type(stack[0]) is Screen:
             self.app.exit()
+        else:
+            self.app.pop_screen()
 
     def action_delete_selected(self) -> None:
         """Delete the row currently highlighted in the table."""
@@ -1471,6 +1469,57 @@ class KOSubMenu(ActionSelectMixin, Screen):
         self.app.pop_screen()
 
 
+_PRACTICE_TITLES: dict[str, str] = {
+    "en_qwerty": "QWERTY Practice",
+    "en_dvorak": "Dvorak Practice",
+    "en_colemak": "Colemak Practice",
+    "ko_2set": "두벌식 연습",
+    "ko_3set": "세벌식 연습",
+}
+
+_PRACTICE_OPTIONS_EN: list[tuple[str, str]] = [
+    ("Words", "full:words"),
+    ("Sentences", "full:sentences"),
+    ("Lorem Ipsum", "full:lorem_ipsum"),
+    ("Home Row", "practice:home_row"),
+    ("Top Row", "practice:top_row"),
+    ("Bottom Row", "practice:bottom_row"),
+    ("Number Row (1-0)", "practice:number_row"),
+    ("Symbol Row (!@#...)", "practice:symbol_row"),
+    ("Left Hand", "practice:left_hand"),
+    ("Right Hand", "practice:right_hand"),
+    ("Left Index", "practice:left_index"),
+    ("Right Index", "practice:right_index"),
+    ("Left Middle", "practice:left_middle"),
+    ("Right Middle", "practice:right_middle"),
+    ("Left Ring", "practice:left_ring"),
+    ("Right Ring", "practice:right_ring"),
+    ("Left Pinky", "practice:left_pinky"),
+    ("Right Pinky", "practice:right_pinky"),
+]
+
+_PRACTICE_OPTIONS_KO: list[tuple[str, str]] = [
+    ("단어", "full:words"),
+    ("짧은 글", "full:sentences"),
+    ("로렘 입숨", "full:lorem_ipsum"),
+    ("가운데 줄", "practice:home_row"),
+    ("윗 줄", "practice:top_row"),
+    ("아랫 줄", "practice:bottom_row"),
+    ("숫자 줄 (1-0)", "practice:number_row"),
+    ("특수문자 (!@#...)", "practice:symbol_row"),
+    ("왼손 자음", "practice:left_hand"),
+    ("오른손 모음", "practice:right_hand"),
+    ("왼손 검지", "practice:left_index"),
+    ("오른손 검지", "practice:right_index"),
+    ("왼손 중지", "practice:left_middle"),
+    ("오른손 중지", "practice:right_middle"),
+    ("왼손 약지", "practice:left_ring"),
+    ("오른손 약지", "practice:right_ring"),
+    ("왼손 새끼", "practice:left_pinky"),
+    ("오른손 새끼", "practice:right_pinky"),
+]
+
+
 class PracticeMenu(ActionSelectMixin, Screen):
     """Menu for selecting specific practice sets (hands, rows, etc.)."""
 
@@ -1485,119 +1534,15 @@ class PracticeMenu(ActionSelectMixin, Screen):
         self.layout_id = layout_id
 
     def compose(self) -> ComposeResult:
-        title = f"{self.layout_id.upper()} Practice"
-        if self.layout_id == "en_qwerty":
-            title = "QWERTY Practice"
-            options = [
-                Option("Words", id="full:words"),
-                Option("Sentences", id="full:sentences"),
-                Option("Lorem Ipsum", id="full:lorem_ipsum"),
-                Option("Home Row", id="practice:home_row"),
-                Option("Top Row", id="practice:top_row"),
-                Option("Bottom Row", id="practice:bottom_row"),
-                Option("Number Row (1-0)", id="practice:number_row"),
-                Option("Symbol Row (!@#...)", id="practice:symbol_row"),
-                Option("Left Hand", id="practice:left_hand"),
-                Option("Right Hand", id="practice:right_hand"),
-                Option("Left Index", id="practice:left_index"),
-                Option("Right Index", id="practice:right_index"),
-                Option("Left Middle", id="practice:left_middle"),
-                Option("Right Middle", id="practice:right_middle"),
-                Option("Left Ring", id="practice:left_ring"),
-                Option("Right Ring", id="practice:right_ring"),
-                Option("Left Pinky", id="practice:left_pinky"),
-                Option("Right Pinky", id="practice:right_pinky"),
-            ]
-        elif self.layout_id == "en_dvorak":
-            title = "Dvorak Practice"
-            options = [
-                Option("Words", id="full:words"),
-                Option("Sentences", id="full:sentences"),
-                Option("Lorem Ipsum", id="full:lorem_ipsum"),
-                Option("Home Row", id="practice:home_row"),
-                Option("Top Row", id="practice:top_row"),
-                Option("Bottom Row", id="practice:bottom_row"),
-                Option("Number Row (1-0)", id="practice:number_row"),
-                Option("Symbol Row (!@#...)", id="practice:symbol_row"),
-                Option("Left Hand", id="practice:left_hand"),
-                Option("Right Hand", id="practice:right_hand"),
-                Option("Left Index", id="practice:left_index"),
-                Option("Right Index", id="practice:right_index"),
-                Option("Left Middle", id="practice:left_middle"),
-                Option("Right Middle", id="practice:right_middle"),
-                Option("Left Ring", id="practice:left_ring"),
-                Option("Right Ring", id="practice:right_ring"),
-                Option("Left Pinky", id="practice:left_pinky"),
-                Option("Right Pinky", id="practice:right_pinky"),
-            ]
-        elif self.layout_id == "en_colemak":
-            title = "Colemak Practice"
-            options = [
-                Option("Words", id="full:words"),
-                Option("Sentences", id="full:sentences"),
-                Option("Lorem Ipsum", id="full:lorem_ipsum"),
-                Option("Home Row", id="practice:home_row"),
-                Option("Top Row", id="practice:top_row"),
-                Option("Bottom Row", id="practice:bottom_row"),
-                Option("Number Row (1-0)", id="practice:number_row"),
-                Option("Symbol Row (!@#...)", id="practice:symbol_row"),
-                Option("Left Hand", id="practice:left_hand"),
-                Option("Right Hand", id="practice:right_hand"),
-                Option("Left Index", id="practice:left_index"),
-                Option("Right Index", id="practice:right_index"),
-                Option("Left Middle", id="practice:left_middle"),
-                Option("Right Middle", id="practice:right_middle"),
-                Option("Left Ring", id="practice:left_ring"),
-                Option("Right Ring", id="practice:right_ring"),
-                Option("Left Pinky", id="practice:left_pinky"),
-                Option("Right Pinky", id="practice:right_pinky"),
-            ]
-        elif self.layout_id == "ko_2set":
-            title = "두벌식 연습"
-            options = [
-                Option("단어", id="full:words"),
-                Option("짧은 글", id="full:sentences"),
-                Option("로렘 입숨", id="full:lorem_ipsum"),
-                Option("가운데 줄", id="practice:home_row"),
-                Option("윗 줄", id="practice:top_row"),
-                Option("아랫 줄", id="practice:bottom_row"),
-                Option("숫자 줄 (1-0)", id="practice:number_row"),
-                Option("특수문자 (!@#...)", id="practice:symbol_row"),
-                Option("왼손 자음", id="practice:left_hand"),
-                Option("오른손 모음", id="practice:right_hand"),
-                Option("왼손 검지", id="practice:left_index"),
-                Option("오른손 검지", id="practice:right_index"),
-                Option("왼손 중지", id="practice:left_middle"),
-                Option("오른손 중지", id="practice:right_middle"),
-                Option("왼손 약지", id="practice:left_ring"),
-                Option("오른손 약지", id="practice:right_ring"),
-                Option("왼손 새끼", id="practice:left_pinky"),
-                Option("오른손 새끼", id="practice:right_pinky"),
-            ]
-        elif self.layout_id == "ko_3set":
-            title = "세벌식 연습"
-            options = [
-                Option("단어", id="full:words"),
-                Option("짧은 글", id="full:sentences"),
-                Option("로렘 입숨", id="full:lorem_ipsum"),
-                Option("가운데 줄", id="practice:home_row"),
-                Option("윗 줄", id="practice:top_row"),
-                Option("아랫 줄", id="practice:bottom_row"),
-                Option("숫자 줄 (1-0)", id="practice:number_row"),
-                Option("특수문자 (!@#...)", id="practice:symbol_row"),
-                Option("왼손 자음", id="practice:left_hand"),
-                Option("오른손 모음", id="practice:right_hand"),
-                Option("왼손 검지", id="practice:left_index"),
-                Option("오른손 검지", id="practice:right_index"),
-                Option("왼손 중지", id="practice:left_middle"),
-                Option("오른손 중지", id="practice:right_middle"),
-                Option("왼손 약지", id="practice:left_ring"),
-                Option("오른손 약지", id="practice:right_ring"),
-                Option("왼손 새끼", id="practice:left_pinky"),
-                Option("오른손 새끼", id="practice:right_pinky"),
-            ]
-        else:
-            options = [Option("25 words", id="full:25")]
+        title = _PRACTICE_TITLES.get(
+            self.layout_id, f"{self.layout_id.upper()} Practice"
+        )
+        entries = (
+            _PRACTICE_OPTIONS_KO
+            if self.layout_id.startswith("ko")
+            else _PRACTICE_OPTIONS_EN
+        )
+        options = [Option(label, id=opt_id) for label, opt_id in entries]
         with Center():
             with Vertical(id="menu-container"):
                 yield Static(escape(title), id="menu-title")
@@ -1729,14 +1674,6 @@ class AccuracyMenu(ActionSelectMixin, Screen):
         )
         app.notify(f"Accuracy set to {label}", title="Saved", timeout=2)
         app.pop_screen()
-
-    def action_quit_app(self) -> None:
-        self.app.exit()
-
-    BINDINGS = [
-        Binding(key="enter", action="select", description="Select"),
-        Binding(key="escape", action="go_back", description="Back"),
-    ]
 
     def action_go_back(self) -> None:
         self.app.pop_screen()
@@ -1898,7 +1835,7 @@ class WordCountInputScreen(Screen):
                     placeholder="Number of words (e.g. 25)",
                     id="words-input",
                     type="integer",
-                    max_length=3,
+                    max_length=4,
                 )
 
         yield Footer()
@@ -1913,12 +1850,12 @@ class WordCountInputScreen(Screen):
         value = event.value.strip()
         try:
             count = int(value)
-            if not 1 <= count <= 200:
+            if not 1 <= count <= 1000:
                 raise ValueError
         except ValueError:
             self.query_one(
                 "#words-input", Input
-            ).border_title = "⚠ Enter a number from 1 to 200"
+            ).border_title = "⚠ Enter a number from 1 to 1000"
             return
 
         app = cast("TypingApp", self.app)

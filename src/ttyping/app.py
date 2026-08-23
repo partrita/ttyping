@@ -146,7 +146,6 @@ class TypingApp(App):
         from ttyping.storage import load_config
 
         config = load_config()
-        self.TITLE: str = "ttyping"
 
         # Safe type validation for string configs
         saved_lang = config.get("lang")
