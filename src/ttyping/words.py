@@ -183,7 +183,7 @@ def _words_from_text_pool(
         # Unknown lang falls back to the first pool
         source = next(iter(sources.values()))
     if not source:
-        return [fallback_msg]
+        source = [fallback_msg]
     words: list[str] = []
     for s in random.choices(source, k=count):
         words.extend(s.split())
