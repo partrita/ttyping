@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -831,5 +833,77 @@ def test_accent_menu_selection_persists() -> None:
 
             assert get_accent() == "#ff7597"
             assert storage.load_config()["accent"] == "#ff7597"
+
+    asyncio.run(run_test())
+
+
+def test_words_from_url_parses_and_caps() -> None:
+    from unittest.mock import patch
+
+    from ttyping.words import words_from_url
+
+    class FakeResp:
+        def __init__(self, payload: bytes) -> None:
+            self.payload = payload
+
+        def read(self, n: int) -> bytes:
+            return self.payload[:n]
+
+        def __enter__(self) -> FakeResp:
+            return self
+
+        def __exit__(self, *a: object) -> None:
+            pass
+
+    with patch("urllib.request.urlopen", return_value=FakeResp(b"alpha beta\ngamma\n")):
+        words = words_from_url("https://example.com/words.txt", count=10)
+        assert words == ["alpha", "beta", "gamma"]
+
+
+def test_words_from_url_rejects_non_http() -> None:
+    import pytest
+
+    from ttyping.words import words_from_url
+
+    with pytest.raises(ValueError):
+        words_from_url("file:///etc/passwd")
+
+
+def test_words_from_url_count_cap() -> None:
+    from unittest.mock import patch
+
+    from ttyping.words import words_from_url
+
+    class FakeResp:
+        payload = b"w1 w2 w3 w4 w5"
+
+        def read(self, n: int) -> bytes:
+            return self.payload[:n]
+
+        def __enter__(self) -> FakeResp:
+            return self
+
+        def __exit__(self, *a: object) -> None:
+            pass
+
+    with patch("urllib.request.urlopen", return_value=FakeResp()):
+        assert words_from_url("http://x.com/t.txt", count=3) == ["w1", "w2", "w3"]
+        assert len(words_from_url("http://x.com/t.txt")) == 5
+
+
+def test_app_uses_url_words(monkeypatch: object) -> None:
+    import asyncio
+    from unittest.mock import patch
+
+    async def run_test() -> None:
+        app = TypingApp(lang="en_qwerty", word_count=25, url="http://x.com/t.txt")
+        async with app.run_test():
+            with patch(
+                "ttyping.app.words_from_url",
+                return_value=["url", "words"],
+            ) as m:
+                words = app._get_words()
+                assert m.called
+                assert words == ["url", "words"]
 
     asyncio.run(run_test())

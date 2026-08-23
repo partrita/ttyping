@@ -46,6 +46,11 @@ def parse_args(args: Sequence[str] | None = None) -> argparse.Namespace:
         help="path to a text file for typing practice",
     )
     parser.add_argument(
+        "--url",
+        type=str,
+        help="URL of a remote text file for typing practice",
+    )
+    parser.add_argument(
         "--words",
         type=int,
         help="number of words to type (max: 1000)",
@@ -89,6 +94,7 @@ def main() -> None:
             duration=args.time,
             target_accuracy=args.target_accuracy,
             show_history=args.command == "history",
+            url=args.url,
         )
         app.run()
     except Exception as e:

@@ -456,6 +456,40 @@ def words_from_file(path: str, count: int = 25) -> list[str]:
     return words
 
 
+def words_from_url(url: str, count: int = 25) -> list[str]:
+    """Fetch words from a remote text file over HTTP(S).
+
+    Security limits: only http/https schemes, a 10s timeout, and a 10MB
+    response cap.
+    """
+    from urllib import request as _request
+    from urllib.error import URLError
+
+    if count <= 0:
+        return []
+    if not url.lower().startswith(("http://", "https://")):
+        raise ValueError("Only http(s) URLs are supported")
+
+    try:
+        with _request.urlopen(url, timeout=10) as resp:  # noqa: S310 (scheme-checked)
+            data = resp.read(10_000_001)
+    except (URLError, OSError) as e:
+        raise ValueError(f"Could not fetch URL: {url}") from e
+
+    if len(data) > 10_000_000:
+        raise ValueError(f"'{url}' is too large (max 10MB)")
+
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as e:
+        raise ValueError(f"'{url}' is not valid UTF-8") from e
+
+    words = text.split()
+    if not words:
+        raise ValueError(f"No words found at {url}")
+    return words[:count]
+
+
 # Human-readable finger labels
 FINGER_LABELS: dict[str, str] = {
     "left_pinky": "Left Pinky",

@@ -8,7 +8,7 @@ from textual.widgets import Footer
 
 from ttyping.screens import HistoryScreen, TypingScreen
 from ttyping.storage import TypingResult
-from ttyping.words import get_weak_drill, get_words, words_from_file
+from ttyping.words import get_weak_drill, get_words, words_from_file, words_from_url
 
 
 class TypingApp(App):
@@ -141,6 +141,7 @@ class TypingApp(App):
         duration: int | None = None,
         target_accuracy: float | None = None,
         show_history: bool = False,
+        url: str | None = None,
     ) -> None:
         super().__init__()
         from ttyping.storage import load_config
@@ -159,6 +160,7 @@ class TypingApp(App):
         self._file_path: str | None = (
             file_path if isinstance(file_path, str) else None
         ) or parsed_file
+        self._url: str | None = url
 
         # Safe cast for word_count
         saved_wc = config.get("word_count", 25)
@@ -257,6 +259,8 @@ class TypingApp(App):
         words: list[str]
         if self._file_path:
             words = words_from_file(self._file_path, count)
+        elif self._url:
+            words = words_from_url(self._url, count)
         else:
             words = get_words(self._lang, count)
 
@@ -296,6 +300,7 @@ class TypingApp(App):
         self._word_count = words
         self._duration = duration
         self._file_path = None
+        self._url = None
         self._session_attempts = []
         self._current_session_words = None
         self._start_typing(keep_words=False)
