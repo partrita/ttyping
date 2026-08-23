@@ -186,8 +186,16 @@ def test_export_csv_and_json(tmp_path: Path) -> None:
         )
     )
     save_result(
-        TypingResult(wpm=80.0, accuracy=98.0, time=25.0, lang="ko", words=15,
-                     correct=15, keystrokes=90, errors=0)
+        TypingResult(
+            wpm=80.0,
+            accuracy=98.0,
+            time=25.0,
+            lang="ko",
+            words=15,
+            correct=15,
+            keystrokes=90,
+            errors=0,
+        )
     )
 
     csv_path = tmp_path / "out.csv"
@@ -198,7 +206,8 @@ def test_export_csv_and_json(tmp_path: Path) -> None:
         rows = list(_csv.DictReader(f))
     assert len(rows) == 2
     assert float(rows[0]["wpm"]) == 72.5
-    assert '"a", 1' in rows[0]["top_char_errors"] or "'a', 1" in rows[0]["top_char_errors"]
+    errors = rows[0]["top_char_errors"]
+    assert '"a", 1' in errors or "'a', 1" in errors
 
     json_path = tmp_path / "out.json"
     assert export_results_json(json_path) == 2
@@ -223,8 +232,16 @@ def test_history_screen_export_actions() -> None:
         from ttyping.storage import EXPORT_CSV_FILE, TypingResult, save_result
 
         save_result(
-            TypingResult(wpm=50.0, accuracy=90.0, time=10.0, lang="en",
-                         words=5, correct=5, keystrokes=30, errors=0)
+            TypingResult(
+                wpm=50.0,
+                accuracy=90.0,
+                time=10.0,
+                lang="en",
+                words=5,
+                correct=5,
+                keystrokes=30,
+                errors=0,
+            )
         )
         app = TypingApp()
         async with app.run_test() as pilot:
