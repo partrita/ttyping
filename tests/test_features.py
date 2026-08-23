@@ -94,9 +94,20 @@ def test_time_menu_custom_opens_input_screen() -> None:
 
 
 class SoundTypingApp(App):
+    last_result: object = None
+
     def __init__(self, **kwargs: object) -> None:
         super().__init__()
         self._sound = True
+
+    def show_result(self, result: object) -> None:
+        self.last_result = result
+
+    def restart(self) -> None:
+        pass
+
+    def reset_session_attempt(self, stats: object) -> None:
+        pass
 
     def on_mount(self) -> None:
         self.push_screen(TypingScreen(["apple", "banana"], lang="en"))
@@ -256,5 +267,75 @@ def test_history_screen_export_actions() -> None:
             await pilot.pause()
 
             assert EXPORT_CSV_FILE.exists()
+
+    asyncio.run(run_test())
+
+
+def test_compute_consistency() -> None:
+    from ttyping.screens import compute_consistency
+
+    # Perfectly even rhythm -> high consistency
+    even = [{"time": float(i)} for i in range(20)]
+    assert compute_consistency(even) == 100.0
+
+    # Erratic rhythm -> low consistency
+    erratic = []
+    t = 0.0
+    for gap in [0.1, 2.0, 0.1, 3.0, 0.2, 0.5, 4.0, 0.1]:
+        t += gap
+        erratic.append({"time": t})
+    assert compute_consistency(erratic) < 50.0
+
+    # Too few samples / empty / malformed -> 0
+    assert compute_consistency([]) == 0.0
+    assert compute_consistency([{"time": 1.0}]) == 0.0
+    assert compute_consistency([{"time": "x"}]) == 0.0
+
+
+def test_end_test_stores_consistency() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = SoundTypingApp()
+        async with app.run_test() as pilot:
+            screen = app.screen
+            assert isinstance(screen, TypingScreen)
+            await pilot.press("a", "p", "p", "l", "e", "space")
+            await pilot.press("b", "a", "n", "a", "n", "a")
+            screen._end_test()
+            result = app.last_result
+            assert result is not None
+            assert result.consistency >= 0.0
+
+    asyncio.run(run_test())
+
+
+def test_history_table_has_consistency_column() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        from ttyping.storage import TypingResult, save_result
+
+        save_result(
+            TypingResult(
+                wpm=60.0,
+                accuracy=95.0,
+                time=12.0,
+                lang="en",
+                words=6,
+                correct=6,
+                keystrokes=40,
+                errors=0,
+            )
+        )
+        app = TypingApp()
+        async with app.run_test() as pilot:
+            await app.push_screen(HistoryScreen())
+            await pilot.pause()
+            screen = app.screen
+            assert isinstance(screen, HistoryScreen)
+            table = screen.query_one("#history-table")
+            columns = [str(c.label) for c in table.ordered_columns]
+            assert "Cons" in columns
 
     asyncio.run(run_test())

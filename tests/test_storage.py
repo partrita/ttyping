@@ -421,7 +421,8 @@ def test_load_results_migrates_legacy_json(
     expected = (
         '{"wpm": 60.0, "accuracy": 0.0, "time": 0.0, "lang": "en", '
         '"words": 0, "correct": 0, "keystrokes": 0, "errors": 0, '
-        '"gross_wpm": 0.0, "top_char_errors": [], "char_timings": [], '
+        '"gross_wpm": 0.0, "consistency": 0.0, '
+        '"top_char_errors": [], "char_timings": [], '
         '"text": "", "date": "2023-01-01T00:00:00Z"}\n'
     )
     assert new_data == expected

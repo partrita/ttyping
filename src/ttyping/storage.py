@@ -36,6 +36,7 @@ class TypingResult:
     keystrokes: int
     errors: int
     gross_wpm: float = 0.0
+    consistency: float = 0.0
     top_char_errors: list[tuple[str, int]] = field(default_factory=list)
     char_timings: list[dict[str, Any]] = field(default_factory=list)
     text: str = ""
@@ -85,6 +86,7 @@ class TypingResult:
                 keystrokes=int(data.get("keystrokes", 0)),
                 errors=int(data.get("errors", 0)),
                 gross_wpm=float(data.get("gross_wpm", 0)),
+                consistency=float(data.get("consistency", 0)),
                 top_char_errors=top_char_errors,
                 char_timings=char_timings,
                 text=str(data.get("text", "")),

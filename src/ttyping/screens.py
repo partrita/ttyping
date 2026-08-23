@@ -42,6 +42,30 @@ COL_ACCENT = "#e2b714"
 COL_SUB_BG = "#2c2e31"
 
 
+def compute_consistency(char_timings: list[dict[str, Any]]) -> float:
+    """Compute keystroke rhythm consistency (0-100%) from char timings.
+
+    Based on the inverse coefficient of variation of inter-key intervals,
+    similar to monkeytype. Long pauses (>5s, e.g. breaks) are ignored.
+    """
+    diffs = [
+        t["time"] - s["time"]
+        for s, t in zip(char_timings, char_timings[1:], strict=False)
+        if isinstance(s.get("time"), (int, float))
+        and isinstance(t.get("time"), (int, float))
+    ]
+    diffs = [d for d in diffs if 0 <= d <= 5.0]
+    if len(diffs) < 2:
+        return 0.0
+
+    mean = sum(diffs) / len(diffs)
+    if mean <= 0:
+        return 0.0
+    variance = sum((d - mean) ** 2 for d in diffs) / len(diffs)
+    sd = variance**0.5
+    return round(max(0.0, min(100.0, 100 * (1 - sd / mean))), 1)
+
+
 # ── TypingScreen ───────────────────────────────────────────────────────────
 
 
@@ -434,6 +458,7 @@ class TypingScreen(Screen):
             correct=correct_words,
             keystrokes=self.total_keystrokes,
             errors=self.total_errors,
+            consistency=compute_consistency(self.char_timings),
             top_char_errors=top_char_errors,
             char_timings=self.char_timings,
             text=" ".join(self.words[: self.current_word_idx]),
@@ -662,6 +687,8 @@ class ResultScreen(Screen):
                 detail = Text()
                 detail.append(f"{r.time:.1f}s", style=COL_TEXT)
                 detail.append(f"  ·  {r.correct}/{r.words} words", style=COL_DIM)
+                if r.consistency:
+                    detail.append(f"  ·  {r.consistency:.0f}% cons", style=COL_DIM)
                 detail.append(f"  ·  {r.lang}", style=COL_DIM)
                 yield Static(detail, classes="result-detail")
 
@@ -1088,7 +1115,7 @@ class HistoryScreen(Screen):
         """Create a table showing the last 50 typing results (newest first)."""
         table: DataTable[str] = DataTable(id="history-table")
         table.cursor_type = "row"
-        table.add_columns("#", "Date", "WPM", "Acc", "Lang", "Time", "Words")
+        table.add_columns("#", "Date", "WPM", "Acc", "Cons", "Lang", "Time", "Words")
 
         for display_idx, storage_idx in enumerate(row_indices, 1):
             r = results[storage_idx]
@@ -1105,6 +1132,7 @@ class HistoryScreen(Screen):
                 escape(date_str),
                 f"{r.wpm:.0f}",
                 f"{r.accuracy:.1f}%",
+                f"{r.consistency:.0f}%",
                 escape(r.lang),
                 f"{r.time:.0f}s",
                 f"{r.correct}/{r.words}",
