@@ -1563,6 +1563,7 @@ class CodeSubMenu(ActionSelectMixin, Screen):
                     Option("Julia", id="julia"),
                     Option("Typst", id="typst"),
                     Option("Markdown", id="markdown"),
+                    Option("Japanese Romaji(일본어 로마자)", id="ja_romaji"),
                     Option("Back", id="back"),
                     id="menu-options",
                 )
@@ -1586,6 +1587,7 @@ class CodeSubMenu(ActionSelectMixin, Screen):
             "typescript",
             "go",
             "c",
+            "ja_romaji",
         ):
             app.start_custom_test(opt_id, app._word_count, app._duration)
 

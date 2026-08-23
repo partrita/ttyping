@@ -31,6 +31,7 @@ def parse_args(args: Sequence[str] | None = None) -> argparse.Namespace:
             "go",
             "c",
             "typescript",
+            "ja_romaji",
             "en_sentences",
             "ko_sentences",
             "en_lorem_ipsum",

@@ -998,3 +998,29 @@ def test_keybindings_menu_cycles_and_persists() -> None:
             assert storage.load_config()["key_restart"] is None
 
     asyncio.run(run_test())
+
+
+def test_japanese_romaji_language() -> None:
+    from ttyping.words import JA_ROMAJI_WORDS, get_words
+
+    assert len(JA_ROMAJI_WORDS) > 50
+    picked = get_words("ja_romaji", count=10)
+    assert len(picked) == 10
+    assert all(w in JA_ROMAJI_WORDS for w in picked)
+    # Romaji is plain ASCII so it types on any layout
+    assert all(w.isascii() for w in picked)
+
+
+def test_code_submenu_includes_japanese() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = TypingApp()
+        async with app.run_test() as pilot:
+            await app.push_screen(CodeSubMenu())
+            await pilot.pause()
+            ol = app.screen.query_one("#menu-options", OptionList)
+            ids = [str(o.id) for o in ol.options]
+            assert "ja_romaji" in ids
+
+    asyncio.run(run_test())
