@@ -178,7 +178,10 @@ def _words_from_text_pool(
     sources: dict[str, list[str]], lang: str, count: int, fallback_msg: str
 ) -> list[str]:
     """Pick random texts from a pool and split them into words."""
-    source = sources.get(lang) or next(iter(sources.values()))
+    source = sources.get(lang)
+    if source is None:
+        # Unknown lang falls back to the first pool
+        source = next(iter(sources.values()))
     if not source:
         return [fallback_msg]
     words: list[str] = []
