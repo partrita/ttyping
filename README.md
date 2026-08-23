@@ -40,32 +40,32 @@ uvx ttyping
 | **Space** | Proceed to the next word |
 | **Enter** | Select menu option or complete word |
 
-## 🗺️ Roadmap
+## 🗺️ Changelog Highlights (v1.1.2 – v1.1.16)
 
-Feature ideas planned for upcoming releases:
+All planned roadmap features have shipped:
 
 ### Practice Modes
-- **Quote Mode**: Type full English/Korean quotes with real punctuation and capitalization.
-- **Zen Mode**: Unlimited free typing — no word count, end whenever you want.
-- **Time Presets**: Quick-select 15s / 30s / 60s / 120s durations from the menu.
-- **Daily Challenge**: A seeded word set that changes once a day.
+- ✅ **Quote Mode**: Full English/Korean quotes with real punctuation and capitalization.
+- ✅ **Zen Mode**: Unlimited free typing — words stream in; end with `Ctrl+D`.
+- ✅ **Time Presets**: Quick-select 15s / 30s / 60s / 120s from the Options menu.
+- ✅ **Daily Challenge**: A date-seeded word set that changes once a day (`d`).
 
 ### Feedback & Statistics
-- **Live WPM Graph**: Real-time speed curve rendered while typing.
-- **Consistency Score**: Measure keystroke rhythm stability per test.
-- **Personal Bests**: Track record WPM/accuracy per language and mode.
-- **Keyboard Heatmap**: Visual layout map of cumulative error stats (extends Weakness Analysis).
+- ✅ **Live WPM Graph**: Real-time speed curve rendered while typing.
+- ✅ **Consistency Score**: Keystroke rhythm stability shown on results & history.
+- ✅ **Personal Bests**: Record WPM per language with a "new personal best!" badge.
+- ✅ **Keyboard Heatmap**: Layout map of cumulative error stats in Weakness Analysis.
 
 ### UX & Customization
-- **Custom Themes**: User-defined accent colors beyond dark/light.
-- **Keypress Sound**: Optional audio/tick feedback while typing.
-- **History Export**: Export results to CSV/JSON for external analysis.
-- **Configurable Keybindings**: Remap shortcuts from the Options menu.
+- ✅ **Custom Themes**: Five accent color presets persisted in config.
+- ✅ **Keypress Sound**: Optional terminal bell on typing errors.
+- ✅ **History Export**: Export results to CSV (`x`) or JSON (`j`).
+- ✅ **Configurable Keybindings**: Alternative restart (F2) / back (F4) shortcuts.
 
 ### Content
-- **More Code Languages**: Go, C, TypeScript snippets.
-- **Remote Word Lists**: Load practice text from a URL, not just local files.
-- **Additional Languages**: Japanese (romaji/kana) and other layouts.
+- ✅ **More Code Languages**: Go, C, TypeScript snippets.
+- ✅ **Remote Word Lists**: Load practice text from an HTTP(S) URL (`--url`).
+- ✅ **Additional Languages**: Japanese (romaji) word lists.
 
 ## 🛠️ Tech Stack
 
