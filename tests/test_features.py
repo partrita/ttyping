@@ -626,7 +626,7 @@ def test_zen_mode_manual_finish_saves_result() -> None:
 
             assert screen._finished is True
             assert app.last_result is not None
-            assert getattr(app.last_result, "lang") == "en"
+            assert app.last_result.lang == "en"
 
     asyncio.run(run_test())
 
@@ -639,6 +639,7 @@ def test_menu_has_zen_option_and_binding() -> None:
         async with app.run_test() as pilot:
             from textual.widgets import OptionList as OL
 
+            await pilot.pause()
             menu = app.screen
             ol = menu.query_one("#menu-options", OL)
             ids = [str(o.id) for o in ol.options]
