@@ -23,8 +23,10 @@ from ttyping.storage import (
     TypingResult,
     clear_results,
     delete_result_by_index,
+    load_config,
     load_error_stats,
     load_results,
+    save_config,
     save_result,
 )
 from ttyping.words import PRACTICE_SETS, _get_jamos
@@ -392,6 +394,24 @@ class TypingScreen(Screen):
         if self._finished:
             return
         inp = self._input_widget
+        # Configurable alternative shortcuts (bubbled keys like F-keys)
+        cfg = load_config()
+        alt_restart = cfg.get("key_restart")
+        alt_back = cfg.get("key_back")
+        if (
+            isinstance(alt_restart, str)
+            and event.key == alt_restart
+            and alt_restart != "tab"
+        ):
+            event.stop()
+            event.prevent_default()
+            self.action_restart()
+            return
+        if isinstance(alt_back, str) and event.key == alt_back and alt_back != "escape":
+            event.stop()
+            event.prevent_default()
+            self.action_go_back()
+            return
         # Enter also completes the current word (handy for last word)
         if event.key == "ctrl+w":
             event.prevent_default()
@@ -1900,6 +1920,7 @@ class OptionsScreen(ActionSelectMixin, Screen):
                     Option(escape(f"Accuracy: {acc_label}"), id="accuracy"),
                     Option(escape(f"Theme: {theme_label}"), id="theme"),
                     Option(escape(f"Sound: {sound_label}"), id="sound"),
+                    Option("Keybindings", id="keybindings"),
                     Option("About", id="about"),
                     id="menu-options",
                 )
@@ -1932,8 +1953,91 @@ class OptionsScreen(ActionSelectMixin, Screen):
             app.notify(f"Sound set to {label}", title="Saved", timeout=2)
             # Refresh label in place
             self.refresh(recompose=True)
+        elif opt_id == "keybindings":
+            app.push_screen(KeybindingsMenu())
         elif opt_id == "about":
             app.push_screen(AboutScreen())
+
+    def action_go_back(self) -> None:
+        self.app.pop_screen()
+
+
+KEY_RESTART_CHOICES: list[tuple[str, str | None]] = [
+    ("Tab (default)", None),
+    ("F2", "f2"),
+]
+KEY_BACK_CHOICES: list[tuple[str, str | None]] = [
+    ("Escape (default)", None),
+    ("F4", "f4"),
+]
+
+
+class KeybindingsMenu(ActionSelectMixin, Screen):
+    """Add alternative shortcuts for restart / back on the typing screen."""
+
+    DEFAULT_CSS = MenuScreen.DEFAULT_CSS
+    BINDINGS = [
+        Binding(key="enter", action="select", description="Select"),
+        Binding(key="escape", action="go_back", description="Back"),
+    ]
+
+    def _labels(self) -> tuple[str, str]:
+        cfg = load_config()
+        restart, back = cfg.get("key_restart"), cfg.get("key_back")
+        r_label = next(
+            (lbl for lbl, key in KEY_RESTART_CHOICES if key == restart),
+            "Tab (default)",
+        )
+        b_label = next(
+            (lbl for lbl, key in KEY_BACK_CHOICES if key == back),
+            "Escape (default)",
+        )
+        return r_label, b_label
+
+    def compose(self) -> ComposeResult:
+        r_label, b_label = self._labels()
+        with Center():
+            with Vertical(id="menu-container"):
+                yield Static("Keybindings", id="menu-title")
+                yield OptionList(
+                    Option(escape(f"Restart: {r_label}"), id="kb:restart"),
+                    Option(escape(f"Back: {b_label}"), id="kb:back"),
+                    id="menu-options",
+                )
+
+        yield Footer()
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        opt_id = str(event.option_id)
+        app = cast("TypingApp", self.app)
+        if not opt_id.startswith("kb:"):
+            return
+
+        action = opt_id.split(":", 1)[1]
+        cfg = load_config()
+        if action == "restart":
+            current = cfg.get("key_restart")
+            idx = next(
+                (i for i, (_, key) in enumerate(KEY_RESTART_CHOICES) if key is current),
+                0,
+            )
+            new_key = KEY_RESTART_CHOICES[(idx + 1) % len(KEY_RESTART_CHOICES)][1]
+            cfg["key_restart"] = new_key
+            label = KEY_RESTART_CHOICES[(idx + 1) % len(KEY_RESTART_CHOICES)][0]
+        else:
+            current = cfg.get("key_back")
+            idx = next(
+                (i for i, (_, key) in enumerate(KEY_BACK_CHOICES) if key is current),
+                0,
+            )
+            new_key = KEY_BACK_CHOICES[(idx + 1) % len(KEY_BACK_CHOICES)][1]
+            cfg["key_back"] = new_key
+            label = KEY_BACK_CHOICES[(idx + 1) % len(KEY_BACK_CHOICES)][0]
+
+        save_config(cfg)
+        which = "Restart" if action == "restart" else "Back"
+        app.notify(f"{which} key set to {label}", title="Saved", timeout=2)
+        self.refresh(recompose=True)
 
     def action_go_back(self) -> None:
         self.app.pop_screen()

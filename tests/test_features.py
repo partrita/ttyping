@@ -907,3 +907,94 @@ def test_app_uses_url_words(monkeypatch: object) -> None:
                 assert words == ["url", "words"]
 
     asyncio.run(run_test())
+
+
+def test_alt_restart_key_triggers_restart() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        storage.save_config({"key_restart": "f2"})
+        restarted: list[bool] = []
+
+        class RApp(App):
+            def show_result(self, r: object) -> None:
+                pass
+
+            def restart(self) -> None:
+                restarted.append(True)
+
+            def reset_session_attempt(self, s: object) -> None:
+                pass
+
+            def on_mount(self) -> None:
+                self.push_screen(TypingScreen(["alpha", "beta"], lang="en"))
+
+        app = RApp()
+        async with app.run_test() as pilot:
+            await pilot.press("f2")
+            await pilot.pause()
+            assert restarted == [True]
+
+    asyncio.run(run_test())
+
+
+def test_default_keys_unchanged_without_config() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        restarted: list[bool] = []
+
+        class R2App(App):
+            def show_result(self, r: object) -> None:
+                pass
+
+            def restart(self) -> None:
+                restarted.append(True)
+
+            def reset_session_attempt(self, s: object) -> None:
+                pass
+
+            def on_mount(self) -> None:
+                self.push_screen(TypingScreen(["alpha"], lang="en"))
+
+        app = R2App()
+        async with app.run_test() as pilot:
+            screen = app.screen
+            assert isinstance(screen, TypingScreen)
+            await pilot.press("tab")  # default priority binding
+            await pilot.pause()
+            assert restarted == [True]
+            # F2 does nothing without config
+            await pilot.press("f2")
+            await pilot.pause()
+            assert restarted == [True]
+
+    asyncio.run(run_test())
+
+
+def test_keybindings_menu_cycles_and_persists() -> None:
+    import asyncio
+    from types import SimpleNamespace
+
+    async def run_test() -> None:
+        app = TypingApp()
+        async with app.run_test() as pilot:
+            from ttyping.screens import KeybindingsMenu
+
+            await app.push_screen(KeybindingsMenu())
+            await pilot.pause()
+            screen = app.screen
+
+            screen.on_option_list_option_selected(
+                SimpleNamespace(option_id="kb:restart")
+            )
+            await pilot.pause()
+            assert storage.load_config()["key_restart"] == "f2"
+
+            screen.on_option_list_option_selected(
+                SimpleNamespace(option_id="kb:restart")
+            )
+            await pilot.pause()
+            assert storage.load_config()["key_restart"] is None
+
+    asyncio.run(run_test())
