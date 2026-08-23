@@ -26,7 +26,7 @@ from ttyping.storage import (
     load_results,
     save_result,
 )
-from ttyping.words import _get_jamos
+from ttyping.words import PRACTICE_SETS, _get_jamos
 
 if TYPE_CHECKING:
     from ttyping.app import TypingApp
@@ -2227,6 +2227,7 @@ class WeaknessScreen(ActionSelectMixin, Screen):
         from ttyping.words import (
             FINGER_LABELS,
             FINGER_LABELS_KO,
+            PRACTICE_SETS,
             chars_to_finger,
         )
 
@@ -2300,7 +2301,48 @@ class WeaknessScreen(ActionSelectMixin, Screen):
                         self._render_char_bars(sorted_chars[:6]),
                         id="weakness-graph",
                     )
+
+                    # Keyboard heatmap (layout-aware)
+                    if layout in PRACTICE_SETS:
+                        yield Static(
+                            "▸ Keyboard Heatmap", classes="weakness-section"
+                        )
+                        yield Static(
+                            self._render_heatmap(layout, stats),
+                            id="keyboard-heatmap",
+                        )
         yield Footer()
+
+    def _render_heatmap(self, layout: str, stats: dict[str, int]) -> Text:
+        """Render keyboard rows colored by per-key cumulative errors."""
+        rows = ["number_row", "top_row", "home_row", "bottom_row"]
+        layout_sets = PRACTICE_SETS.get(layout)
+        if layout_sets is None:
+            return Text()
+
+        max_err = max(stats.values()) if stats else 0
+        heat_levels = [("#8f4148", False), ("#d94f5c", True), ("#ff6b76", True)]
+
+        t = Text()
+        for r_idx, row_name in enumerate(rows):
+            for ch in layout_sets.get(row_name, ""):
+                err = stats.get(ch, 0)
+                if err and max_err:
+                    ratio = err / max_err
+                    color, bold = (
+                        heat_levels[2]
+                        if ratio > 0.66
+                        else heat_levels[1]
+                        if ratio > 0.33
+                        else heat_levels[0]
+                    )
+                    style = f"bold {color}" if bold else color
+                else:
+                    style = COL_DIM
+                t.append(ch, style=style)
+            if r_idx < len(rows) - 1:
+                t.append("\n")
+        return t
 
     def _render_char_bars(self, data: list[tuple[str, int]]) -> Text:
         from rich.cells import cell_len

@@ -17,6 +17,7 @@ from ttyping.screens import (
     TimeLimitInputScreen,
     TimeMenu,
     TypingScreen,
+    WeaknessScreen,
 )
 
 
@@ -714,13 +715,67 @@ def test_live_wpm_chart_samples() -> None:
 
             await pilot.press("a", "p", "p", "l", "e", "space")
 
-            # Simulate timer ticks
+            # Simulate timer ticks (real 0.5s timer may also fire)
             screen._tick_stats()
             screen._tick_stats()
 
-            assert len(screen.wpm_samples) == 2
+            assert len(screen.wpm_samples) >= 2
             assert all(s >= 0 for s in screen.wpm_samples)
             assert chart.display is True
-            assert len(chart.chart_data) == 2
+            assert len(chart.chart_data) == len(screen.wpm_samples)
+
+    asyncio.run(run_test())
+
+
+def test_keyboard_heatmap_render() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = TypingApp(lang="en_qwerty")
+        async with app.run_test() as pilot:
+
+            await app.push_screen(WeaknessScreen())
+            await pilot.pause()
+
+            screen = app.screen
+            assert isinstance(screen, WeaknessScreen)
+
+            # Render function: plain text preserves row structure
+            stats = {"f": 10, "j": 5, "a": 1}
+            text = screen._render_heatmap("en_qwerty", stats)
+            lines = text.plain.split("\n")
+            assert len(lines) == 4  # number/top/home/bottom rows
+            assert "f" in lines[2] and "j" in lines[2]  # home row
+
+            def style_at(t: object, ch: str) -> list[str]:
+                idx = t.plain.find(ch)
+                return [
+                    str(s.style)
+                    for s in t.spans
+                    if s.start <= idx < s.end
+                ]
+
+            # Hot key styled with strongest heat color
+            assert any("ff6b76" in st for st in style_at(text, "f"))
+            # Cold key stays dim
+            assert any("909294" in st for st in style_at(text, "q"))
+
+    asyncio.run(run_test())
+
+
+def test_keyboard_heatmap_unknown_layout_empty() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = TypingApp(lang="python")  # not a keyboard layout
+        async with app.run_test() as pilot:
+            from rich.text import Text
+
+            await app.push_screen(WeaknessScreen())
+            await pilot.pause()
+            screen = app.screen
+            assert isinstance(screen, WeaknessScreen)
+            result = screen._render_heatmap("nonexistent_layout", {"a": 3})
+            assert isinstance(result, Text)
 
     asyncio.run(run_test())
