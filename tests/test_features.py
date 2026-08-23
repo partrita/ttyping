@@ -564,3 +564,84 @@ def test_practice_menu_ko_quotes_selection() -> None:
             assert app._lang == "ko_quotes"
 
     asyncio.run(run_test())
+
+
+class ZenApp(App):
+    """Minimal host for zen TypingScreen with stubbed app hooks."""
+
+    last_result: object = None
+
+    def show_result(self, result: object) -> None:
+        self.last_result = result
+
+    def restart(self) -> None:
+        pass
+
+    def reset_session_attempt(self, stats: object) -> None:
+        pass
+
+    def _get_more_words(self) -> list[str]:
+        return ["beta", "gamma", "delta"]
+
+    def on_mount(self) -> None:
+        self.push_screen(
+            TypingScreen(["alpha"], lang="en", zen=True)
+        )
+
+
+def test_zen_mode_extends_words_instead_of_ending() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = ZenApp()
+        async with app.run_test() as pilot:
+            screen = app.screen
+            assert isinstance(screen, TypingScreen)
+            assert screen.zen is True
+
+            # Complete the only word — screen should stream more, not end
+            await pilot.press("a", "l", "p", "h", "a", "space")
+            await pilot.pause()
+
+            assert screen.current_word_idx == 1
+            assert len(screen.words) == 4  # alpha + beta gamma delta
+            assert screen._finished is False
+
+    asyncio.run(run_test())
+
+
+def test_zen_mode_manual_finish_saves_result() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = ZenApp()
+        async with app.run_test() as pilot:
+            screen = app.screen
+            assert isinstance(screen, TypingScreen)
+
+            await pilot.press("a", "l", "p", "h", "a", "space")
+            await pilot.pause()
+            screen.action_finish_zen()
+            await pilot.pause()
+
+            assert screen._finished is True
+            assert app.last_result is not None
+            assert getattr(app.last_result, "lang") == "en"
+
+    asyncio.run(run_test())
+
+
+def test_menu_has_zen_option_and_binding() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = TypingApp()
+        async with app.run_test() as pilot:
+            from textual.widgets import OptionList as OL
+
+            menu = app.screen
+            ol = menu.query_one("#menu-options", OL)
+            ids = [str(o.id) for o in ol.options]
+            assert "zen" in ids
+
+    asyncio.run(run_test())

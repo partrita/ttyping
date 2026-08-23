@@ -77,6 +77,15 @@ class TypingScreen(Screen):
         Binding(key="escape", action="go_back", description="Back", priority=True),
     ]
 
+    ZEN_BINDINGS = [
+        Binding(
+            key="ctrl+d",
+            action="finish_zen",
+            description="End Zen",
+            priority=True,
+        ),
+    ]
+
     DEFAULT_CSS = """
     TypingScreen {
         align: center middle;
@@ -123,12 +132,14 @@ class TypingScreen(Screen):
         lang: str = "en",
         duration: int | None = None,
         target_accuracy: float | None = None,
+        zen: bool = False,
     ) -> None:
         super().__init__()
         self.words = words
         self.lang = lang
         self.duration = duration
         self.target_accuracy = target_accuracy
+        self.zen = zen
         self.current_word_idx = 0
         self.current_input = ""
         self.word_correct: list[bool | None] = [None] * len(words)
@@ -425,8 +436,15 @@ class TypingScreen(Screen):
                 return
 
         if self.current_word_idx >= len(self.words):
-            self._end_test()
-            return
+            if self.zen:
+                # Zen mode: stream more words instead of ending
+                more = cast("TypingApp", self.app)._get_more_words()
+                self.words.extend(more)
+                self.word_correct.extend([None] * len(more))
+                self._cached_lines = None
+            else:
+                self._end_test()
+                return
 
         self._render_display()
         self._update_stats()
@@ -600,6 +618,16 @@ class TypingScreen(Screen):
 
     def action_restart(self) -> None:
         cast("TypingApp", self.app).restart()
+
+    def action_finish_zen(self) -> None:
+        """Manually end a zen session."""
+        if not self.zen or self._finished:
+            return
+        if self.start_time is None:
+            # Nothing typed yet — simply go back
+            self.action_go_back()
+            return
+        self._end_test()
 
     def action_quit_app(self) -> None:
         self.app.exit()
@@ -1286,6 +1314,7 @@ class MenuScreen(ActionSelectMixin, Screen):
         Binding(key="h", action="select_history", description="History", show=False),
         Binding(key="o", action="select_options", description="Options", show=False),
         Binding(key="p", action="select_code", description="Code", show=False),
+        Binding(key="z", action="start_zen", description="Zen Mode", show=False),
         Binding(key="escape", action="quit_app", description="Quit"),
         Binding(key="q", action="quit_app", description="Quit", show=False),
         # Korean IME support (2-set)
@@ -1295,6 +1324,7 @@ class MenuScreen(ActionSelectMixin, Screen):
         Binding(key="ㅗ", action="select_history", show=False),
         Binding(key="ㅐ", action="select_options", show=False),
         Binding(key="ㅔ", action="select_code", show=False),
+        Binding(key="ㅋ", action="start_zen", show=False),
         Binding(key="ㅂ", action="quit_app", show=False),
     ]
 
@@ -1319,6 +1349,10 @@ class MenuScreen(ActionSelectMixin, Screen):
                     Option(
                         Text.from_markup(r"Weak word(약점 단어 연습) [dim]\[w][/dim]"),
                         id="weakness",
+                    ),
+                    Option(
+                        Text.from_markup(r"Zen(젠 모드) [dim]\[z][/dim]"),
+                        id="zen",
                     ),
                     Option(
                         Text.from_markup(r"View History(기록 보기) [dim]\[h][/dim]"),
@@ -1384,6 +1418,8 @@ class MenuScreen(ActionSelectMixin, Screen):
             app.push_screen(KOSubMenu())
         elif opt_id == "code":
             app.push_screen(CodeSubMenu())
+        elif opt_id == "zen":
+            app.start_zen_test()
 
     def action_select_en(self) -> None:
         self.app.push_screen(ENSubMenu())
@@ -1402,6 +1438,9 @@ class MenuScreen(ActionSelectMixin, Screen):
 
     def action_select_options(self) -> None:
         self.app.push_screen(OptionsScreen())
+
+    def action_start_zen(self) -> None:
+        cast("TypingApp", self.app).start_zen_test()
 
     def action_quit_app(self) -> None:
         self.app.exit()
