@@ -150,6 +150,8 @@ class TypingScreen(Screen):
         self._shaking = True
         inp = self._input_widget
         inp.add_class("typo")
+        if getattr(self.app, "_sound", False):
+            self.app.bell()
 
         # Shake: Move slightly to the right, then left, then back
         self.animate("offset", Offset(1, 0), duration=0.05)
@@ -1689,17 +1691,20 @@ class OptionsScreen(ActionSelectMixin, Screen):
         Binding(key="escape", action="go_back", description="Back"),
     ]
 
-    def _get_labels(self) -> tuple[str, str, str, str]:
+    def _get_labels(self) -> tuple[str, str, str, str, str]:
         app = cast("TypingApp", self.app)
         words_label = str(app._word_count)
         time_label = "Off" if app._duration is None else f"{app._duration}s"
         acc = app._target_accuracy
         acc_label = "None" if acc is None else f"{int(acc)}%"
         theme_label = "Dark" if app.theme == "textual-dark" else "Light"
-        return words_label, time_label, acc_label, theme_label
+        sound_label = "On" if getattr(app, "_sound", False) else "Off"
+        return words_label, time_label, acc_label, theme_label, sound_label
 
     def compose(self) -> ComposeResult:
-        words_label, time_label, acc_label, theme_label = self._get_labels()
+        words_label, time_label, acc_label, theme_label, sound_label = (
+            self._get_labels()
+        )
         with Center():
             with Vertical(id="menu-container"):
                 yield Static("Options", id="menu-title")
@@ -1708,6 +1713,7 @@ class OptionsScreen(ActionSelectMixin, Screen):
                     Option(escape(f"Time: {time_label}"), id="time"),
                     Option(escape(f"Accuracy: {acc_label}"), id="accuracy"),
                     Option(escape(f"Theme: {theme_label}"), id="theme"),
+                    Option(escape(f"Sound: {sound_label}"), id="sound"),
                     Option("About", id="about"),
                     id="menu-options",
                 )
@@ -1719,6 +1725,8 @@ class OptionsScreen(ActionSelectMixin, Screen):
         self.refresh(recompose=True)
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        from ttyping.storage import load_config, save_config
+
         opt_id = str(event.option_id)
         app = cast("TypingApp", self.app)
         if opt_id == "words":
@@ -1729,6 +1737,15 @@ class OptionsScreen(ActionSelectMixin, Screen):
             app.push_screen(AccuracyMenu())
         elif opt_id == "theme":
             app.push_screen(ThemeScreen())
+        elif opt_id == "sound":
+            app._sound = not getattr(app, "_sound", False)
+            cfg = load_config()
+            cfg["sound"] = app._sound
+            save_config(cfg)
+            label = "On" if app._sound else "Off"
+            app.notify(f"Sound set to {label}", title="Saved", timeout=2)
+            # Refresh label in place
+            self.refresh(recompose=True)
         elif opt_id == "about":
             app.push_screen(AboutScreen())
 

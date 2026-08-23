@@ -1,11 +1,19 @@
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
+from textual.app import App
 from textual.widgets import OptionList
 
 from ttyping import storage
 from ttyping.app import TypingApp
-from ttyping.screens import TimeLimitInputScreen, TimeMenu
+from ttyping.screens import (
+    OptionsScreen,
+    TimeLimitInputScreen,
+    TimeMenu,
+    TypingScreen,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -80,5 +88,75 @@ def test_time_menu_custom_opens_input_screen() -> None:
             # Custom should push the manual input screen instead of popping
             assert isinstance(app.screen, TimeLimitInputScreen)
             assert isinstance(app.screen_stack[-2], TimeMenu)
+
+    asyncio.run(run_test())
+
+
+class SoundTypingApp(App):
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__()
+        self._sound = True
+
+    def on_mount(self) -> None:
+        self.push_screen(TypingScreen(["apple", "banana"], lang="en"))
+
+
+def test_bell_rings_on_error_when_sound_enabled() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = SoundTypingApp()
+        async with app.run_test() as pilot:
+            screen = app.screen
+            assert isinstance(screen, TypingScreen)
+            with patch.object(app, "bell") as mock_bell:
+                await pilot.press("b", "p", "p", "l", "e")
+                assert mock_bell.called
+            assert screen.total_errors > 0
+
+    asyncio.run(run_test())
+
+
+def test_no_bell_on_correct_input() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = SoundTypingApp()
+        async with app.run_test() as pilot:
+            screen = app.screen
+            assert isinstance(screen, TypingScreen)
+            with patch.object(app, "bell") as mock_bell:
+                await pilot.press("a", "p", "p", "l", "e")
+                assert not mock_bell.called
+            assert screen.total_errors == 0
+
+    asyncio.run(run_test())
+
+
+def test_options_sound_toggle_persists() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = TypingApp()
+        assert app._sound is False
+        async with app.run_test() as pilot:
+            await app.push_screen(OptionsScreen())
+            await pilot.pause()
+            screen = app.screen
+
+            screen.on_option_list_option_selected(
+                SimpleNamespace(option_id="sound")  # type: ignore[arg-type]
+            )
+            await pilot.pause()
+            assert app._sound is True
+            assert storage.load_config()["sound"] is True
+
+            # Toggle back off
+            screen.on_option_list_option_selected(
+                SimpleNamespace(option_id="sound")  # type: ignore[arg-type]
+            )
+            await pilot.pause()
+            assert app._sound is False
+            assert storage.load_config()["sound"] is False
 
     asyncio.run(run_test())

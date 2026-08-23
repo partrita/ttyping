@@ -192,6 +192,9 @@ class TypingApp(App):
         self._session_attempts: list[TypingResult] = []
         self._current_session_words: list[str] | None = None
 
+        # Optional keypress sound feedback (terminal bell on errors)
+        self._sound: bool = bool(config.get("sound", False))
+
         # Apply persisted theme (dark by default)
         saved_theme = config.get("theme", "dark")
         is_dark = (saved_theme if isinstance(saved_theme, str) else "dark") == "dark"
