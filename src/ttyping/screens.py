@@ -115,6 +115,11 @@ class TypingScreen(Screen):
         padding: 0 2;
     }
 
+    #live-chart {
+        height: 2;
+        margin-top: 0;
+    }
+
     #input-area {
         width: 100%;
         margin-top: 1;
@@ -156,12 +161,15 @@ class TypingScreen(Screen):
         self._stats_widget: Static | None = None
         self._display_widget: Static | None = None
         self._input_widget: Input | None = None
+        self._live_chart: LineChart | None = None
+        self.wpm_samples: list[float] = []
         self._shaking: bool = False
 
     def compose(self) -> ComposeResult:
         with Center():
             with Vertical(id="typing-container"):
                 yield Static("", id="stats")
+                yield LineChart([], color=COL_ACCENT, id="live-chart")
                 yield Static("", id="text-display")
                 yield Input(id="input-area", password=False)
 
@@ -171,6 +179,8 @@ class TypingScreen(Screen):
         self._stats_widget = self.query_one("#stats", Static)
         self._display_widget = self.query_one("#text-display", Static)
         self._input_widget = self.query_one("#input-area", Input)
+        self._live_chart = self.query_one("#live-chart", LineChart)
+        self._live_chart.display = False
         self._input_widget.focus()
         # Initial render will happen after layout
 
@@ -198,6 +208,19 @@ class TypingScreen(Screen):
             inp.remove_class("typo")
 
         self.set_timer(0.2, reset_shaking)
+
+    def _sample_wpm(self) -> None:
+        """Record the current net WPM for the live graph."""
+        if self.start_time is None:
+            return
+        elapsed = time.time() - self.start_time
+        _, net_wpm, _ = self._wpm_parts(elapsed)
+        self.wpm_samples.append(net_wpm)
+        if len(self.wpm_samples) > 120:
+            del self.wpm_samples[: len(self.wpm_samples) - 120]
+        if self._live_chart is not None:
+            self._live_chart.display = True
+            self._live_chart.set_data(self.wpm_samples)
 
     # ── input handling ─────────────────────────────────────────────────
 
@@ -612,6 +635,8 @@ class TypingScreen(Screen):
                 if elapsed >= self.duration:
                     self._end_test()
                     return
+            if self.start_time is not None:
+                self._sample_wpm()
             self._update_stats()
 
     # ── actions ────────────────────────────────────────────────────────
@@ -970,6 +995,12 @@ class LineChart(Static):
         super().__init__(**kwargs)
         self.chart_data = data
         self.chart_color = color
+
+    def set_data(self, data: list[float]) -> None:
+        """Replace chart data and redraw at the current width."""
+        self.chart_data = list(data)
+        width = self.size.width if self.size.width > 0 else 40
+        self._update_chart(width)
 
     def on_resize(self, event: events.Resize) -> None:
         self._update_chart(event.size.width)

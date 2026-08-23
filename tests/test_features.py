@@ -694,3 +694,33 @@ def test_menu_has_daily_option() -> None:
             assert "zen" in ids
 
     asyncio.run(run_test())
+
+
+def test_live_wpm_chart_samples() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = SoundTypingApp()
+        async with app.run_test() as pilot:
+            screen = app.screen
+            assert isinstance(screen, TypingScreen)
+
+            chart = screen.query_one("#live-chart")
+            from ttyping.screens import LineChart
+
+            assert isinstance(chart, LineChart)
+            # Hidden before typing starts
+            assert chart.display is False
+
+            await pilot.press("a", "p", "p", "l", "e", "space")
+
+            # Simulate timer ticks
+            screen._tick_stats()
+            screen._tick_stats()
+
+            assert len(screen.wpm_samples) == 2
+            assert all(s >= 0 for s in screen.wpm_samples)
+            assert chart.display is True
+            assert len(chart.chart_data) == 2
+
+    asyncio.run(run_test())
