@@ -1553,6 +1553,7 @@ _PRACTICE_OPTIONS_EN: list[tuple[str, str]] = [
     ("Words", "full:words"),
     ("Sentences", "full:sentences"),
     ("Lorem Ipsum", "full:lorem_ipsum"),
+    ("Quotes", "full:quotes"),
     ("Home Row", "practice:home_row"),
     ("Top Row", "practice:top_row"),
     ("Bottom Row", "practice:bottom_row"),
@@ -1574,6 +1575,7 @@ _PRACTICE_OPTIONS_KO: list[tuple[str, str]] = [
     ("단어", "full:words"),
     ("짧은 글", "full:sentences"),
     ("로렘 입숨", "full:lorem_ipsum"),
+    ("명언", "full:quotes"),
     ("가운데 줄", "practice:home_row"),
     ("윗 줄", "practice:top_row"),
     ("아랫 줄", "practice:bottom_row"),
@@ -1640,6 +1642,9 @@ class PracticeMenu(ActionSelectMixin, Screen):
             app.start_custom_test(lang, app._word_count, app._duration)
         elif opt_id == "full:lorem_ipsum":
             lang = "ko_lorem_ipsum" if "ko" in self.layout_id else "en_lorem_ipsum"
+            app.start_custom_test(lang, app._word_count, app._duration)
+        elif opt_id == "full:quotes":
+            lang = "ko_quotes" if "ko" in self.layout_id else "en_quotes"
             app.start_custom_test(lang, app._word_count, app._duration)
         elif opt_id.startswith("practice:"):
             set_name = opt_id.split(":")[1]

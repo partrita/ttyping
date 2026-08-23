@@ -31,6 +31,8 @@ EN_SENTENCES: list[str] = _load_resource_words("en_sentences.txt")
 KO_SENTENCES: list[str] = _load_resource_words("ko_sentences.txt")
 EN_LOREM_IPSUM: list[str] = _load_resource_words("en_lorem_ipsum.txt")
 KO_LOREM_IPSUM: list[str] = _load_resource_words("ko_lorem_ipsum.txt")
+EN_QUOTES: list[str] = _load_resource_words("en_quotes.txt")
+KO_QUOTES: list[str] = _load_resource_words("ko_quotes.txt")
 PY_WORDS: list[str] = _load_resource_words("python.txt")
 RS_WORDS: list[str] = _load_resource_words("rust.txt")
 R_WORDS: list[str] = _load_resource_words("r.txt")
@@ -172,34 +174,48 @@ def _generate_nonsense_drills(
     return drills
 
 
+def _words_from_text_pool(
+    sources: dict[str, list[str]], lang: str, count: int, fallback_msg: str
+) -> list[str]:
+    """Pick random texts from a pool and split them into words."""
+    source = sources.get(lang) or next(iter(sources.values()))
+    if not source:
+        return [fallback_msg]
+    words: list[str] = []
+    for s in random.choices(source, k=count):
+        words.extend(s.split())
+    return words
+
+
 def get_words(lang: str = "en", count: int = 25) -> list[str]:
     """Return a random selection of words/sentences for the given language or layout."""
     # Sentences are treated as single "words" for practice.
     if lang.endswith("_sentences"):
-        sources: dict[str, list[str]] = {
-            "en_sentences": EN_SENTENCES,
-            "ko_sentences": KO_SENTENCES,
-        }
-        source = sources.get(lang, EN_SENTENCES)
-        if not source:
-            source = ["No sentences found."]
-        words: list[str] = []
-        for s in random.choices(source, k=count):
-            words.extend(s.split())
-        return words
+        return _words_from_text_pool(
+            {"en_sentences": EN_SENTENCES, "ko_sentences": KO_SENTENCES},
+            lang,
+            count,
+            "No sentences found.",
+        )
 
     if lang.endswith("_lorem_ipsum"):
-        sources: dict[str, list[str]] = {
-            "en_lorem_ipsum": EN_LOREM_IPSUM,
-            "ko_lorem_ipsum": KO_LOREM_IPSUM,
-        }
-        source = sources.get(lang, EN_LOREM_IPSUM)
-        if not source:
-            source = ["No lorem ipsum found."]
-        words: list[str] = []
-        for s in random.choices(source, k=count):
-            words.extend(s.split())
-        return words
+        return _words_from_text_pool(
+            {
+                "en_lorem_ipsum": EN_LOREM_IPSUM,
+                "ko_lorem_ipsum": KO_LOREM_IPSUM,
+            },
+            lang,
+            count,
+            "No lorem ipsum found.",
+        )
+
+    if lang.endswith("_quotes"):
+        return _words_from_text_pool(
+            {"en_quotes": EN_QUOTES, "ko_quotes": KO_QUOTES},
+            lang,
+            count,
+            "No quotes found.",
+        )
 
     # Handle practice sets (format: layout:set_name)
     if ":" in lang:

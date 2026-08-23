@@ -12,6 +12,7 @@ from ttyping.screens import (
     CodeSubMenu,
     HistoryScreen,
     OptionsScreen,
+    PracticeMenu,
     TimeLimitInputScreen,
     TimeMenu,
     TypingScreen,
@@ -502,5 +503,64 @@ def test_code_submenu_includes_new_languages() -> None:
             ol = screen.query_one("#menu-options", OptionList)
             ids = [str(o.id) for o in ol.options]
             assert {"go", "c", "typescript"} <= set(ids)
+
+    asyncio.run(run_test())
+
+
+def test_quotes_mode() -> None:
+    from ttyping.words import EN_QUOTES, KO_QUOTES, get_words
+
+    assert len(EN_QUOTES) >= 10
+    assert len(KO_QUOTES) >= 10
+
+    words = get_words("en_quotes", count=5)
+    assert len(words) > 0
+    # Quotes include punctuation/capitals — verify a word comes from the pool
+    pool_words = {w for q in EN_QUOTES for w in q.split()}
+    assert all(w in pool_words for w in words)
+
+    ko_words = get_words("ko_quotes", count=3)
+    ko_pool = {w for q in KO_QUOTES for w in q.split()}
+    assert all(w in ko_pool for w in ko_words)
+
+
+def test_practice_menu_quotes_selection() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = TypingApp(lang="en_qwerty")
+        async with app.run_test() as pilot:
+            from types import SimpleNamespace
+
+            await app.push_screen(PracticeMenu("en_qwerty"))
+            await pilot.pause()
+            screen = app.screen
+
+            screen.on_option_list_option_selected(
+                SimpleNamespace(option_id="full:quotes")  # type: ignore[arg-type]
+            )
+            await pilot.pause()
+            assert app._lang == "en_quotes"
+
+    asyncio.run(run_test())
+
+
+def test_practice_menu_ko_quotes_selection() -> None:
+    import asyncio
+
+    async def run_test() -> None:
+        app = TypingApp(lang="ko_2set")
+        async with app.run_test() as pilot:
+            from types import SimpleNamespace
+
+            await app.push_screen(PracticeMenu("ko_2set"))
+            await pilot.pause()
+            screen = app.screen
+
+            screen.on_option_list_option_selected(
+                SimpleNamespace(option_id="full:quotes")  # type: ignore[arg-type]
+            )
+            await pilot.pause()
+            assert app._lang == "ko_quotes"
 
     asyncio.run(run_test())

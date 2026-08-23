@@ -35,6 +35,8 @@ def parse_args(args: Sequence[str] | None = None) -> argparse.Namespace:
             "ko_sentences",
             "en_lorem_ipsum",
             "ko_lorem_ipsum",
+            "en_quotes",
+            "ko_quotes",
         ],
         help="language for random words",
     )
