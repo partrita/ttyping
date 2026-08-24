@@ -315,11 +315,9 @@ def _decompose_ko_to_spaced_jamos(word: str) -> str:
     한글 연습 문제는 낱글자 조합(모아쓰기) 대신 자모를 하나씩 치도록
     분리해 개별 자타 연습 효과를 노린다.
     """
-    result = []
+    result: list[str] = []
     for char in word:
-        jamos = _get_jamos(char)
-        for jamo in jamos:
-            result.append(jamo)
+        result.extend(_get_jamos(char))
     return " ".join(result)
 
 

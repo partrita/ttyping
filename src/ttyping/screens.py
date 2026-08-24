@@ -448,12 +448,6 @@ class TypingScreen(Screen):
                 self.total_keystrokes += 1
                 self._complete_word(inp.value)
                 inp.value = ""
-        elif event.key == "enter":
-            event.prevent_default()
-            if inp is not None and inp.value:
-                self.total_keystrokes += 1
-                self._complete_word(inp.value)
-                inp.value = ""
 
     # ── 통계 계산 ──────────────────────────────────────────────────────
 
@@ -599,7 +593,13 @@ class TypingScreen(Screen):
 
     # ── 렌더링 ─────────────────────────────────────────────────────────
 
-    def _get_word_text(self, i: int) -> Text:
+    def _get_word_text(
+        self,
+        i: int,
+        col_text: str,
+        col_dim: str,
+        col_error: str,
+    ) -> Text:
         """단어 하나를 현재 진행 상태에 맞는 색으로 칠한 Rich Text로 만든다.
 
         - 이미 완료: 맞으면 흐린 글자, 틀리면 빨강+취소선
@@ -608,8 +608,6 @@ class TypingScreen(Screen):
         """
         word = self.words[i]
         t = Text()
-        app = cast("TypingApp", self.app)
-        _, _, col_text, col_dim, col_accent, col_error = get_theme_colors(app)
 
         if i < self.current_word_idx:
             if self.word_correct[i]:
@@ -695,6 +693,8 @@ class TypingScreen(Screen):
             container_width = 72
 
         lines, active_word_line_idx = self._wrap_words(container_width)
+        app = cast("TypingApp", self.app)
+        _, _, col_text, col_dim, _, col_error = get_theme_colors(app)
 
         # 표시할 3줄 범위 결정 (화면 끝에서는 범위를 뒤로 당겨 3줄을 유지)
         display_text = Text()
@@ -709,7 +709,9 @@ class TypingScreen(Screen):
             for i, word_idx in enumerate(line):
                 if i > 0:
                     display_text.append(" ")  # 단어 사이 공백
-                display_text.append(self._get_word_text(word_idx))
+                display_text.append(
+                    self._get_word_text(word_idx, col_text, col_dim, col_error)
+                )
             display_text.append("\n")
 
         display_widget.update(display_text)
