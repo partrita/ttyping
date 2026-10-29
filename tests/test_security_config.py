@@ -1,9 +1,10 @@
 import json
+from pathlib import Path
 
 from ttyping.app import TypingApp
 
 
-def test_malformed_config_types(tmp_path: object) -> None:
+def test_malformed_config_types(tmp_path: Path) -> None:
     import ttyping.storage as storage
 
     storage_dir = tmp_path / ".ttyping"

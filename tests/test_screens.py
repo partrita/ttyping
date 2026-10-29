@@ -16,6 +16,12 @@ def setup_storage(mock_storage: tuple[Path, Path, Path]) -> None:
 @pytest.fixture
 def test_app() -> App:
     class DummyApp(App):
+        def show_result(self, result: object) -> None:
+            pass
+
+        def restart(self) -> None:
+            pass
+
         def on_mount(self) -> None:
             self.push_screen(TypingScreen(["apple", "banana"], lang="en"))
 
@@ -99,13 +105,14 @@ def test_typing_screen_test_completion(test_app: App) -> None:
         async with test_app.run_test() as pilot:
             screen = pilot.app.screen
             assert isinstance(screen, TypingScreen)
-            screen.app.show_result = MagicMock()
+            mock_show = MagicMock()
+            setattr(screen.app, "show_result", mock_show)
 
             await pilot.press("a", "p", "p", "l", "e", "space")
             await pilot.press("b", "a", "n", "a", "n", "a", "space")
 
             assert screen._finished is True
-            screen.app.show_result.assert_called_once()
+            mock_show.assert_called_once()
 
     asyncio.run(run_test())
 
@@ -117,18 +124,22 @@ def test_typing_screen_restart(test_app: App) -> None:
         async with test_app.run_test() as pilot:
             screen = pilot.app.screen
             assert isinstance(screen, TypingScreen)
-            screen.app.restart = MagicMock()
+            mock_restart = MagicMock()
+            setattr(screen.app, "restart", mock_restart)
 
             await pilot.press("a", "p", "tab")
             await pilot.pause(0.1)
 
-            screen.app.restart.assert_called_once()
+            mock_restart.assert_called_once()
 
     asyncio.run(run_test())
 
 
 def test_typing_screen_duration() -> None:
     class DurationApp(App):
+        def show_result(self, result: object) -> None:
+            pass
+
         def on_mount(self) -> None:
             # 1 second duration
             self.push_screen(TypingScreen(["apple", "banana"], lang="en", duration=1))
@@ -140,7 +151,8 @@ def test_typing_screen_duration() -> None:
         async with duration_app.run_test() as pilot:
             screen = pilot.app.screen
             assert isinstance(screen, TypingScreen)
-            screen.app.show_result = MagicMock()
+            mock_show = MagicMock()
+            setattr(screen.app, "show_result", mock_show)
 
             # Type something
             await pilot.press("a")
@@ -148,7 +160,7 @@ def test_typing_screen_duration() -> None:
             await pilot.pause(1.5)
 
             assert screen._finished is True
-            screen.app.show_result.assert_called_once()
+            mock_show.assert_called_once()
 
     asyncio.run(run_test())
 
@@ -170,6 +182,7 @@ def test_typing_screen_target_accuracy() -> None:
             title: str | None = None,
             severity: str | None = None,
             timeout: float | None = None,
+            markup: bool = True,
         ) -> None:
             self.notified = True
 

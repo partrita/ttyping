@@ -5,9 +5,10 @@ from unittest.mock import patch
 
 import pytest
 from textual.app import App
-from textual.widgets import OptionList
+from textual.widgets import DataTable, OptionList
 
 from ttyping import storage
+from ttyping.storage import TypingResult
 from ttyping.app import TypingApp
 from ttyping.screens import (
     CodeSubMenu,
@@ -97,12 +98,12 @@ def test_time_menu_custom_opens_input_screen() -> None:
 
 
 class MockTypingApp(App):
-    last_result: object = None
+    last_result: TypingResult | None = None
 
     def __init__(self, **kwargs: object) -> None:
         super().__init__()
 
-    def show_result(self, result: object) -> None:
+    def show_result(self, result: TypingResult) -> None:
         self.last_result = result
 
     def restart(self) -> None:
@@ -275,7 +276,7 @@ def test_history_table_has_consistency_column() -> None:
             await pilot.pause()
             screen = app.screen
             assert isinstance(screen, HistoryScreen)
-            table = screen.query_one("#history-table")
+            table = screen.query_one("#history-table", DataTable)
             columns = [str(c.label) for c in table.ordered_columns]
             assert "Cons" in columns
 
@@ -389,9 +390,10 @@ def test_practice_menu_quotes_selection() -> None:
             await app.push_screen(PracticeMenu("en_qwerty"))
             await pilot.pause()
             screen = app.screen
+            assert isinstance(screen, PracticeMenu)
 
             screen.on_option_list_option_selected(
-                SimpleNamespace(option_id="full:quotes")  # type: ignore[arg-type]
+                SimpleNamespace(option_id="full:quotes")  # ty: ignore[invalid-argument-type]  # type: ignore[arg-type]
             )
             await pilot.pause()
             assert app._lang == "en_quotes"
@@ -410,9 +412,10 @@ def test_practice_menu_ko_quotes_selection() -> None:
             await app.push_screen(PracticeMenu("ko_2set"))
             await pilot.pause()
             screen = app.screen
+            assert isinstance(screen, PracticeMenu)
 
             screen.on_option_list_option_selected(
-                SimpleNamespace(option_id="full:quotes")  # type: ignore[arg-type]
+                SimpleNamespace(option_id="full:quotes")  # ty: ignore[invalid-argument-type]  # type: ignore[arg-type]
             )
             await pilot.pause()
             assert app._lang == "ko_quotes"

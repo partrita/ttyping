@@ -972,7 +972,7 @@ class ResultScreen(Screen):
         return t
 
     def action_retry(self) -> None:
-        self.app.restart()  # type: ignore[attr-defined]
+        self.app.restart()  # ty: ignore[unresolved-attribute]  # type: ignore[attr-defined]
 
     def action_history(self) -> None:
         self.app.push_screen(HistoryScreen())
@@ -1330,7 +1330,7 @@ class ActionSelectMixin:
     def action_select(self) -> None:
         """현재 포커스된 OptionList의 선택 액션을 실행한다."""
         try:
-            ol = self.query_one("#menu-options", OptionList)  # type: ignore[attr-defined]
+            ol = self.query_one("#menu-options", OptionList)  # ty: ignore[unresolved-attribute]  # type: ignore[attr-defined]
             ol.action_select()
         except Exception:
             pass

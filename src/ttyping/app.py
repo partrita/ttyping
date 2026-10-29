@@ -33,7 +33,7 @@ def _cfg_int(raw: object, fallback: int | None) -> int | None:
     if raw is None:
         return fallback
     try:
-        return int(raw)
+        return int(raw)  # ty: ignore[invalid-argument-type]  # type: ignore[call-overload]
     except (ValueError, TypeError):
         return fallback
 
@@ -43,7 +43,7 @@ def _cfg_float(raw: object, fallback: float | None) -> float | None:
     if raw is None:
         return fallback
     try:
-        return float(raw)
+        return float(raw)  # ty: ignore[invalid-argument-type]  # type: ignore[arg-type]
     except (ValueError, TypeError):
         return fallback
 
@@ -327,7 +327,7 @@ class TypingApp(App):
             if word_count is not None
             else _cfg_int(config.get("word_count", 25), 25)
         )
-        self._word_count: int = max(1, min(int(wc), 1000))
+        self._word_count: int = max(1, min(int(wc or 25), 1000))
 
         # 시간 제한(초): 1~3600으로 제한. 미설정(None)이면 단어 수 기반 테스트.
         dur = (
