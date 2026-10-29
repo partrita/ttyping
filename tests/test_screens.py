@@ -199,3 +199,40 @@ def test_typing_screen_target_accuracy() -> None:
             assert target_app.reset_called is True
 
     asyncio.run(run_test())
+
+
+def test_result_screen_shows_key_hints() -> None:
+    """The result screen shows Tab, h and Esc hints without the Footer widget."""
+    import asyncio
+
+    from ttyping.screens import ResultScreen
+    from ttyping.storage import TypingResult
+
+    result = TypingResult(
+        wpm=60.0,
+        accuracy=98.0,
+        time=30.0,
+        lang="en_qwerty",
+        words=25,
+        correct=25,
+        keystrokes=125,
+        errors=1,
+    )
+
+    class ResultApp(App):
+        def on_mount(self) -> None:
+            self.push_screen(ResultScreen(result))
+
+    async def run_test() -> None:
+        result_app = ResultApp()
+        async with result_app.run_test() as pilot:
+            await pilot.pause()
+            screen = pilot.app.screen
+            assert isinstance(screen, ResultScreen)
+            hint = screen.query_one(".result-hint")
+            text = str(hint.render())
+            assert "Tab" in text
+            assert "history" in text
+            assert "Esc" in text
+
+    asyncio.run(run_test())

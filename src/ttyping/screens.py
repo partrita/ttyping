@@ -830,6 +830,12 @@ class ResultScreen(Screen):
         background: #d1d0c5;
         border: round #646669;
     }
+
+    .result-hint {
+        width: 100%;
+        text-align: center;
+        margin-top: 1;
+    }
     """
 
     def __init__(
@@ -845,7 +851,8 @@ class ResultScreen(Screen):
         """결과 요약 위젯들을 배치한다.
 
         상단부터: 큰 WPM → 정확도 → 부가 정보(시간·단어 수·언어)
-        → 타이핑 속도 지도(기록이 있을 때) → 세션 시도 요약(재시작이 있었을 때).
+        → 타이핑 속도 지도(기록이 있을 때) → 세션 시도 요약(재시작이 있었을 때)
+        → 키 안내(Tab 재시작 · h 기록 · Esc 뒤로).
         """
         r = self.result
         app = cast("TypingApp", self.app)
@@ -895,6 +902,18 @@ class ResultScreen(Screen):
                         str(r.errors),
                     )
                     yield table
+
+                # Key hints. This project bans the Textual Footer widget, so the
+                # screen prints its own shortcuts.
+                hint = Text()
+                for i, (key, label) in enumerate(
+                    (("Tab", "retry"), ("h", "history"), ("Esc", "back"))
+                ):
+                    if i:
+                        hint.append("  ·  ", style=col_dim)
+                    hint.append(key, style=f"bold {col_text}")
+                    hint.append(f" {label}", style=col_dim)
+                yield Static(hint, classes="result-hint")
 
     @staticmethod
     def _speed_color(norm: float) -> str:
